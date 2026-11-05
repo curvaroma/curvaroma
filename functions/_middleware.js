@@ -8,6 +8,7 @@ const PAGINE = {
   "/biglietti": ["Annunci biglietti Roma tra tifosi | Curva Roma", "Bacheca di annunci tra tifosi della Roma. Biglietti e cambio intestatario solo sui canali ufficiali."],
   "/tifosi-roma": ["Tifosi della Roma: la casa dei romanisti | Curva Roma", "Curva Roma è il sito indipendente della tifoseria della Roma: notizie, pagelle, analisi e partecipazione per tutti i romanisti. Forza Roma!"]
 };
+const VISTE = { "/": "casa", "/pagelle": "pagella", "/vigilia": "vigilia", "/analisi": "analisi", "/biglietti": "biglietti", "/tifosi-roma": "tifosi" };
 const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 async function contenuti(ctx) {
@@ -28,25 +29,30 @@ export async function onRequest(ctx) {
   if (percorso === "/sitemap.xml") {
     const c = await contenuti(ctx);
     const voci = [...Object.keys(PAGINE), ...(c.analisi || []).map(a => "/analisi/" + a.id)];
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${voci.map(v => `<url><loc>${BASE}${v === "/" ? "/" : v}</loc></url>`).join("\n")}\n</urlset>\n`;
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${voci.map(v => { const d = (c.analisi || []).find(a => "/analisi/" + a.id === v)?.data; return `<url><loc>${BASE}${v}</loc>${d ? `<lastmod>${esc(d)}</lastmod>` : ""}</url>`; }).join("\n")}\n</urlset>\n`;
     return new Response(xml, { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
   }
   const dettaglio = percorso.match(/^\/analisi\/([\w-]+)$/);
   if (!PAGINE[percorso] && !dettaglio) return ctx.next();
   const c = await contenuti(ctx);
   let [titolo, descrizione] = PAGINE[dettaglio ? "/analisi" : percorso] || [];
-  const dati = [{ "@context": "https://schema.org", "@type": "WebSite", name: "Curva Roma", url: BASE + "/", inLanguage: "it" }];
+  const dati = [{ "@context": "https://schema.org", "@type": "WebSite", name: "Curva Roma", alternateName: "curvaroma.it", url: BASE + "/", inLanguage: "it" }];
+  if (percorso === "/") dati.push({ "@context": "https://schema.org", "@type": "Organization", name: "Curva Roma", url: BASE + "/", logo: BASE + "/img/icona-512.png" });
   const articolo = dettaglio && (c.analisi || []).find(a => a.id === dettaglio[1]);
   if (dettaglio && !articolo) return new Response("Pagina non trovata", { status: 404 });
   if (articolo) {
     titolo = `${articolo.titolo} | Curva Roma`; descrizione = articolo.riassunto || descrizione;
-    dati.push({ "@context": "https://schema.org", "@type": "Article", headline: articolo.titolo, description: articolo.riassunto, image: new URL(articolo.copertina || "/img/anteprima.jpg", BASE).href, inLanguage: "it", mainEntityOfPage: BASE + percorso, publisher: { "@type": "Organization", name: "Curva Roma", logo: { "@type": "ImageObject", url: BASE + "/img/icona-512.png" } } });
+    dati.push({ "@context": "https://schema.org", "@type": "Article", headline: articolo.titolo, description: articolo.riassunto, image: new URL(articolo.copertina || "/img/anteprima.jpg", BASE).href, inLanguage: "it", mainEntityOfPage: BASE + percorso, author: { "@type": "Organization", name: "Curva Roma", url: BASE + "/" }, ...(articolo.data ? { datePublished: articolo.data, dateModified: articolo.data } : {}), publisher: { "@type": "Organization", name: "Curva Roma", logo: { "@type": "ImageObject", url: BASE + "/img/icona-512.png" } } });
   }
   if (percorso === "/vigilia" && c.prossima?.inizio) dati.push({ "@context": "https://schema.org", "@type": "SportsEvent", name: `${c.prossima.casa}-${c.prossima.ospiti}`, startDate: c.prossima.inizio, sport: "Calcio", homeTeam: { "@type": "SportsTeam", name: c.prossima.casa }, awayTeam: { "@type": "SportsTeam", name: c.prossima.ospiti } });
   const canonico = BASE + (percorso === "/" ? "/" : percorso);
   const risposta = await ctx.env.ASSETS.fetch(new URL("/", url));
-  const articoli = (c.analisi || []).map(a => `<article class="articolo"><h2><a href="/analisi/${esc(a.id)}">${esc(a.titolo)}</a></h2><p class="nota">${esc(a.occhiello)}</p>${String(a.testo || "").split(/\n\s*\n/).map(t => `<p>${esc(t)}</p>`).join("")}</article>`).join("");
-  const out = new HTMLRewriter()
+  const paragrafi = a => String(a.testo || "").split(/\n\s*\n/).map(t => `<p>${esc(t)}</p>`).join("");
+  const articoli = articolo
+    ? `<article class="articolo"><h1>${esc(articolo.titolo)}</h1><p class="nota">${esc(articolo.occhiello)}</p>${paragrafi(articolo)}</article>`
+    : (c.analisi || []).map(a => `<article class="articolo"><h2><a href="/analisi/${esc(a.id)}">${esc(a.titolo)}</a></h2><p class="nota">${esc(a.occhiello)}</p><p>${esc(a.riassunto)}</p></article>`).join("");
+  const attiva = dettaglio ? "analisi" : VISTE[percorso];
+  let rw = new HTMLRewriter()
     .on("title", { element: e => e.setInnerContent(titolo) })
     .on('meta[name="description"]', { element: e => e.setAttribute("content", descrizione) })
     .on('meta[property="og:title"]', { element: e => e.setAttribute("content", titolo) })
@@ -54,8 +60,13 @@ export async function onRequest(ctx) {
     .on('meta[property="og:url"]', { element: e => e.setAttribute("content", canonico) })
     .on('link[rel="canonical"]', { element: e => e.setAttribute("href", canonico) })
     .on("head", { element: e => e.append(dati.map(ldJson).join(""), { html: true }) })
-    .on("#analisi-tutte", { element: e => e.setInnerContent(articoli, { html: true }) })
-    .transform(risposta);
+    .on(".vista", { element: e => { if (e.getAttribute("id") === "v-" + attiva) e.removeAttribute("hidden"); else e.setAttribute("hidden", ""); } })
+    .on("#analisi-tutte", { element: e => e.setInnerContent(articoli, { html: true }) });
+  if (articolo) rw = rw
+    .on('meta[property="og:type"]', { element: e => e.setAttribute("content", "article") })
+    .on('meta[property="og:image"]', { element: e => e.setAttribute("content", new URL(articolo.copertina || "/img/anteprima.jpg", BASE).href) });
+  for (const v of Object.values(VISTE)) if (v !== attiva || dettaglio) rw = rw.on(`#v-${v} h1`, { element: e => { e.tagName = "h2"; } });
+  const out = rw.transform(risposta);
   const h = new Headers(out.headers);
   h.set("content-type", "text/html; charset=utf-8");
   h.set("cache-control", "public, max-age=0, must-revalidate");

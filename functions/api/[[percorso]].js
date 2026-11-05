@@ -54,9 +54,12 @@ async function stato(env, id, partita, prossima) {
   };
 }
 
+const ENTITA = { eacute: "é", egrave: "è", agrave: "à", igrave: "ì", ograve: "ò", ugrave: "ù", Eacute: "É", Egrave: "È", Agrave: "À", Igrave: "Ì", Ograve: "Ò", Ugrave: "Ù", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“", laquo: "«", raquo: "»", ndash: "–", mdash: "—", hellip: "…", nbsp: " ", quot: '"', apos: "'", lt: "<", gt: ">" };
 const pulisci = s => s.replace(/<!\[CDATA\[|\]\]>/g, "").replace(/<[^>]+>/g, "")
-  .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n)).replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
-  .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").trim();
+  .replace(/&amp;/g, "&")
+  .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
+  .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n))
+  .replace(/&([a-z]+);/gi, (x, n) => ENTITA[n] ?? x).trim();
 const tag = (x, t) => (x.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`)) || [])[1] || "";
 function foto(x) {
   const m = x.match(/<media:content[^>]+url="([^"]+)"/) || x.match(/<enclosure[^>]+url="([^"]+)"/) || x.match(/<media:thumbnail[^>]+url="([^"]+)"/) || x.match(/<img[^>]+src="([^"]+)"/);

@@ -102,15 +102,14 @@ const PAGINE = {
   },
   async annunci(v) {
     const { prodotti } = await api("prodotti");
-    const c = el("div", "card"); c.append(el("h2", "", "Annunci Amazon"), el("p", "nota", "Incolla il link completo creato con SiteStripe: se contiene il codice del prodotto, il sito prova a mostrare l'anteprima di Amazon. Se Amazon non la dà, esce il disegno. Puoi anche caricare foto tue con Ctrl+V o Carica foto."));
+    const c = el("div", "card"); c.append(el("h2", "", "Annunci Amazon"), el("p", "nota", "Sul sito vanno solo gli annunci con la foto. Per aggiungerla usa Carica foto oppure incollala con Ctrl+V."));
     const riga = p => {
       const r = el("div", "prod"), vis = el("div");
-      const mostra = () => { vis.textContent = ""; if (p.foto) { const i = el("img"); i.src = p.foto; i.alt = ""; vis.append(i); } else vis.append(el("div", "manca", "Foto mancante")); };
+      const mostra = () => { vis.textContent = ""; if (p.foto) { const i = el("img"); i.src = p.foto; i.alt = ""; vis.append(i); } else vis.append(el("div", "manca", "Senza foto: non va sul sito")); };
       mostra();
       const f = el("div", ""); f.style.cssText = "display:grid;gap:8px;min-width:0";
       const g = el("div", "griglia"), noSeg = (et, val, su, t) => { const x = campo(et, val, su, t); return x; };
       g.append(noSeg("Nome", p.nome, x => p.nome = x), noSeg("Link Amazon", p.link, x => p.link = x), noSeg("Link immagine", p.foto, x => { p.foto = x; mostra(); }), noSeg("Ordine", p.ordine, x => p.ordine = x, "number"));
-      const tipo = el("label", "", "Disegno di riserva"), s = el("select"); for (const t of ["maglia","sciarpa","cappello","berretto","felpa","tazza"]) s.append(el("option", "", t)); s.value = p.tipo; s.onchange = () => p.tipo = s.value; tipo.append(s); g.append(tipo);
       const b = el("div", "riga"), att = el("label", "riga", "Attivo"), ch = el("input"); ch.type = "checkbox"; ch.checked = !!p.attivo; ch.onchange = () => p.attivo = ch.checked ? 1 : 0; att.prepend(ch);
       const sv = el("button", "az", "Salva"), es = el("span", "esito");
       const salva = async () => { try { await post("prodotti", p); es.textContent = "Salvato"; $("#barra-salva").hidden = !sporco || !C; } catch (e) { es.textContent = e.message; } };
@@ -169,11 +168,11 @@ const PAGINE = {
     v.append(c);
   },
   analisi(v) {
-    const add = el("button", "az", "Nuova analisi"); add.onclick = () => { C.analisi.unshift({ id: "a" + Date.now().toString(36), titolo: "", occhiello: "", riassunto: "", testo: "", copertina: "/img/lavagna.jpg", confronto: [] }); segna(); apri("analisi"); };
+    const add = el("button", "az", "Nuova analisi"); add.onclick = () => { C.analisi.unshift({ id: "a" + Date.now().toString(36), data: new Date().toISOString().slice(0, 10), titolo: "", occhiello: "", riassunto: "", testo: "", copertina: "/img/lavagna.jpg", confronto: [] }); segna(); apri("analisi"); };
     v.append(add, el("p", "nota", "La prima analisi della lista è quella che appare in home."));
     C.analisi.forEach((a, n) => {
       const c = el("div", "card"), i = el("img"); i.src = a.copertina; i.alt = ""; i.style.cssText = "width:100%;max-height:150px;object-fit:cover;border-radius:8px";
-      c.append(i, tastoFile("Cambia copertina", async f => { a.copertina = await carica(f); i.src = a.copertina; segna(); }), campo("Titolo", a.titolo, x => a.titolo = x), campo("Sottotitolo", a.occhiello, x => a.occhiello = x), campo("Riassunto per la home", a.riassunto, x => a.riassunto = x), campo("Testo, riga vuota tra i paragrafi", a.testo, x => a.testo = x, "area"));
+      c.append(i, tastoFile("Cambia copertina", async f => { a.copertina = await carica(f); i.src = a.copertina; segna(); }), campo("Titolo", a.titolo, x => a.titolo = x), campo("Sottotitolo", a.occhiello, x => a.occhiello = x), campo("Data (AAAA-MM-GG)", a.data || "", x => a.data = x.trim()), campo("Riassunto per la home", a.riassunto, x => a.riassunto = x), campo("Testo, riga vuota tra i paragrafi", a.testo, x => a.testo = x, "area"));
       c.append(campo("Statistiche, una per riga (Nome; Roma; Avversario)", (a.confronto || []).map(x => x.join("; ")).join("\n"), x => a.confronto = righe(x).map(r => { const [q, b, d] = r.split(";").map(s => s.trim()); return [q, +b || 0, +d || 0]; }), "area"));
       const b = el("div", "riga"), su = el("button", "az sec", "Sposta su"), del = el("button", "az pericolo", "Elimina");
       su.disabled = !n; su.onclick = () => { C.analisi.splice(n - 1, 0, C.analisi.splice(n, 1)[0]); segna(); apri("analisi"); };

@@ -17,17 +17,20 @@
 <meta property="og:image" content="https://curvaroma.it/img/anteprima.jpg">
 <meta property="og:locale" content="it_IT">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preload" as="image" href="/img/tifosi.webp" fetchpriority="high">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Cinzel:wght@700;900&family=Libre+Franklin:wght@400;500;600;700&display=swap">
+<link rel="preload" as="image" href="/img/tifosi.webp" imagesrcset="/img/tifosi-800.webp 800w,/img/tifosi.webp 1600w" imagesizes="100vw" fetchpriority="high">
+<link rel="preload" as="font" type="font/woff2" href="/fonts/titoli-900.woff2" crossorigin>
 <style>
+@font-face{font-family:"Big Shoulders Display";font-weight:700 800;font-display:swap;src:url(/fonts/titoli-800.woff2) format("woff2")}
+@font-face{font-family:"Big Shoulders Display";font-weight:900;font-display:swap;src:url(/fonts/titoli-900.woff2) format("woff2")}
+@font-face{font-family:"Libre Franklin";font-weight:400 500;font-display:swap;src:url(/fonts/testo-400.woff2) format("woff2")}
+@font-face{font-family:"Libre Franklin";font-weight:600;font-display:swap;src:url(/fonts/testo-600.woff2) format("woff2")}
+@font-face{font-family:"Libre Franklin";font-weight:700;font-display:swap;src:url(/fonts/testo-700.woff2) format("woff2")}
 /* Layout: una colonna da telefono. Roma vera: Colosseo al tramonto in testata, curva e stadio dietro le sezioni, sciarpa che scorre, striscioni come titoli. */
 :root{
   --banda:#8E1F2F; --banda-scura:#5F0E24; --giallo:#F0BC42; --su-banda:#FFF6F0;
   --fondo:#F7F1F2; --superficie:#FFFFFF; --testo:#2B0A15; --muto:#6F5560; --linea:#E6D6DA;
   --accento:#8E1F2F; --su-accento:#FFFFFF; --campo:#6E1229; --campo2:#7A1630;
   --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
-  --lapide:"Cinzel","Times New Roman",serif;
   --corpo:"Libre Franklin","Helvetica Neue",Arial,sans-serif;
   --molla:cubic-bezier(.2,.9,.3,1.25); --dolce:cubic-bezier(.2,.8,.2,1);
   --archi:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='64'%3E%3Cpath fill='%23FFF6F0' fill-opacity='.09' d='M0 64V0h60v64h-7V30a23 23 0 0 0-46 0v34z'/%3E%3C/svg%3E");
@@ -56,7 +59,8 @@ p{margin:0}
 .testata .in{display:flex;align-items:center;justify-content:center;padding-block:6px}
 .foto-testata{display:block;width:100%;height:clamp(130px,38vw,170px);object-fit:cover;object-position:center 66%}
 .marchio{display:flex;align-items:center;gap:10px;text-decoration:none;min-width:0}
-.marchio img{display:block;width:140px;height:auto}
+.marchio img{display:block;width:92px;height:auto}
+.scritta{font:900 1.85rem/1 var(--display);letter-spacing:.02em;text-transform:uppercase;color:var(--su-banda);white-space:nowrap}
 .su-chiaro{display:var(--vedi-rosso,block)}
 .su-scuro{display:var(--vedi-crema,none)}
 .logo-piede{width:132px;height:auto}
@@ -202,7 +206,6 @@ p{margin:0}
 .pubblicita{display:grid;grid-template-columns:112px minmax(0,1fr);background:var(--superficie);border:1px solid var(--linea);border-radius:14px;overflow:hidden;text-decoration:none;transition:scale .18s var(--molla)}
 .pubblicita:active{scale:.98}
 .vetrina{display:grid;place-items:center;min-height:112px;background:radial-gradient(circle at 50% 35%,var(--banda),var(--banda-scura));color:var(--giallo)}
-.vetrina svg{width:64%;height:auto}
 .vetrina img{width:100%;height:100%;object-fit:contain;background:#fff;display:block}
 .vetrina:has(img){background:#fff}
 .vetrina img[src]{max-height:190px}
@@ -210,8 +213,9 @@ p{margin:0}
 .testo-pub strong{font-weight:600;line-height:1.25}
 .testo-pub small{color:var(--accento);font-weight:600}
 .lato{display:none}
-.apertura{display:grid;gap:4px;padding-block:14px 0}
-.apertura h1{font:900 1.65rem/1.08 var(--display)}
+[data-annuncio]:empty{display:none}
+.apertura{display:grid;gap:6px}
+.apertura h1{font:900 1.5rem/1.1 var(--display)}
 .apertura p{color:var(--muto);font-size:.95rem}
 .testo-pagina{display:grid;gap:12px;max-width:68ch}
 .testo-pagina h1,.testo-pagina h2{font-family:var(--display)}
@@ -247,14 +251,14 @@ p{margin:0}
   .notizia{max-width:none}
   .foto{height:130px}
   .pubblicita{grid-template-columns:170px minmax(0,1fr)}
-  .marchio img{width:150px}
+  .marchio img{width:104px}
+  .scritta{font-size:2.1rem}
 }
 @media (min-width:1180px){
   .pagina{grid-template-columns:172px minmax(0,1fr) 172px}
   .lato{display:grid;gap:14px;position:sticky;top:16px}
   .lato .pubblicita{grid-template-columns:minmax(0,1fr)}
   .lato .vetrina{min-height:130px}
-  .lato .vetrina svg{width:42%}
 }
 
 /* Biglietti */
@@ -324,21 +328,21 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
 <header class="testata"><div class="in">
   <nav class="menu sinistra" aria-label="Sezioni"><a href="/">Casa</a><a href="/pagelle">Pagella</a><a href="/vigilia">Vigilia</a></nav>
   <a class="marchio" href="/" aria-label="Curva Roma, vai alla home">
-    <img src="/img/logo-chiaro.png" alt="" width="900" height="336">
+    <img src="/img/logo-chiaro.webp" alt="" width="480" height="179">
+    <span class="scritta">Curva Roma</span>
   </a>
   <nav class="menu destra" aria-label="Altre sezioni"><a href="/analisi">Analisi</a><a href="/biglietti">Biglietti</a></nav>
 </div>
-<img class="foto-testata" id="foto-testata" src="/img/tifosi.webp" width="1600" height="1065" fetchpriority="high" alt="Curva Sud dei tifosi della Roma allo Stadio Olimpico piena di bandiere giallorosse"></header>
+<img class="foto-testata" id="foto-testata" src="/img/tifosi.webp" srcset="/img/tifosi-800.webp 800w,/img/tifosi.webp 1600w" sizes="100vw" width="1600" height="1065" fetchpriority="high" alt="Curva Sud dei tifosi della Roma allo Stadio Olimpico piena di bandiere giallorosse"></header>
 
 <div class="pagina">
 <aside class="lato sinistra" aria-label="Annunci"><div data-annuncio></div><div data-annuncio></div></aside>
 <main>
   <div class="vista" id="v-casa">
-    <section class="in apertura"><h1>Curva Roma, il sito dei tifosi della Roma</h1><p>Notizie sull'AS Roma, pagelle dei tifosi, vigilia delle partite e analisi. Qui i romanisti votano, discutono e seguono la squadra ogni giorno.</p></section>
     <section class="fascia su-banda">
       <div class="in">
-        <div class="fila"><h2 class="striscione" tabindex="-1">Le pagelle</h2><img class="timbro" src="/img/logo-chiaro.png" alt=""></div>
-        <p class="nota"><span class="conteggio n-votanti">0</span> tifosi hanno votato</p>
+        <div class="fila"><h2 class="striscione" tabindex="-1">Le pagelle</h2><img class="timbro" src="/img/logo-chiaro.webp" alt="" width="480" height="179" loading="lazy"></div>
+        <p class="nota"><span class="conteggio n-votanti">0</span> <span class="testo-votanti">tifosi hanno votato</span></p>
         <div class="tabellino" data-tabellino></div>
         <div class="grafico" data-linea></div>
         <div class="mazzo" data-mazzo="casa"></div>
@@ -352,11 +356,9 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
 
     <div class="in" data-annuncio></div>
 
-    <div class="in" data-annuncio></div>
-
     <section class="fascia fascia-vigilia su-banda">
       <div class="in">
-        <div class="fila"><h2 class="striscione">Vigilia</h2><img class="timbro" src="/img/logo-chiaro.png" alt=""></div>
+        <div class="fila"><h2 class="striscione">Vigilia</h2><img class="timbro" src="/img/logo-chiaro.webp" alt="" width="480" height="179" loading="lazy"></div>
         <div>
           <p class="titolo-gara" data-gara></p>
           <p class="nota" data-quando></p>
@@ -387,12 +389,14 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
       <h2 class="striscione">Classifica</h2>
       <table class="classifica"><tbody id="classifica"></tbody></table>
     </section>
+
+    <section class="in apertura"><h1>Curva Roma, il sito dei tifosi della Roma</h1><p>Notizie sull'AS Roma, pagelle dei tifosi, vigilia delle partite e analisi. Qui ogni romanista vota e discute, e la tifoseria segue la squadra ogni giorno. <a href="/tifosi-roma">Chi siamo</a>. Forza Roma!</p></section>
   </div>
 
   <div class="vista" id="v-pagella" hidden>
     <section class="fascia su-banda">
       <div class="in">
-        <div class="fila"><h1 class="striscione" tabindex="-1">Pagella dei tifosi</h1><img class="timbro" src="/img/logo-chiaro.png" alt=""></div>
+        <div class="fila"><h1 class="striscione" tabindex="-1">Pagella dei tifosi</h1><img class="timbro" src="/img/logo-chiaro.webp" alt="" width="480" height="179" loading="lazy"></div>
         <div class="tabellino" data-tabellino></div>
         <div class="grafico" data-linea></div>
         <div class="mazzo" data-mazzo="pagella"></div>
@@ -410,7 +414,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
   <div class="vista" id="v-vigilia" hidden>
     <section class="fascia fascia-vigilia su-banda">
       <div class="in">
-        <div class="fila"><h1 class="striscione" tabindex="-1">Vigilia</h1><img class="timbro" src="/img/logo-chiaro.png" alt=""></div>
+        <div class="fila"><h1 class="striscione" tabindex="-1">Vigilia</h1><img class="timbro" src="/img/logo-chiaro.webp" alt="" width="480" height="179" loading="lazy"></div>
         <div>
           <p class="titolo-gara" data-gara></p>
           <p class="nota" data-quando-comp></p>
@@ -509,7 +513,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
 
 <footer class="piede"><div class="in">
   <nav aria-label="Link utili"><a href="/">Notizie AS Roma</a><a href="/pagelle">Pagelle dei tifosi</a><a href="/analisi">Analisi</a><a href="/tifosi-roma">Tifosi della Roma</a></nav>
-  <img class="logo-piede su-chiaro" src="/img/logo.png" alt="Curva Roma"><img class="logo-piede su-scuro" src="/img/logo-chiaro.png" alt="Curva Roma">
+  <img class="logo-piede su-chiaro" src="/img/logo.webp" alt="Curva Roma" width="480" height="179" loading="lazy"><img class="logo-piede su-scuro" src="/img/logo-chiaro.webp" alt="Curva Roma" width="480" height="179" loading="lazy">
   <p>Sito di tifosi non ufficiale. Curva Roma non è collegato ad AS Roma.</p>
   <p>In qualità di Affiliato Amazon, ricevo un guadagno dagli acquisti idonei.</p>
   <p>Stemmi: <a href="https://www.footylogos.com/" target="_blank" rel="noopener">FootyLogos.com</a>. I marchi appartengono ai rispettivi proprietari.</p>
@@ -536,14 +540,6 @@ function stemma(nome) {
   const i = el("img", "stemma"); i.src = `/img/stemmi/${f}.svg`; i.alt = ""; i.loading = "lazy";
   return i;
 }
-const ICONE = {
-  maglia:'<path d="M20 8 8 14l4 12 7-3v31h26V23l7 3 4-12-12-6c-1 5-5 8-10 8s-9-3-10-8z"/>',
-  sciarpa:'<path d="M6 22 44 8l6 12-38 14zM42 22l10 2-2 32H38z"/><path fill="none" stroke="currentColor" stroke-width="2" d="M41 60v3M46 60v3M51 60v3"/>',
-  cappello:'<path d="M6 42a22 22 0 0 1 44 0v3H6z"/><path d="M38 40h20c1 5-3 9-9 9H38z"/>',
-  berretto:'<circle cx="32" cy="10" r="6"/><path d="M12 40a20 22 0 0 1 40 0z"/><rect x="8" y="42" width="48" height="12" rx="4"/>',
-  felpa:'<path d="M23 8c-4 2-14 6-15 10L4 48l8 2 3-20v28h34V30l3 20 8-2-4-30c-1-4-11-8-15-10-1 7-4 11-9 11s-8-4-9-11z"/>',
-  tazza:'<path d="M12 12h34v36a8 8 0 0 1-8 8H20a8 8 0 0 1-8-8z"/><path fill="none" stroke="currentColor" stroke-width="5" d="M46 20h4a8 8 0 0 1 8 8v4a8 8 0 0 1-8 8h-4"/>'
-};
 
 const $ = s => document.querySelector(s);
 const tutti = s => document.querySelectorAll(s);
@@ -586,20 +582,22 @@ function tabellini() {
   tutti("[data-nota-gara]").forEach(t => t.textContent = q.nota || "");
   tutti("[data-modulo]").forEach(t => t.textContent = `Modulo ${q.modulo || "3-4-2-1"}. Tocca i giocatori per metterli in campo.`);
 }
-function articolo(a, completo) {
+function articolo(a, modo) {
+  const pieno = modo === "pieno", casa = modo === "casa";
   const art = el("article", "articolo");
-  if (completo) art.id = "a-" + a.id;
+  if (pieno) art.id = "a-" + a.id;
   const cor = el("span", "cornice"), img = el("img", "copertina"); img.src = a.copertina || "/img/lavagna.jpg"; img.alt = ""; img.loading = "lazy";
-  const t = el("img", "timbro"); t.src = "/img/logo-chiaro.png"; t.alt = ""; cor.append(img, t); art.append(cor);
-  art.append(el("span", "tag", completo ? "Analisi" : "Ultima analisi"));
-  art.append(el(completo ? "h2" : "h3", "", a.titolo));
-  if (!completo) art.lastChild.style.fontSize = "1.9rem";
+  const t = el("img", "timbro"); t.src = "/img/logo-chiaro.webp"; t.alt = ""; cor.append(img, t); art.append(cor);
+  art.append(el("span", "tag", casa ? "Ultima analisi" : "Analisi"));
+  art.append(el(pieno ? "h1" : casa ? "h3" : "h2", "", a.titolo));
+  if (casa) art.lastChild.style.fontSize = "1.9rem";
   art.append(el("p", "nota", a.occhiello || ""));
-  if (!completo) {
+  if (!pieno) {
     art.append(el("p", "", a.riassunto || ""));
     const l = el("a", "bottone pieno", "Leggi l'analisi"); l.href = "/analisi/" + a.id;
-    const v = el("a", "legami", "Vedi tutte le analisi"); v.href = "/analisi";
-    art.append(l, v); return art;
+    art.append(l);
+    if (casa) { const v = el("a", "legami", "Vedi tutte le analisi"); v.href = "/analisi"; art.append(v); }
+    return art;
   }
   for (const par of String(a.testo || "").split(/\n\s*\n/)) if (par.trim()) art.append(el("p", "", par.trim()));
   if (a.confronto?.length) {
@@ -623,26 +621,17 @@ function contenuti() {
     t.append(el("td", "", i + 1), c, el("td", "", v)); $("#classifica").append(t);
   });
   const lista = C.analisi || [];
-  $("#analisi-casa").textContent = ""; $("#analisi-tutte").textContent = "";
-  if (lista[0]) $("#analisi-casa").append(articolo(lista[0], false));
-  lista.forEach(a => $("#analisi-tutte").append(articolo(a, true)));
+  $("#analisi-casa").textContent = "";
+  if (lista[0]) $("#analisi-casa").append(articolo(lista[0], "casa"));
+  disegnaAnalisi();
+  const conFoto = PRODOTTI.filter(p => p.foto);
   tutti("[data-annuncio]").forEach((slot, i) => {
     slot.textContent = "";
-    if (!PRODOTTI.length) return;
-    const p = PRODOTTI[(i + (slot.closest(".destra") ? 3 : 0)) % PRODOTTI.length];
+    if (!conFoto.length) return;
+    const p = conFoto[(i + (slot.closest(".destra") ? 3 : 0)) % conFoto.length];
     const a = el("a", "pubblicita"); a.href = p.link; a.target = "_blank"; a.rel = "noopener sponsored";
     a.addEventListener("click", () => navigator.sendBeacon("/api/clic", new Blob([JSON.stringify({ prodotto: p.id })], { type: "application/json" })));
-    const v = el("div", "vetrina");
-    if (p.foto) { const img = el("img"); img.src = p.foto; img.alt = p.nome; img.loading = "lazy"; img.referrerPolicy = "no-referrer"; v.append(img); }
-    else {
-      v.innerHTML = `<svg viewBox="0 0 64 64" fill="currentColor" aria-hidden="true">${ICONE[p.tipo] || ICONE.maglia}</svg>`;
-      if (p.asin) {
-        const tag = (p.link.match(/[?&]tag=([\w-]+)/) || [])[1] || "sitiandrea-21";
-        const img = el("img"); img.alt = p.nome; img.loading = "lazy";
-        img.onload = () => { if (img.naturalWidth > 10) { v.textContent = ""; v.append(img); } };
-        img.src = `https://ws-eu.amazon-adsystem.com/widgets/q?_encoding=UTF8&ASIN=${p.asin}&Format=_SL500_&ID=AsinImage&MarketPlace=IT&ServiceVersion=20070822&WS=1&tag=${encodeURIComponent(tag)}&language=it_IT`;
-      }
-    }
+    const v = el("div", "vetrina"), img = el("img"); img.src = p.foto; img.alt = p.nome; img.loading = "lazy"; img.referrerPolicy = "no-referrer"; v.append(img);
     const t = el("div", "testo-pub"); t.append(el("span", "tag", "Annuncio"), el("strong", "", p.nome), el("small", "", "Vedi su Amazon"));
     a.append(v, t); slot.append(a);
   });
@@ -890,6 +879,7 @@ function passa(dir) {
 }
 function risultati() {
   tutti(".n-votanti").forEach(n => n.textContent = quanteSchede());
+  tutti(".testo-votanti").forEach(n => n.textContent = quanteSchede() === 1 ? "tifoso ha votato" : "tifosi hanno votato");
   const box = $("#risultati"); box.textContent = "";
   if (!quanteSchede()) { box.append(el("p", "vuoto-box", "Nessun voto ancora. Vota per primo e apri la classifica.")); return; }
   if (!inviatoVoti) { box.append(el("p", "vuoto-box", "Invia i tuoi voti per vedere la media dei tifosi.")); return; }
@@ -966,9 +956,14 @@ const scegli = () => {
   if (p.startsWith("/analisi")) return "analisi";
   return VISTE.find(v => PERCORSI[v] === p) || "casa";
 };
-function vaiAArticolo() {
-  const m = location.pathname.match(/^\/analisi\/([\w-]+)/);
-  if (m) document.getElementById("a-" + m[1])?.scrollIntoView();
+function disegnaAnalisi() {
+  const box = $("#analisi-tutte"), lista = (C && C.analisi) || [];
+  if (!C) return;
+  const id = (location.pathname.match(/^\/analisi\/([\w-]+)/) || [])[1];
+  const scelta = id && lista.find(a => a.id === id);
+  box.textContent = "";
+  if (scelta) { box.append(articolo(scelta, "pieno")); document.title = `${scelta.titolo} | Curva Roma`; }
+  else { lista.forEach(a => box.append(articolo(a, "lista"))); if (vistaOra === "analisi") document.title = TITOLI.analisi; }
 }
 function mostra(v) {
   vistaOra = v;
@@ -979,12 +974,12 @@ function mostra(v) {
   $("#cursore").style.setProperty("--i", VISTE.indexOf(v));
   document.title = TITOLI[v];
   window.scrollTo(0, 0);
-  vaiAArticolo();
+  disegnaAnalisi();
   mazzi();
 }
 function vai() {
   const v = scegli();
-  if (v === vistaOra) return;
+  if (v === vistaOra) { disegnaAnalisi(); window.scrollTo(0, 0); return; }
   const titolo = () => $("#v-" + v + " [tabindex='-1']")?.focus({ preventScroll: true });
   if (!document.startViewTransition || calmo() || vistaOra == null) { mostra(v); if (vistaOra) titolo(); return; }
   const tipo = VISTE.indexOf(v) > VISTE.indexOf(vistaOra) ? "avanti" : "indietro";
@@ -1002,9 +997,7 @@ document.addEventListener("click", e => {
   if (p.startsWith("/analisi/") || Object.values(PERCORSI).includes(p)) {
     e.preventDefault();
     if (location.pathname !== p || location.hash) history.pushState(null, "", p);
-    const stessa = scegli() === vistaOra;
     vai();
-    if (stessa) vaiAArticolo();
   }
 });
 
@@ -1023,7 +1016,7 @@ function visitaSezione(v) {
 function applica(p) {
   C = p.contenuti; PRODOTTI = p.prodotti || [];
   const im = p.immagini || {};
-  if (im.testata) $("#foto-testata").src = im.testata;
+  if (im.testata) { $("#foto-testata").srcset = ""; $("#foto-testata").src = im.testata; }
   if (im.pagelle) document.documentElement.style.setProperty("--img-pagelle", `url("${encodeURI(im.pagelle)}")`);
   if (im.vigilia) document.documentElement.style.setProperty("--img-vigilia", `url("${encodeURI(im.vigilia)}")`);
   contenuti(); conto();
