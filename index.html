@@ -1,0 +1,995 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Curva Roma</title>
+<meta name="description" content="Notizie, pagelle dei tifosi, vigilia, analisi e annunci per i tifosi della Roma. Sito di tifosi non ufficiale.">
+<meta name="theme-color" content="#8E1F2F">
+<link rel="icon" href="/img/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/img/icona-180.png">
+<meta property="og:title" content="Curva Roma">
+<meta property="og:description" content="Il sito dei tifosi della Roma: notizie, pagelle, vigilia e analisi.">
+<meta property="og:image" content="https://curvaroma.it/img/anteprima.jpg">
+<meta property="og:url" content="https://curvaroma.it/">
+<meta property="og:locale" content="it_IT">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Cinzel:wght@700;900&family=Libre+Franklin:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: una colonna da telefono. Roma vera: Colosseo al tramonto in testata, curva e stadio dietro le sezioni, sciarpa che scorre, striscioni come titoli. */
+:root{
+  --banda:#8E1F2F; --banda-scura:#5F0E24; --giallo:#F0BC42; --su-banda:#FFF6F0;
+  --fondo:#F7F1F2; --superficie:#FFFFFF; --testo:#2B0A15; --muto:#6F5560; --linea:#E6D6DA;
+  --accento:#8E1F2F; --su-accento:#FFFFFF; --campo:#6E1229; --campo2:#7A1630;
+  --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --lapide:"Cinzel","Times New Roman",serif;
+  --corpo:"Libre Franklin","Helvetica Neue",Arial,sans-serif;
+  --molla:cubic-bezier(.2,.9,.3,1.25); --dolce:cubic-bezier(.2,.8,.2,1);
+  --archi:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='64'%3E%3Cpath fill='%23FFF6F0' fill-opacity='.09' d='M0 64V0h60v64h-7V30a23 23 0 0 0-46 0v34z'/%3E%3C/svg%3E");
+  --sanpietrini:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cg fill='%238E1F2F' fill-opacity='.06'%3E%3Crect x='1' y='1' width='18' height='18' rx='3'/%3E%3Crect x='21' y='1' width='18' height='18' rx='3'/%3E%3Crect x='-9' y='21' width='18' height='18' rx='3'/%3E%3Crect x='11' y='21' width='18' height='18' rx='3'/%3E%3Crect x='31' y='21' width='18' height='18' rx='3'/%3E%3C/g%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --fondo:#1E0B12; --superficie:#2C1019; --testo:#F8EDEF; --muto:#C3A6AE; --linea:#4A2531;
+  --accento:#F0BC42; --su-accento:#2B0A15; --vedi-rosso:none; --vedi-crema:block; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --fondo:#1E0B12; --superficie:#2C1019; --testo:#F8EDEF; --muto:#C3A6AE; --linea:#4A2531;
+  --accento:#F0BC42; --su-accento:#2B0A15; --vedi-rosso:none; --vedi-crema:block; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--fondo);color:var(--testo);font:400 16px/1.5 var(--corpo);padding-bottom:calc(84px + env(safe-area-inset-bottom,0px));overflow-x:clip}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--banda-scura)}
+a{color:inherit}
+button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:3px solid var(--giallo);outline-offset:2px}
+[tabindex="-1"]:focus{outline:0}
+h1,h2,h3{font-family:var(--display);font-weight:800;line-height:1.04;margin:0;text-wrap:balance}
+p{margin:0}
+.in{max-width:640px;width:100%;margin-inline:auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* Testata */
+.testata{background:var(--banda-scura);color:var(--su-banda)}
+.testata .in{display:flex;align-items:center;justify-content:center;padding-block:10px}
+.foto-testata{display:block;width:100%;height:clamp(210px,56vw,380px);object-fit:cover;object-position:center 62%}
+.marchio{display:flex;align-items:center;gap:10px;text-decoration:none;min-width:0}
+.marchio img{display:block;width:190px;height:auto}
+.su-chiaro{display:var(--vedi-rosso,block)}
+.su-scuro{display:var(--vedi-crema,none)}
+.logo-piede{width:132px;height:auto}
+.timbro{width:92px;height:auto;flex:none}
+.cornice{position:relative;display:block}
+.cornice .timbro{position:absolute;right:10px;bottom:10px;width:84px;filter:drop-shadow(0 2px 4px rgba(14,8,26,.8))}
+.sciarpa{overflow:hidden;background:var(--giallo);color:var(--banda-scura);border-block:4px solid var(--banda);font:900 1.2rem/1.5 var(--display);white-space:nowrap}
+.sciarpa span{display:inline-block;padding-inline:8px;letter-spacing:.14em}
+@supports (animation-timeline:scroll()){
+  @media (prefers-reduced-motion:no-preference){
+    @keyframes scorri{to{translate:-34% 0}}
+    .sciarpa div{animation:scorri linear both;animation-timeline:scroll(root block)}
+  }
+}
+
+/* Viste e sezioni */
+.vista{display:grid;gap:34px;padding-bottom:30px}
+.sezione{display:grid;gap:14px;min-width:0}
+.striscione{justify-self:start;background:var(--accento);color:var(--su-accento);font:900 1.75rem/1 var(--display);padding:8px 16px 9px;clip-path:polygon(0 4%,100% 0,98.5% 96%,1% 100%);margin-left:-4px}
+.su-banda .striscione{background:var(--giallo);color:#2B0A15}
+.fila{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.nota{font-size:.9rem;color:var(--muto)}
+.legami{font-size:.95rem;font-weight:600;color:var(--accento)}
+.fascia{background:linear-gradient(180deg,rgba(43,10,21,.2),rgba(95,14,36,.9) 46%,var(--banda) 100%),url("img/curva.jpg") top center/auto 420px no-repeat var(--banda);color:var(--su-banda)}
+.fascia .in{display:grid;gap:14px;padding-block:22px 26px}
+.fascia .nota{color:var(--su-banda)}
+.fascia-vigilia{background:linear-gradient(180deg,rgba(14,8,26,.15),rgba(43,10,21,.9) 52%,var(--banda-scura) 100%),url("img/stadio.jpg") top center/auto 400px no-repeat var(--banda-scura)}
+.copertina{display:block;width:100%;aspect-ratio:2.1;object-fit:cover;border-radius:10px}
+
+/* Bottoni */
+.bottone{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:10px 18px;border:0;border-radius:10px;background:var(--giallo);color:#2B0A15;font-weight:700;text-decoration:none;cursor:pointer;width:100%;transition:scale .18s var(--molla),opacity .2s}
+.bottone:active{scale:.97}
+.bottone[disabled]{opacity:.45;cursor:default}
+.bottone.pieno{background:var(--accento);color:var(--su-accento)}
+.bottone.vuoto{background:transparent;color:inherit;border:2px solid currentColor}
+
+/* Carosello notizie */
+.carosello{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;scrollbar-width:none;margin-right:calc(-1 * max(16px,env(safe-area-inset-right,0px)))}
+.carosello::-webkit-scrollbar{display:none}
+.notizia{flex:0 0 80%;max-width:300px;scroll-snap-align:start;background:var(--superficie);border:1px solid var(--linea);border-radius:14px;overflow:hidden;text-decoration:none;display:flex;flex-direction:column;transition:scale .18s var(--molla)}
+.notizia:active{scale:.98}
+.foto img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.foto::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,transparent 45%,rgba(43,10,21,.85))}
+.foto span{position:relative;z-index:2}
+.foto::after{content:"";position:absolute;z-index:2;top:10px;right:10px;width:64px;height:24px;background:url("img/logo-chiaro.png") center/contain no-repeat;filter:drop-shadow(0 1px 3px rgba(14,8,26,.8))}
+.foto{position:relative;height:150px;display:flex;align-items:flex-end;padding:12px 14px;background:linear-gradient(180deg,transparent 45%,rgba(43,10,21,.85)),url("img/curva.jpg") center/cover;color:var(--giallo);font:800 1.4rem/1 var(--display)}
+.notizia:nth-child(3n+2) .foto{background-image:linear-gradient(180deg,transparent 45%,rgba(43,10,21,.85)),url("img/stadio.jpg")}
+.notizia:nth-child(3n) .foto{background-image:linear-gradient(180deg,transparent 45%,rgba(43,10,21,.85)),url("img/colosseo.jpg")}
+.notizia>div:last-child{padding:12px 14px 14px;display:grid;gap:6px}
+.notizia strong{font-weight:600;line-height:1.3}
+.notizia small{color:var(--muto)}
+@supports ((animation-timeline:view()) and (animation-range:entry)){
+  @media (prefers-reduced-motion:no-preference){
+    @keyframes entra-lato{from{scale:.92;opacity:.55}}
+    .notizia{animation:entra-lato linear backwards;animation-timeline:view(inline);animation-range:entry 0% entry 100%}
+    @keyframes sale{from{opacity:.65;translate:0 18px}}
+    .compare{animation:sale linear backwards;animation-timeline:view();animation-range:entry 0% entry 40%}
+  }
+}
+
+/* Tabellino */
+.tabellino{display:grid;gap:2px}
+.riga-punti{display:flex;justify-content:space-between;align-items:center;gap:12px;font:900 1.9rem/1.06 var(--display)}
+.riga-punti b{font-weight:900;font-size:1.25em;font-variant-numeric:tabular-nums}
+.riga-punti.nostra{color:var(--giallo)}
+.grafico svg{display:block;width:100%;height:auto}
+.grafico text{font:600 12px var(--corpo);fill:var(--su-banda)}
+.grafico .asse{stroke:var(--su-banda);stroke-width:2;opacity:.7}
+.grafico .asta{stroke-width:2}
+@media (prefers-reduced-motion:no-preference){
+  @keyframes punto{from{scale:0}}
+  .grafico circle{transform-box:fill-box;transform-origin:center;animation:punto .4s var(--molla) backwards;animation-delay:calc(var(--n) * 90ms + 150ms)}
+}
+
+/* Voto a schede */
+.mazzo{display:grid;gap:12px}
+.tacche{display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:3px}
+.tacche i{height:5px;border-radius:3px;background:rgba(255,246,240,.28);transition:background .2s}
+.tacche i.fatto{background:var(--giallo)}
+.tacche i.ora{background:var(--su-banda)}
+.scheda{background:var(--superficie);color:var(--testo);border-radius:16px;padding:18px 0 14px;display:grid;gap:12px;box-shadow:0 10px 24px rgba(43,10,21,.28);overflow:hidden}
+.scheda>*{margin-inline:16px}
+.scheda small{color:var(--muto);font-size:.9rem}
+.scheda h3{font-size:2.5rem;font-weight:900;line-height:1}
+.voti{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x proximity;margin-inline:0!important;padding:4px 16px;scrollbar-width:none}
+.voti::-webkit-scrollbar{display:none}
+.voti button{flex:0 0 54px;height:54px;border-radius:12px;border:1px solid var(--linea);background:var(--fondo);font:800 1.45rem/1 var(--display);font-variant-numeric:tabular-nums;scroll-snap-align:center;cursor:pointer;transition:scale .18s var(--molla),background .15s,color .15s}
+.voti button:active{scale:.9}
+.voti button[aria-pressed="true"]{background:var(--accento);color:var(--su-accento);border-color:var(--accento)}
+.azioni{display:flex;justify-content:space-between;gap:8px}
+.azioni button{background:none;border:0;color:var(--muto);font-weight:600;min-height:44px;padding-inline:4px;cursor:pointer}
+.azioni button[disabled]{opacity:.4}
+.podio{display:grid;gap:10px}
+.barra{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:3px 10px;align-items:center}
+.barra span{font-weight:600}
+.barra b{text-align:right;font:800 1.35rem/1 var(--display);font-variant-numeric:tabular-nums}
+.barra i{grid-column:1/-1;display:block;height:8px;background:var(--linea);border-radius:4px;overflow:hidden}
+.barra i::after{content:"";display:block;height:100%;background:var(--accento);border-radius:4px;transform:scaleX(var(--q));transform-origin:left;transition:transform .5s var(--dolce)}
+.scheda.chiusa{padding-inline:0}
+.conteggio{font:800 1.5rem/1 var(--display)}
+.vuoto-box{background:var(--superficie);color:var(--testo);border:1px dashed var(--muto);border-radius:12px;padding:14px}
+.esito{min-height:1.5em;font-size:.92rem;font-weight:600}
+.scheda .nota{color:var(--muto)}
+
+/* Vigilia */
+.conto{font:800 1.3rem/1.1 var(--display);color:var(--giallo)}
+.titolo-gara{font:900 2.5rem/1 var(--display);color:var(--su-banda);text-shadow:0 2px 8px rgba(14,8,26,.9)}
+.pronostico{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.pronostico>div{display:grid;gap:6px;justify-items:center;background:var(--superficie);color:var(--testo);border-radius:14px;padding:12px 6px}
+.passo{display:flex;align-items:center;gap:2px}
+.passo button{width:44px;height:44px;border:1px solid var(--linea);background:var(--fondo);border-radius:10px;font-size:1.3rem;line-height:1;cursor:pointer;transition:scale .18s var(--molla)}
+.passo button:active{scale:.9}
+.passo output{width:42px;text-align:center;font:800 1.9rem/1 var(--display);font-variant-numeric:tabular-nums}
+.campo{background:repeating-linear-gradient(180deg,var(--campo) 0 44px,var(--campo2) 44px 88px);color:#FFF6F0;border-radius:14px;padding:16px 6px;display:grid;gap:18px;position:relative;overflow:hidden}
+.campo::before{content:"";position:absolute;left:50%;top:-58px;width:116px;height:116px;margin-left:-58px;border:2px solid rgba(240,188,66,.55);border-radius:50%}
+.campo::after{content:"";position:absolute;left:22%;right:22%;bottom:0;height:62px;border:2px solid rgba(240,188,66,.55);border-bottom:0}
+.linea-campo{display:flex;justify-content:space-around;gap:4px;position:relative;z-index:1}
+.posto{flex:1 1 0;min-width:0;text-align:center;font-size:.76rem;font-weight:600;line-height:1.2}
+.posto::before{content:"";display:block;width:26px;height:26px;margin:0 auto 4px;border-radius:50%;border:2px dashed rgba(255,246,240,.7)}
+.posto.pieno::before{background:var(--giallo);border:2px solid var(--giallo)}
+@media (prefers-reduced-motion:no-preference){
+  @keyframes entra-posto{from{scale:0}}
+  .posto.nuovo::before{animation:entra-posto .35s var(--molla)}
+}
+.lista{display:grid;gap:12px}
+.ruolo{display:grid;gap:8px}
+.ruolo h3{font-size:1.25rem}
+.scelte{display:flex;flex-wrap:wrap;gap:8px}
+.scelte button{min-height:44px;padding:6px 12px;border:1px solid var(--linea);background:var(--superficie);border-radius:10px;cursor:pointer;transition:scale .18s var(--molla),background .15s,color .15s}
+.scelte button:active{scale:.94}
+.scelte button[aria-pressed="true"]{background:var(--accento);color:var(--su-accento);border-color:var(--accento);font-weight:700}
+
+/* Analisi */
+.articolo{display:grid;gap:12px;background:var(--superficie);border:1px solid var(--linea);border-radius:14px;padding:18px 16px}
+.articolo h2{font-size:2.1rem}
+.titolo-analisi{view-transition-name:analisi;width:fit-content}
+.tag{justify-self:start;font-size:.78rem;font-weight:700;background:var(--giallo);color:#2B0A15;padding:2px 8px;border-radius:5px}
+.dato{display:grid;grid-template-columns:32px minmax(0,1fr) 32px;gap:3px 8px;align-items:center;font-variant-numeric:tabular-nums}
+.dato b{font:800 1.3rem/1 var(--display)}
+.dato b:last-of-type{text-align:right}
+.dato span{text-align:center;font-size:.86rem;color:var(--muto)}
+.dato i{grid-column:1/-1;display:flex;height:8px;gap:2px}
+.dato i u{display:block;background:var(--accento);border-radius:4px}
+.dato i u+u{background:var(--muto)}
+.confronto{display:grid;gap:10px}
+.piano{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;margin:0}
+.piano dt{font-weight:700}
+.piano dd{margin:0;color:var(--muto)}
+
+/* Pubblicità */
+.pubblicita{display:grid;grid-template-columns:112px minmax(0,1fr);background:var(--superficie);border:1px solid var(--linea);border-radius:14px;overflow:hidden;text-decoration:none;transition:scale .18s var(--molla)}
+.pubblicita:active{scale:.98}
+.vetrina{display:grid;place-items:center;min-height:112px;background:radial-gradient(circle at 50% 35%,var(--banda),var(--banda-scura));color:var(--giallo)}
+.vetrina svg{width:64%;height:auto}
+.vetrina img{width:100%;height:100%;object-fit:cover}
+.testo-pub{padding:10px 12px;display:grid;gap:3px;align-content:center;min-width:0}
+.testo-pub strong{font-weight:600;line-height:1.25}
+.testo-pub small{color:var(--accento);font-weight:600}
+.lato{display:none}
+@media (min-width:1180px){
+  .lato{display:grid;gap:14px;position:fixed;top:112px;width:190px;z-index:5;left:calc(50% - 320px - 214px)}
+  .lato.destra{left:calc(50% + 320px + 24px);view-transition-name:lato-destra}
+  .lato.sinistra{view-transition-name:lato-sinistra}
+  .lato .pubblicita{grid-template-columns:minmax(0,1fr)}
+  .lato .vetrina{min-height:130px}
+  .lato .vetrina svg{width:42%}
+}
+
+/* Biglietti */
+.campi{display:grid;gap:12px}
+.campo-form{display:grid;gap:4px;min-width:0}
+.campo-form label,.campo-form legend{font-weight:600;font-size:.95rem;padding:0}
+.campo-form select,.campo-form input{font:inherit;color:var(--testo);background:var(--superficie);border:1px solid var(--muto);border-radius:10px;min-height:48px;padding:8px 12px;width:100%;min-width:0}
+fieldset.campo-form{border:0;margin:0;padding:0}
+.due{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.spunta{display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;align-items:start;font-size:.92rem}
+.spunta input{width:22px;height:22px;margin:1px 0 0;accent-color:var(--accento)}
+.tipo-annuncio{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tipo-annuncio label{min-height:46px;display:grid;place-items:center;border:1px solid var(--linea);background:var(--superficie);border-radius:10px;cursor:pointer;font-weight:600;transition:background .15s,color .15s}
+.tipo-annuncio input{position:absolute;opacity:0;pointer-events:none}
+.tipo-annuncio label:has(input:checked){background:var(--accento);color:var(--su-accento);border-color:var(--accento)}
+.tipo-annuncio label:has(input:focus-visible){outline:3px solid var(--giallo);outline-offset:2px}
+.annuncio{display:grid;gap:4px;background:var(--superficie);border:1px solid var(--linea);border-radius:14px;padding:14px}
+.annuncio strong{font-size:1.05rem}
+.annuncio button{justify-self:start;background:none;border:0;color:var(--accento);font-weight:600;min-height:40px;padding:0;cursor:pointer}
+.link-ufficiali{display:grid;gap:10px}
+.ferma{background:none;border:1px solid var(--muto);color:var(--testo);border-radius:8px;min-height:36px;padding:2px 12px;font-size:.88rem;font-weight:600;cursor:pointer;flex:none}
+
+/* Ultime cinque e classifica */
+.forma{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.forma div{background:var(--superficie);border:1px solid var(--linea);border-radius:10px;padding:8px 2px;text-align:center;min-width:0}
+.forma b{display:block;font:800 1.4rem/1 var(--display);font-variant-numeric:tabular-nums}
+.forma small{display:block;font-size:.72rem;color:var(--muto);line-height:1.2;margin-top:3px}
+.forma .v{border-color:var(--accento);border-width:2px}
+.classifica{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.classifica td{padding:8px 4px;border-bottom:1px solid var(--linea)}
+.classifica td:first-child{width:28px;color:var(--muto)}
+.classifica td:last-child{text-align:right;font-weight:700}
+.classifica .noi td{color:var(--accento);font-weight:700}
+
+.piede{background:var(--sanpietrini);border-top:1px solid var(--linea);font-size:.8rem;color:var(--muto)}
+.piede .in{display:grid;gap:4px;padding-block:16px 22px}
+
+/* Navigazione in basso */
+.navigazione{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--banda-scura);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);view-transition-name:navigazione}
+.navigazione>div{position:relative;max-width:640px;margin:auto;display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+.cursore{position:absolute;top:0;left:0;width:20%;height:3px;display:block;transform:translateX(calc(var(--i,0) * 100%));transition:transform .32s var(--molla)}
+.cursore::after{content:"";display:block;height:100%;width:44px;margin:auto;background:var(--giallo);border-radius:0 0 3px 3px}
+.navigazione a{min-height:64px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:center;color:var(--su-banda);text-decoration:none;font:700 .95rem/1 var(--display);transition:color .2s}
+.navigazione svg{width:23px;height:23px;transition:scale .25s var(--molla)}
+.navigazione a[aria-current="page"]{color:var(--giallo)}
+.navigazione a[aria-current="page"] svg{scale:1.14}
+
+/* Passaggio tra le sezioni */
+@keyframes esce-sx{to{translate:-28% 0;opacity:0}}
+@keyframes entra-dx{from{translate:28% 0;opacity:0}}
+@keyframes esce-dx{to{translate:28% 0;opacity:0}}
+@keyframes entra-sx{from{translate:-28% 0;opacity:0}}
+::view-transition-group(root){animation-duration:.3s}
+::view-transition-old(root),::view-transition-new(root){animation-duration:.3s;animation-timing-function:var(--dolce)}
+html:active-view-transition-type(avanti)::view-transition-old(root){animation-name:esce-sx}
+html:active-view-transition-type(avanti)::view-transition-new(root){animation-name:entra-dx}
+html:active-view-transition-type(indietro)::view-transition-old(root){animation-name:esce-dx}
+html:active-view-transition-type(indietro)::view-transition-new(root){animation-name:entra-sx}
+@media (prefers-reduced-motion:reduce){
+  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}
+}
+</style>
+</head>
+<body>
+
+
+<header class="testata"><div class="in">
+  <a class="marchio" href="#casa" aria-label="Curva Roma, vai alla home">
+    <img src="img/logo-chiaro.png" alt="" width="900" height="336">
+  </a>
+</div>
+<img class="foto-testata" src="img/tifosi.jpg" alt="Curva dei tifosi della Roma all'Olimpico piena di bandiere giallorosse"></header>
+<div class="sciarpa" aria-hidden="true"><div id="sciarpa"></div></div>
+
+<main>
+  <div class="vista" id="v-casa" style="padding-top:20px">
+    <section class="sezione in" aria-label="Notizie">
+      <div class="fila"><h2 class="striscione" tabindex="-1">Notizie sulla Roma</h2><button class="ferma" id="ferma" type="button">Pausa</button></div>
+      <div class="carosello" id="carosello" tabindex="0" aria-label="Notizie, scorrono da sole o di lato col dito"></div>
+    </section>
+
+    <div class="in" data-annuncio></div>
+
+    <section class="fascia su-banda">
+      <div class="in">
+        <div class="fila"><h2 class="striscione">Le pagelle</h2><img class="timbro" src="img/logo-chiaro.png" alt=""></div>
+        <p class="nota"><span class="conteggio n-votanti">0</span> tifosi hanno votato</p>
+        <div class="tabellino" aria-label="Manchester United 3, Roma 2, Champions League, 3 novembre">
+          <div class="riga-punti"><span>Man. United</span><b>3</b></div>
+          <div class="riga-punti nostra"><span>Roma</span><b>2</b></div>
+        </div>
+        <div class="grafico" data-linea></div>
+        <div class="mazzo" data-mazzo="casa"></div>
+      </div>
+    </section>
+
+    <div class="in" data-annuncio></div>
+
+    <section class="fascia fascia-vigilia su-banda">
+      <div class="in">
+        <div class="fila"><h2 class="striscione">Vigilia</h2><img class="timbro" src="img/logo-chiaro.png" alt=""></div>
+        <div>
+          <p class="titolo-gara">Roma-Sassuolo</p>
+          <p class="nota">Sabato 7 novembre, 20:45</p>
+          <p class="conto c-conto" role="timer"></p>
+        </div>
+        <div data-pronostico></div>
+        <a class="bottone" href="#vigilia">Scegli la tua formazione</a>
+      </div>
+    </section>
+
+    <div class="in" data-annuncio></div>
+
+    <section class="sezione in compare">
+      <h2 class="striscione">Analisi</h2>
+      <article class="articolo">
+        <span class="cornice"><img class="copertina" src="img/lavagna.jpg" alt="Lavagna tattica con la Roma schierata col 3-4-2-1"><img class="timbro" src="img/logo-chiaro.png" alt=""></span>
+        <span class="tag">Ultima analisi</span>
+        <h3 class="titolo-analisi" style="font-size:1.9rem">Due gol con cinque tiri, poi tre subiti in 28 minuti</h3>
+        <p>La Roma è stata concreta a Manchester, ma ha concesso il triplo dei tiri: 15 contro 5.</p>
+        <div class="dato"><b>5</b><span>Tiri</span><b>15</b><i><u style="flex:5 1 0"></u><u style="flex:15 1 0"></u></i></div>
+        <a class="bottone pieno" href="#analisi">Leggi l'analisi</a>
+        <a class="legami" href="#analisi">Vedi tutte le analisi</a>
+      </article>
+    </section>
+
+    <div class="in" data-annuncio></div>
+
+    <section class="sezione in compare">
+      <h2 class="striscione">Ultime cinque</h2>
+      <div class="forma" id="forma"></div>
+    </section>
+
+    <div class="in" data-annuncio></div>
+
+    <section class="sezione in compare">
+      <div class="fila"><h2 class="striscione">Classifica</h2><span class="nota">Dopo 10 partite</span></div>
+      <table class="classifica"><tbody id="classifica"></tbody></table>
+    </section>
+  </div>
+
+  <div class="vista" id="v-pagella" hidden>
+    <section class="fascia su-banda">
+      <div class="in">
+        <div class="fila"><h1 class="striscione" tabindex="-1">Pagella dei tifosi</h1><img class="timbro" src="img/logo-chiaro.png" alt=""></div>
+        <div class="tabellino">
+          <div class="riga-punti"><span>Man. United</span><b>3</b></div>
+          <div class="riga-punti nostra"><span>Roma</span><b>2</b></div>
+        </div>
+        <div class="grafico" data-linea></div>
+        <div class="mazzo" data-mazzo="pagella"></div>
+      </div>
+    </section>
+    <div class="in" data-annuncio></div>
+    <section class="sezione in">
+      <div class="fila"><h2 class="striscione">Il voto dei tifosi</h2><span class="conteggio n-votanti" style="color:var(--accento)">0</span></div>
+      <div id="risultati" class="lista"></div>
+      <p class="nota">Il confronto con i numeri esce con l'analisi.</p>
+    </section>
+    <div class="in" data-annuncio></div>
+  </div>
+
+  <div class="vista" id="v-vigilia" hidden>
+    <section class="fascia fascia-vigilia su-banda">
+      <div class="in">
+        <div class="fila"><h1 class="striscione" tabindex="-1">Vigilia</h1><img class="timbro" src="img/logo-chiaro.png" alt=""></div>
+        <div>
+          <p class="titolo-gara">Roma-Sassuolo</p>
+          <p class="nota">Serie A, sabato 7 novembre, 20:45</p>
+          <p class="conto c-conto" role="timer"></p>
+        </div>
+        <p>Roma terza con 24 punti. Sassuolo diciassettesimo con 8: 2 vittorie, 2 pareggi e 6 sconfitte. Arbitra Di Bello.</p>
+        <div data-pronostico></div>
+      </div>
+    </section>
+    <div class="in" data-annuncio></div>
+    <section class="sezione in">
+      <h2 class="striscione">Il tuo XI</h2>
+      <p class="nota">Modulo 3-4-2-1. Tocca i giocatori per metterli in campo.</p>
+      <div class="campo" id="campo" aria-label="La tua formazione"></div>
+      <div id="rosa" class="lista"></div>
+      <button class="bottone pieno" id="salva-formazione" type="button" disabled>Salva la formazione</button>
+      <p class="esito" id="esito-formazione" role="status"></p>
+    </section>
+    <div class="in" data-annuncio></div>
+    <section class="sezione in">
+      <div class="fila"><h2 class="striscione">L'XI dei tifosi</h2><span class="conteggio" id="formazioni" style="color:var(--accento)">0</span></div>
+      <div id="xi-tifosi" class="lista"></div>
+    </section>
+    <div class="in" data-annuncio></div>
+  </div>
+
+  <div class="vista" id="v-analisi" hidden style="padding-top:20px">
+    <div class="in"><h1 class="striscione" tabindex="-1">Analisi</h1></div>
+    <div class="in"><article class="articolo">
+      <span class="cornice"><img class="copertina" src="img/lavagna.jpg" alt="Lavagna tattica con la Roma schierata col 3-4-2-1"><img class="timbro" src="img/logo-chiaro.png" alt=""></span>
+      <span class="tag">Bozza da rifinire</span>
+      <h2 class="titolo-analisi">Due gol con cinque tiri, poi tre subiti in 28 minuti</h2>
+      <p class="nota">Manchester United-Roma 3-2, Champions League</p>
+      <p>La Roma ha segnato all'11' e al 17'. Il Manchester ha pareggiato i conti tra il 58' e l'83', poi l'ha ribaltata all'86'.</p>
+      <p>Il dato più forte è il volume: 15 tiri contro 5. In porta però la distanza si riduce, 5 contro 4. La Roma è stata molto concreta e ha concesso troppo.</p>
+      <div class="confronto" id="confronto" aria-label="Statistiche, Roma a sinistra e Manchester United a destra"></div>
+      <p>La partita è cambiata presto anche in panchina: il primo cambio della Roma è arrivato al 22', il secondo all'intervallo. I cinque cambi erano finiti al 78', prima del pareggio e del sorpasso.</p>
+    </article></div>
+    <div class="in" data-annuncio></div>
+    <div class="in"><article class="articolo">
+      <span class="cornice"><img class="copertina" src="img/stadio.jpg" alt="Stadio pieno di sera visto dall'alto"><img class="timbro" src="img/logo-chiaro.png" alt=""></span>
+      <span class="tag">Bozza da rifinire</span>
+      <h2>In Europa segna uguale e subisce il doppio</h2>
+      <p class="nota">Roma, stagione 2026/27</p>
+      <p>In Serie A la Roma è imbattuta: 7 vittorie e 3 pareggi, 28 gol fatti e 10 subiti. In Champions ha 1 vittoria, 1 pareggio e 2 sconfitte, con 10 gol fatti e 8 subiti.</p>
+      <div class="lista" id="stagione" aria-label="Medie a partita"></div>
+      <p>L'attacco regge in tutte e due le competizioni. La differenza è dietro: in Champions la Roma prende 2 gol a partita contro 1 in campionato.</p>
+    </article></div>
+    <div class="in" data-annuncio></div>
+    <section class="sezione in">
+      <h2 class="striscione">Ogni settimana</h2>
+      <dl class="piano">
+        <dt>Dopo la partita</dt><dd>Pagelle dei tifosi e analisi tattica</dd>
+        <dt>Giocatori</dt><dd>Due focus sulla prestazione della domenica</dd>
+        <dt>Stagione</dt><dd>Un'analisi su come sta andando la Roma</dd>
+        <dt>Vigilia</dt><dd>Storia dell'avversario e formazione dei tifosi</dd>
+        <dt>Giorni vuoti</dt><dd>Oggi nella storia della Roma</dd>
+      </dl>
+    </section>
+  </div>
+
+  <div class="vista" id="v-biglietti" hidden style="padding-top:20px">
+    <section class="sezione in">
+      <h1 class="striscione" tabindex="-1">Metti un annuncio</h1>
+      <form id="form-annuncio" class="campi" novalidate>
+        <div class="tipo-annuncio" role="radiogroup" aria-label="Tipo di annuncio">
+          <label><input type="radio" name="tipo" value="Cedo" checked>Cedo</label>
+          <label><input type="radio" name="tipo" value="Cerco">Cerco</label>
+        </div>
+        <div class="campo-form"><label for="a-partita">Partita</label><select id="a-partita"></select></div>
+        <div class="campo-form"><label for="a-settore">Settore</label><select id="a-settore"></select></div>
+        <div class="due">
+          <div class="campo-form"><label for="a-numero">Quanti</label><select id="a-numero"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+          <div class="campo-form"><label for="a-prezzo">Prezzo nominale, €</label><input id="a-prezzo" type="number" inputmode="decimal" min="0" max="500" step="1"></div>
+        </div>
+        <div class="campo-form"><label for="a-contatto">Il tuo Instagram</label><input id="a-contatto" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="31" placeholder="@nomeutente"></div>
+        <label class="spunta"><input id="a-regole" type="checkbox"><span>Non supero il prezzo nominale e faccio il cambio intestatario sul sito ufficiale.</span></label>
+        <p class="nota">Il tuo Instagram sarà visibile a tutti.</p>
+        <button class="bottone pieno" type="submit">Pubblica l'annuncio</button>
+        <p class="esito" id="esito-annuncio" role="status"></p>
+      </form>
+    </section>
+    <div class="in" data-annuncio></div>
+    <section class="sezione in">
+      <div class="fila"><h2 class="striscione">Bacheca</h2><span class="conteggio" id="n-annunci" style="color:var(--accento)">0</span></div>
+      <div id="bacheca" class="lista"></div>
+    </section>
+    <div class="in" data-annuncio></div>
+    <section class="sezione in">
+      <h2 class="striscione">Biglietti</h2>
+      <p>Il biglietto si compra e si cambia di intestatario solo sui canali ufficiali della Roma. Su Curva Roma non passano né pagamenti né biglietti.</p>
+      <div class="link-ufficiali">
+        <a class="bottone pieno" href="https://www.asroma.com/tickets" target="_blank" rel="noopener">Biglietti sul sito ufficiale</a>
+        <a class="bottone vuoto" href="https://biglietti.asroma.com/tickets/season/changeowner/access?lang=it" target="_blank" rel="noopener">Cambio intestatario ufficiale</a>
+      </div>
+    </section>
+  </div>
+</main>
+
+<aside class="lato sinistra" aria-label="Annunci"><div data-annuncio></div><div data-annuncio></div></aside>
+<aside class="lato destra" aria-label="Annunci"><div data-annuncio></div><div data-annuncio></div></aside>
+
+<footer class="piede"><div class="in">
+  <img class="logo-piede su-chiaro" src="img/logo.png" alt="Curva Roma"><img class="logo-piede su-scuro" src="img/logo-chiaro.png" alt="Curva Roma">
+  <p>Sito di tifosi non ufficiale. Curva Roma non è collegato ad AS Roma.</p>
+  <p>In qualità di Affiliato Amazon, ricevo un guadagno dagli acquisti idonei.</p>
+</div></footer>
+
+<nav class="navigazione" aria-label="Sezioni"><div>
+  <span class="cursore" id="cursore" aria-hidden="true"></span>
+  <a href="#casa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M4 21V11a8 8 0 0 1 16 0v10M9 21v-8a3 3 0 0 1 6 0v8M2 21h20"/></svg>Casa</a>
+  <a href="#pagella"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.8 6.3.8-4.6 4.3 1.2 6.2L12 17l-5.6 3.1 1.2-6.2L3 9.6l6.3-.8z"/></svg>Pagella</a>
+  <a href="#vigilia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Vigilia</a>
+  <a href="#analisi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 20v-7M12 20V5M19 20v-10"/></svg>Analisi</a>
+  <a href="#biglietti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2.5a1.5 1.5 0 0 0 0 3V16a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2.500a1.500 1.500 0 0 0 0-3zM14 6v12"/></svg>Biglietti</a>
+</div></nav>
+
+<script>
+const PARTITA = "mun-rom-2026-11-03";
+const PROSSIMA = "rom-sas-2026-11-07";
+const CALCIO_INIZIO = Date.UTC(2026, 10, 7, 19, 45);
+const TITOLARI = [["Vasquez","Portiere"],["Mancini","Difensore"],["Balerdi","Difensore"],["Hermoso","Difensore"],["Rensch","Esterno"],["Cristante","Centrocampista"],["De Roon","Centrocampista"],["Wesley","Esterno"],["Mora","Trequartista"],["Soulé","Trequartista"],["Malen","Attaccante"]];
+const VALORI = Array.from({length:19}, (_, i) => 1 + i * .5);
+const ROSA = [
+  {ruolo:"Portiere",posti:1,nomi:["Gollini","Vasquez","De Marzi"]},
+  {ruolo:"Difensori",posti:3,nomi:["Mancini","Ndicka","Hermoso","Balerdi","Ghilardi"]},
+  {ruolo:"Centrocampo ed esterni",posti:4,nomi:["Wesley","Molina","Cristante","De Roon","Pisilli","Koné","Di Nunzio"]},
+  {ruolo:"Attacco",posti:3,nomi:["Soulé","Mora","Malen","Dybala","Camara"]}
+];
+const NOTIZIE = [
+  ["RomaNews","Manchester United-Roma, il rigore fa discutere. L'Uefa spiega perché è stato ripetuto","https://www.romanews.eu/manchester-united-roma-rigore-mancini-cunha-uefa-polemiche/"],
+  ["Forzaroma.info","Soulé: \"Dobbiamo imparare dalle sconfitte. Continueremo a lavorare con lo stesso impegno\"","https://www.forzaroma.info/news-as-roma/soule-dobbiamo-imparare-dalle-sconfitte-continueremo-a-lavorare-con-lo-stesso-impegno/"],
+  ["Corriere dello Sport","Roma, nel nome della rosa","https://www.corrieredellosport.it/news/calcio/serie-a/roma/2026/11/05-152386540/roma_nel_nome_della_rosa/"],
+  ["RomaNews","Verso Roma-Sassuolo, buone notizie per Koné e Gollini. Ecco come stanno Dybala e Rensch","https://www.romanews.eu/roma-sassuolo-infermeria-dybala-kone-rensch-gasperini/"],
+  ["Forzaroma.info","Roma, benedetta sosta: Gasperini ritrova il gruppo al completo. E il calendario diventa un alleato","https://www.forzaroma.info/news-as-roma/roma-benedetta-sosta-gasperini-ritrova-il-gruppo-al-completo-e-il-calendario-diventa-un-alleato/"],
+  ["Corriere dello Sport","Malen e Soulé, il gol è assicurato: hanno cambiato l'attacco della Roma","https://www.corrieredellosport.it/news/calcio/serie-a/roma/2026/11/05-152384199/malen_e_soul_il_gol_assicurato_hanno_cambiato_lattacco_della_roma/"],
+  ["RomaNews","De Roon: \"Lo spogliatoio della Roma è sano e accogliente. Gasp mi chiese conferme su Malen\"","https://www.romanews.eu/marten-de-roon-intervista-idealista-roma-gasperini/"],
+  ["Forzaroma.info","Pisilli convince Mancini: sarà convocato in Nazionale. Con lui Mancini e Ghilardi","https://www.forzaroma.info/rassegna-stampa/il-messaggero/pisilli-convince-mancini-sara-convocato-in-nazionale-con-lui-mancini-e-ghilardi/"],
+  ["Giallorossi.net","L'INTERVISTA | Capello: Roma, crepe mentali e fisiche. In Europa serve qualcosa in più","https://www.giallorossi.net/lintervista-capello-roma-crepe-mentali-e-fisiche-in-europa-serve-qualcosa-in-piu/"],
+  ["Corriere dello Sport","Non c'è tempo da perdere: la Roma domina e spreca, Gasperini la vuole grande","https://www.corrieredellosport.it/news/calcio/serie-a/roma/2026/11/05-152383532/non_c_tempo_da_perdere_la_roma_domina_e_spreca_gasperini_la_vuole_grande/"],
+  ["RomaNews","Roma, infortunio per Rensch: lesione all'adduttore e 3 settimane di stop","https://www.romanews.eu/roma-infortunio-per-rensch-lesione-alladduttore-e-3-settimane-di-stop/"],
+  ["Giallorossi.net","CALCIOMERCATO | Roma, un regalo per Gasp: serve un esterno, assalto a Gittens","https://www.giallorossi.net/dai-quotidiani-roma-un-regalo-per-gasp-serve-un-esterno-assalto-a-gittens/"],
+  ["Forzaroma.info","Soulé tutto nuovo, è nato un leader","https://www.forzaroma.info/rassegna-stampa/il-messaggero/soule-tutto-nuovo-e-nato-un-leader/"],
+  ["RomaNews","Mora: \"Wesley arriverà ai massimi livelli. Gli sono grato per come mi ha accolto\"","https://www.romanews.eu/roma-rodrigo-mora-wesley-manchester-united-intervista/"],
+  ["RomaNews","Roma-Sassuolo, arbitra Di Bello: giallorossi imbattuti da dieci gare","https://www.romanews.eu/roma-sassuolo-arbitro-di-bello-precedenti/"]
+];
+const PARTITE_CASA = ["Roma-Sassuolo, 7 novembre","Roma-Monza, 29 novembre","Roma-Sporting, 8 dicembre","Roma-Frosinone, 2 gennaio","Roma-Lille, 27 gennaio"];
+const SETTORI = ["Curva Sud","Curva Nord","Distinti Sud","Distinti Nord","Tribuna Tevere","Tribuna Monte Mario"];
+const FORMA = [["4-0","Slovan","v"],["3-3","Napoli",""],["4-2","Cagliari","v"],["5-2","Udinese","v"],["2-3","Man. United",""]];
+const CLASSIFICA = [["1","Lazio",28],["2","Inter",25],["3","Roma",24],["4","Como",23],["5","Milan",21]];
+const CONFRONTO = [["Tiri",5,15],["Tiri in porta",4,5],["Possesso %",48,52],["Calci d'angolo",1,3],["Falli",13,10],["Gialli",3,4]];
+const STAGIONE = [["Gol fatti a partita, Serie A",2.8],["Gol fatti a partita, Champions",2.5],["Gol subiti a partita, Serie A",1],["Gol subiti a partita, Champions",2]];
+const ICONE = {
+  maglia:'<path d="M20 8 8 14l4 12 7-3v31h26V23l7 3 4-12-12-6c-1 5-5 8-10 8s-9-3-10-8z"/>',
+  sciarpa:'<path d="M6 22 44 8l6 12-38 14zM42 22l10 2-2 32H38z"/><path fill="none" stroke="currentColor" stroke-width="2" d="M41 60v3M46 60v3M51 60v3"/>',
+  cappello:'<path d="M6 42a22 22 0 0 1 44 0v3H6z"/><path d="M38 40h20c1 5-3 9-9 9H38z"/>',
+  berretto:'<circle cx="32" cy="10" r="6"/><path d="M12 40a20 22 0 0 1 40 0z"/><rect x="8" y="42" width="48" height="12" rx="4"/>',
+  felpa:'<path d="M23 8c-4 2-14 6-15 10L4 48l8 2 3-20v28h34V30l3 20 8-2-4-30c-1-4-11-8-15-10-1 7-4 11-9 11s-8-4-9-11z"/>',
+  tazza:'<path d="M12 12h34v36a8 8 0 0 1-8 8H20a8 8 0 0 1-8-8z"/><path fill="none" stroke="currentColor" stroke-width="5" d="M46 20h4a8 8 0 0 1 8 8v4a8 8 0 0 1-8 8h-4"/>'
+};
+const PRODOTTI = [
+  {nome:"Maglia retro scudetto",link:"https://link.amazon/B0034VgNo",tipo:"maglia"},
+  {nome:"Sciarpa Champions League",link:"https://link.amazon/B01hZJPVe",tipo:"sciarpa"},
+  {nome:"Cappello Logo",link:"https://link.amazon/B0aCLC4cX",tipo:"cappello"},
+  {nome:"Felpa Solo la Roma",link:"https://link.amazon/B05NfH9Tc",tipo:"felpa"},
+  {nome:"Cappello Lana",link:"https://link.amazon/B0305o9SB",tipo:"berretto"},
+  {nome:"Sciarpa AS ROMA",link:"https://link.amazon/B00GrKqp6",tipo:"sciarpa"},
+  {nome:"Tazza Roma Champions",link:"https://link.amazon/B00LEbnAJ",tipo:"tazza"}
+];
+
+const $ = s => document.querySelector(s);
+const tutti = s => document.querySelectorAll(s);
+const virgola = n => String(Math.round(n * 10) / 10).replace(".", ",");
+const el = (tag, cls, txt) => { const n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; };
+const calmo = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* Contenuti fissi */
+function lineaGol() {
+  const x = m => 14 + m / 90 * 312;
+  const gol = [[11,1],[17,1],[58,0],[83,0],[86,0]];
+  let s = '<svg viewBox="0 0 340 92" role="img" aria-label="Gol: Roma all\'11\' e al 17\', Manchester United al 58\', 83\' e 86\'"><line class="asse" x1="14" x2="326" y1="46" y2="46"/>';
+  s += `<line class="asse" x1="${x(45)}" x2="${x(45)}" y1="40" y2="52"/>`;
+  gol.forEach(([m, r], n) => {
+    const y2 = r ? 22 : 70, c = r ? "#F0BC42" : "#FFF6F0";
+    const anchor = m === 83 ? "end" : m === 86 ? "start" : "middle";
+    const lx = m === 83 ? x(m) + 4 : m === 86 ? x(m) - 4 : x(m);
+    s += `<line class="asta" x1="${x(m)}" x2="${x(m)}" y1="46" y2="${y2}" stroke="${c}"/><circle style="--n:${n}" cx="${x(m)}" cy="46" r="6" fill="${c}"/><text x="${lx}" y="${r ? 15 : 86}" text-anchor="${anchor}">${m}'</text>`;
+  });
+  tutti("[data-linea]").forEach(b => b.innerHTML = s + "</svg>");
+}
+function pronosticoHtml() {
+  const blocco = (nome, k) => `<div><span>${nome}</span><div class="passo"><button type="button" data-p="${k}" data-d="-1" aria-label="Un gol in meno a ${nome}">−</button><output class="p-${k}">0</output><button type="button" data-p="${k}" data-d="1" aria-label="Un gol in più a ${nome}">+</button></div></div>`;
+  tutti("[data-pronostico]").forEach(b => b.innerHTML = `<div class="lista"><p style="font-weight:600">Indovina il risultato</p><div class="pronostico">${blocco("Roma","casa")}${blocco("Sassuolo","ospiti")}</div><button class="bottone vuoto salva-pron" type="button">Salva il risultato</button><p class="esito esito-pron" role="status"></p></div>`);
+}
+function contenuti() {
+  $("#sciarpa").append(...Array.from({length:24}, () => el("span", "", "ROMA")));
+  lineaGol(); pronosticoHtml();
+  disegnaNotizie(NOTIZIE.map(([t, titolo, url]) => ({ t, titolo, url })));
+  for (const [r, c, k] of FORMA) { const d = el("div", k); d.append(el("b", "", r), el("small", "", c)); $("#forma").append(d); }
+  for (const [p, n, v] of CLASSIFICA) { const t = el("tr", n === "Roma" ? "noi" : ""); t.append(el("td", "", p), el("td", "", n), el("td", "", v)); $("#classifica").append(t); }
+  for (const [n, a, b] of CONFRONTO) {
+    const d = el("div", "dato"); d.append(el("b", "", a), el("span", "", n), el("b", "", b));
+    const i = el("i"), u = el("u"), w = el("u"); u.style.flex = a + " 1 0"; w.style.flex = b + " 1 0"; i.append(u, w); d.append(i); $("#confronto").append(d);
+  }
+  for (const [n, v] of STAGIONE) {
+    const d = el("div", "barra"); d.append(el("span", "", n), el("b", "", virgola(v)));
+    const i = el("i"); i.style.setProperty("--q", v / 3); d.append(i); $("#stagione").append(d);
+  }
+  tutti("[data-annuncio]").forEach((slot, i) => {
+    const p = PRODOTTI[i % PRODOTTI.length];
+    const a = el("a", "pubblicita"); a.href = p.link; a.target = "_blank"; a.rel = "noopener sponsored";
+    const v = el("div", "vetrina");
+    if (p.foto) { const img = el("img"); img.src = p.foto; img.alt = p.nome; img.loading = "lazy"; v.append(img); }
+    else v.innerHTML = `<svg viewBox="0 0 64 64" fill="currentColor" aria-hidden="true">${ICONE[p.tipo]}</svg>`;
+    const t = el("div", "testo-pub"); t.append(el("span", "tag", "Annuncio"), el("strong", "", p.nome), el("small", "", "Vedi su Amazon"));
+    a.append(v, t); slot.append(a);
+  });
+  $("#a-partita").append(...PARTITE_CASA.map(x => el("option", "", x)));
+  $("#a-settore").append(...SETTORI.map(x => el("option", "", x)));
+}
+function disegnaNotizie(lista) {
+  const box = $("#carosello"); box.textContent = "";
+  for (const copia of [false, true]) for (const { t, titolo, url, foto, data } of lista) {
+    const a = el("a", "notizia"); a.href = url; a.target = "_blank"; a.rel = "noopener";
+    if (copia) { a.tabIndex = -1; a.setAttribute("aria-hidden", "true"); }
+    const f = el("div", "foto"); f.append(el("span", "", t));
+    if (foto) { const i = el("img"); i.src = foto; i.alt = ""; i.loading = "lazy"; i.referrerPolicy = "no-referrer"; i.onerror = () => i.remove(); f.prepend(i); }
+    a.append(f);
+    const quando = data ? new Date(data).toLocaleDateString("it-IT", { day: "numeric", month: "long" }) : "oggi";
+    const c = el("div"); c.append(el("strong", "", titolo), el("small", "", `${t}, ${quando}`)); a.append(c);
+    box.append(a);
+  }
+}
+async function notizieVere() {
+  try {
+    const r = await fetch("/api/notizie");
+    if (!r.ok) return;
+    const { notizie } = await r.json();
+    if (notizie?.length >= 5) disegnaNotizie(notizie);
+  } catch {}
+}
+function caroselloAutomatico() {
+  const c = $("#carosello"), tasto = $("#ferma");
+  let fermo = calmo(), toccato = false, ripresa = null, visibile = true;
+  const giro = () => c.children[c.children.length / 2].offsetLeft - c.children[0].offsetLeft;
+  const passo = () => c.children[1].offsetLeft - c.children[0].offsetLeft;
+  const riavvolgi = () => { const g = giro(); if (g > 0 && c.scrollLeft >= g - 2) c.scrollTo({ left: c.scrollLeft - g, behavior: "instant" }); };
+  const scritta = () => { tasto.textContent = fermo ? "Riparti" : "Pausa"; };
+  scritta();
+  tasto.onclick = () => { fermo = !fermo; scritta(); };
+  const tocca = () => { toccato = true; clearTimeout(ripresa); };
+  const lascia = () => { clearTimeout(ripresa); ripresa = setTimeout(() => { toccato = false; }, 4000); };
+  c.addEventListener("pointerdown", tocca);
+  c.addEventListener("pointerup", lascia);
+  c.addEventListener("pointercancel", lascia);
+  c.addEventListener("mouseenter", tocca);
+  c.addEventListener("mouseleave", lascia);
+  c.addEventListener("focusin", tocca);
+  c.addEventListener("focusout", lascia);
+  c.addEventListener("scrollend", riavvolgi);
+  new IntersectionObserver(e => { visibile = e[0].isIntersecting; }).observe(c);
+  setInterval(() => {
+    if (fermo || toccato || !visibile || document.hidden || !c.offsetParent) return;
+    riavvolgi();
+    c.scrollBy({ left: passo(), behavior: "smooth" });
+  }, 3500);
+}
+function annunciValidi(d) {
+  return (Array.isArray(d?.lista) ? d.lista : []).filter(a =>
+    (a.tipo === "Cedo" || a.tipo === "Cerco") && PARTITE_CASA.includes(a.partita) && SETTORI.includes(a.settore) &&
+    /^@[A-Za-z0-9._]{1,30}$/.test(a.contatto) && Number(a.n) >= 1 && Number(a.n) <= 4 && Number(a.prezzo) >= 0);
+}
+let annunciTutti = [], mieiAnnunci = [];
+function bacheca() {
+  const box = $("#bacheca"); box.textContent = "";
+  $("#n-annunci").textContent = annunciTutti.length;
+  if (!annunciTutti.length) { box.append(el("p", "vuoto-box", "Nessun annuncio ancora. Pubblica il primo.")); return; }
+  for (const a of annunciTutti) {
+    const c = el("article", "annuncio");
+    c.append(el("span", "tag", a.tipo), el("strong", "", a.partita));
+    c.append(el("p", "", `${a.n} ${a.n == 1 ? "posto" : "posti"} in ${a.settore}, ${Number(a.prezzo)} € a biglietto`));
+    c.append(el("p", "nota", "Contatto: " + a.contatto));
+    if (a.mio) {
+      const b = el("button", "", "Elimina il tuo annuncio"); b.type = "button";
+      b.onclick = () => salvaAnnunci(mieiAnnunci.filter(x => x.id !== a.id));
+      c.append(b);
+    }
+    box.append(c);
+  }
+}
+async function salvaAnnunci(lista) {
+  if (api) {
+    for (const x of mieiAnnunci.filter(a => !lista.some(b => b.id === a.id))) await fetch("/api/annunci/" + encodeURIComponent(x.id), { method: "DELETE" });
+    for (const x of lista.filter(a => !mieiAnnunci.some(b => b.id === a.id))) {
+      const r = await fetch("/api/annunci", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(x) });
+      if (!r.ok) throw new Error((await r.json()).errore);
+    }
+    await caricaApi();
+    return true;
+  }
+  mieiAnnunci = lista;
+  let ok = false;
+  if (!soloQui) { try { await db.doc("annunci/" + mioId).set({ lista }); ok = true; } catch { soloQui = true; } }
+  if (!ok) { try { localStorage.setItem("vr-annunci", JSON.stringify(lista)); } catch {} annunciTutti = lista.map(a => ({ ...a, mio: true })); bacheca(); }
+  return ok;
+}
+$("#form-annuncio").addEventListener("submit", async e => {
+  e.preventDefault();
+  const esito = $("#esito-annuncio");
+  const contatto = "@" + $("#a-contatto").value.trim().replace(/^@/, "");
+  const prezzo = Number($("#a-prezzo").value);
+  const tipo = e.target.querySelector("input[name=tipo]:checked").value;
+  if (!$("#a-prezzo").value || !(prezzo >= 0 && prezzo <= 500)) { esito.textContent = "Scrivi il prezzo nominale del biglietto."; $("#a-prezzo").focus(); return; }
+  if (!/^@[A-Za-z0-9._]{1,30}$/.test(contatto)) { esito.textContent = "Scrivi il tuo nome utente Instagram."; $("#a-contatto").focus(); return; }
+  if (!$("#a-regole").checked) { esito.textContent = "Spunta la casella per confermare le regole."; $("#a-regole").focus(); return; }
+  if (mieiAnnunci.length >= 5) { esito.textContent = "Puoi tenere al massimo 5 annunci. Elimina uno dei tuoi per pubblicarne altri."; return; }
+  const nuovo = { id: Date.now().toString(36), tipo, partita: $("#a-partita").value, settore: $("#a-settore").value, n: Number($("#a-numero").value), prezzo, contatto, quando: new Date().toISOString() };
+  let ok;
+  try { ok = await salvaAnnunci([...mieiAnnunci, nuovo]); }
+  catch (err) { esito.textContent = err.message || "Annuncio non pubblicato. Riprova tra poco."; return; }
+  esito.textContent = ok ? "Annuncio pubblicato." : "Annuncio salvato su questo telefono. Nella versione online lo vedranno tutti.";
+  $("#a-regole").checked = false;
+});
+function conto() {
+  const ms = CALCIO_INIZIO - Date.now();
+  let t = "Si gioca";
+  if (ms > 0) {
+    const g = Math.floor(ms / 864e5), o = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4);
+    t = g ? `Mancano ${g} ${g === 1 ? "giorno" : "giorni"} e ${o} ${o === 1 ? "ora" : "ore"}` : `Mancano ${o} ${o === 1 ? "ora" : "ore"} e ${m} min`;
+  }
+  tutti(".c-conto").forEach(n => n.textContent = t);
+}
+
+/* Stato */
+let db = null, mioId = null, soloQui = true;
+const stato = { pagella: {}, pronostico: { casa: 2, ospiti: 0 }, formazione: [] };
+let righe = [], mioDoc = {}, inviatoVoti = false, modifiche = false, rivedi = false, indice = 0, inMoto = false, ultimo = null, avvisoVoti = "";
+
+function leggiLocale() { try { return JSON.parse(localStorage.getItem("vr-voti") || "{}"); } catch { return {}; } }
+function scriviLocale(d) { try { localStorage.setItem("vr-voti", JSON.stringify(d)); } catch {} }
+function caricaMio(d) {
+  mioDoc = d || {};
+  const p = mioDoc.pagella?.[PARTITA];
+  if (p && !modifiche) { stato.pagella = { ...p }; inviatoVoti = true; }
+  const q = mioDoc.pronostico?.[PROSSIMA];
+  if (q) stato.pronostico = { casa: +q.casa || 0, ospiti: +q.ospiti || 0 };
+  const f = mioDoc.formazione?.[PROSSIMA];
+  if (Array.isArray(f) && !modifiche) stato.formazione = f.filter(n => ROSA.some(r => r.nomi.includes(n)));
+}
+async function salva(campo, chiave, valore) {
+  if (api) {
+    const corpo = campo === "pagella" ? { partita: chiave, voti: valore } : campo === "pronostico" ? { partita: chiave, ...valore } : { partita: chiave, giocatori: valore };
+    const r = await fetch("/api/" + (campo === "pagella" ? "voti" : campo), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(corpo) });
+    if (!r.ok) throw new Error("salvataggio non riuscito");
+    await caricaApi();
+    return true;
+  }
+  const nuovo = { ...mioDoc, [campo]: { ...(mioDoc[campo] || {}), [chiave]: valore } };
+  if (!soloQui) {
+    try { await db.doc("votes/" + mioId).set(nuovo); mioDoc = nuovo; return true; }
+    catch { soloQui = true; }
+  }
+  mioDoc = nuovo; scriviLocale(nuovo); righe = [nuovo]; aggiorna();
+  return false;
+}
+const conferma = ok => ok ? "Salvato." : "Salvato su questo telefono. Nella versione online conterà per tutti.";
+
+/* Medie */
+let api = false, riepilogo = null;
+async function caricaApi() {
+  const r = await fetch(`/api/stato?partita=${PARTITA}&prossima=${PROSSIMA}`);
+  if (!r.ok) throw new Error("api");
+  const d = await r.json();
+  api = true; soloQui = false; riepilogo = d;
+  const mio = {};
+  if (d.miei.pagella) mio.pagella = { [PARTITA]: d.miei.pagella };
+  if (d.miei.pronostico) mio.pronostico = { [PROSSIMA]: d.miei.pronostico };
+  if (d.miei.formazione) mio.formazione = { [PROSSIMA]: d.miei.formazione };
+  caricaMio(mio);
+  annunciTutti = d.annunci.map(a => ({ ...a, n: a.quanti, quando: a.creato }));
+  mieiAnnunci = annunciTutti.filter(a => a.mio).map(({ mio, ...a }) => a);
+  if (!modifiche) { disegnaPronostico(); disegnaCampo(); disegnaRosa(); }
+  risultati(); esitoPronostico(); xiTifosi(); bacheca();
+  if (inviatoVoti && !rivedi) mazzi();
+}
+function quanteSchede() { return riepilogo ? riepilogo.schede : schede().length; }
+function schede() { return righe.map(r => r.pagella?.[PARTITA]).filter(Boolean); }
+function medie() {
+  if (riepilogo) return riepilogo.medie;
+  const s = schede();
+  return TITOLARI.map(([n]) => { const v = s.map(x => Number(x[n])).filter(x => x >= 1 && x <= 10); return { n, m: v.length ? v.reduce((a, b) => a + b, 0) / v.length : null }; }).filter(x => x.m != null).sort((a, b) => b.m - a.m);
+}
+function barra({ n, m }) {
+  const d = el("div", "barra"); d.append(el("span", "", n), el("b", "", virgola(m)));
+  const i = el("i"); i.style.setProperty("--q", 0); d.append(i);
+  requestAnimationFrame(() => requestAnimationFrame(() => i.style.setProperty("--q", m / 10)));
+  return d;
+}
+
+/* Voto a schede */
+function tacche() {
+  const t = el("div", "tacche"); t.setAttribute("aria-hidden", "true");
+  TITOLARI.forEach(([n], i) => t.append(el("i", i === indice ? "ora" : stato.pagella[n] != null ? "fatto" : "")));
+  return t;
+}
+function mazzi(dir) { tutti("[data-mazzo]").forEach(b => mazzo(b, dir)); }
+function mazzo(box, dir) {
+  box.textContent = "";
+  if (inviatoVoti && !rivedi) {
+    const c = el("div", "scheda chiusa"), lista = el("div", "podio");
+    const home = box.dataset.mazzo === "casa";
+    c.append(el("h3", "", "I migliori per i tifosi"));
+    medie().slice(0, 3).forEach(x => lista.append(barra(x)));
+    c.append(lista);
+    if (avvisoVoti) c.append(el("p", "nota", avvisoVoti));
+    if (home) { const a = el("a", "bottone pieno", "Vedi tutte le pagelle"); a.href = "#pagella"; c.append(a); }
+    const b = el("button", "bottone vuoto", "Cambia i tuoi voti"); b.type = "button"; b.style.color = "var(--testo)";
+    b.onclick = () => { rivedi = true; indice = 0; modifiche = true; mazzi(1); };
+    c.append(b); box.append(c); return;
+  }
+  box.append(tacche());
+  if (indice >= TITOLARI.length) {
+    const n = Object.keys(stato.pagella).length;
+    const c = el("div", "scheda");
+    c.append(el("h3", "", n ? `${n} ${n === 1 ? "voto" : "voti"} su 11` : "Nessun voto"));
+    c.append(el("small", "", n ? "Controlla e invia. Puoi cambiarli anche dopo." : "Torna indietro e vota almeno un giocatore."));
+    const b = el("button", "bottone pieno", "Invia i voti"); b.type = "button"; b.disabled = !n;
+    b.onclick = async () => {
+      b.disabled = true;
+      let ok;
+      try { ok = await salva("pagella", PARTITA, { ...stato.pagella }); }
+      catch { b.disabled = false; b.textContent = "Riprova a inviare"; return; }
+      inviatoVoti = true; modifiche = false; rivedi = false; avvisoVoti = ok ? "" : conferma(false);
+      mazzi(); risultati();
+    };
+    const az = el("div", "azioni"), ind = el("button", "", "Indietro"); ind.type = "button"; ind.onclick = () => passa(-1);
+    az.append(ind); c.append(b, az); box.append(c); entra(c, dir); return;
+  }
+  const [nome, ruolo] = TITOLARI[indice];
+  const c = el("div", "scheda");
+  c.append(el("small", "", `${ruolo}, ${indice + 1} di 11`), el("h3", "", nome));
+  const r = el("div", "voti"); r.setAttribute("role", "group"); r.setAttribute("aria-label", "Voto a " + nome);
+  let bersaglio = null;
+  for (const v of VALORI) {
+    const b = el("button", "", virgola(v)); b.type = "button";
+    b.setAttribute("aria-label", `${nome}, voto ${virgola(v)}`);
+    b.setAttribute("aria-pressed", stato.pagella[nome] === v);
+    if (stato.pagella[nome] === v || (stato.pagella[nome] == null && v === 6)) bersaglio = b;
+    b.onclick = () => { stato.pagella[nome] = v; modifiche = true; passa(1); };
+    r.append(b);
+  }
+  const az = el("div", "azioni");
+  const ind = el("button", "", "Indietro"), salta = el("button", "", "Salta"); ind.type = salta.type = "button";
+  ind.disabled = indice === 0; ind.onclick = () => passa(-1); salta.onclick = () => passa(1);
+  az.append(ind, salta); c.append(r, az); box.append(c);
+  if (bersaglio && r.clientWidth) r.scrollLeft = bersaglio.offsetLeft - (r.clientWidth - bersaglio.offsetWidth) / 2;
+  entra(c, dir);
+}
+function entra(c, dir) {
+  if (!dir || calmo() || !c.isConnected || !c.offsetParent) return;
+  c.animate([{ transform: `translateX(${dir * 46}px) rotate(${dir * 2}deg)`, opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 280, easing: "cubic-bezier(.2,.9,.3,1.1)" });
+}
+function passa(dir) {
+  if (inMoto) return;
+  const prossimo = Math.max(0, Math.min(TITOLARI.length, indice + dir));
+  const vai = () => { indice = prossimo; inMoto = false; mazzi(dir); };
+  const vis = [...tutti("[data-mazzo] .scheda")].find(n => n.offsetParent);
+  if (!vis || calmo()) return vai();
+  inMoto = true;
+  const a = vis.animate([{ transform: "none", opacity: 1 }, { transform: `translateX(${dir * -60}px) rotate(${dir * -3}deg)`, opacity: 0 }], { duration: 140, easing: "ease-in", fill: "forwards" });
+  a.finished.then(vai, vai);
+}
+function risultati() {
+  tutti(".n-votanti").forEach(n => n.textContent = quanteSchede());
+  const box = $("#risultati"); box.textContent = "";
+  if (!quanteSchede()) { box.append(el("p", "vuoto-box", "Nessun voto ancora. Vota per primo e apri la classifica.")); return; }
+  if (!inviatoVoti) { box.append(el("p", "vuoto-box", "Invia i tuoi voti per vedere la media dei tifosi.")); return; }
+  medie().forEach(x => box.append(barra(x)));
+}
+
+/* Pronostico */
+function disegnaPronostico() { tutti(".p-casa").forEach(n => n.textContent = stato.pronostico.casa); tutti(".p-ospiti").forEach(n => n.textContent = stato.pronostico.ospiti); }
+function esitoPronostico() {
+  if (riepilogo) { const q = riepilogo.pronostico; if (q) tutti(".esito-pron").forEach(n => n.textContent = `Il risultato più scelto è ${q.casa}-${q.ospiti}, con ${q.n === 1 ? "1 tifoso" : q.n + " tifosi"}.`); return; }
+  const conti = {};
+  for (const r of righe) { const q = r.pronostico?.[PROSSIMA]; if (q) { const k = `${+q.casa}-${+q.ospiti}`; conti[k] = (conti[k] || 0) + 1; } }
+  const top = Object.entries(conti).sort((a, b) => b[1] - a[1])[0];
+  if (top) tutti(".esito-pron").forEach(n => n.textContent = `Il risultato più scelto è ${top[0]}, con ${top[1] === 1 ? "1 tifoso" : top[1] + " tifosi"}.`);
+}
+
+/* Formazione */
+function disegnaCampo() {
+  const s = ROSA.map(g => stato.formazione.filter(n => g.nomi.includes(n)));
+  const [por, dif, cen, att] = s;
+  const linee = [[att[2]], [att[0], att[1]], [cen[0], cen[1], cen[2], cen[3]], [dif[0], dif[1], dif[2]], [por[0]]];
+  const c = $("#campo"); c.textContent = "";
+  for (const l of linee) {
+    const r = el("div", "linea-campo");
+    for (const n of l) r.append(el("div", (n ? "posto pieno" : "posto") + (n && n === ultimo ? " nuovo" : ""), n || ""));
+    c.append(r);
+  }
+  $("#salva-formazione").disabled = stato.formazione.length !== 11;
+}
+function disegnaRosa() {
+  const box = $("#rosa"); box.textContent = "";
+  for (const g of ROSA) {
+    const presi = stato.formazione.filter(n => g.nomi.includes(n)).length;
+    const d = el("div", "ruolo"); d.append(el("h3", "", `${g.ruolo}: ${presi} su ${g.posti}`));
+    const s = el("div", "scelte");
+    for (const n of g.nomi) {
+      const b = el("button", "", n); b.type = "button";
+      const on = stato.formazione.includes(n); b.setAttribute("aria-pressed", on);
+      b.onclick = () => {
+        modifiche = true;
+        if (on) { stato.formazione = stato.formazione.filter(x => x !== n); ultimo = null; }
+        else if (presi < g.posti) { stato.formazione = [...stato.formazione, n]; ultimo = n; }
+        else return;
+        disegnaRosa(); disegnaCampo();
+      };
+      s.append(b);
+    }
+    d.append(s); box.append(d);
+  }
+}
+function xiTifosi() {
+  const liste = riepilogo ? [] : righe.map(r => r.formazione?.[PROSSIMA]).filter(Array.isArray);
+  const totale = riepilogo ? riepilogo.formazioni.n : liste.length;
+  const voti = n => riepilogo ? (riepilogo.formazioni.conti[n] || 0) : liste.filter(l => l.includes(n)).length;
+  $("#formazioni").textContent = totale;
+  const box = $("#xi-tifosi"); box.textContent = "";
+  if (!totale) { box.append(el("p", "vuoto-box", "Nessuna formazione ancora. Salva la tua e diventa la prima scelta.")); return; }
+  for (const g of ROSA) {
+    const conti = g.nomi.map(n => [n, voti(n)]).filter(x => x[1]).sort((a, b) => b[1] - a[1]).slice(0, g.posti);
+    const d = el("div"); d.append(el("strong", "", g.ruolo), el("p", "nota", conti.map(x => x[0]).join(", ")));
+    box.append(d);
+  }
+}
+function aggiorna() { caricaMio(mioDoc); risultati(); esitoPronostico(); xiTifosi(); }
+
+/* Navigazione con passaggio animato */
+const VISTE = ["casa", "pagella", "vigilia", "analisi", "biglietti"];
+let vistaOra = null;
+const scegli = () => VISTE.includes(location.hash.slice(1)) ? location.hash.slice(1) : "casa";
+function mostra(v) {
+  vistaOra = v;
+  for (const n of VISTE) $("#v-" + n).hidden = n !== v;
+  tutti(".navigazione a").forEach(a => a.getAttribute("href") === "#" + v ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
+  $("#cursore").style.setProperty("--i", VISTE.indexOf(v));
+  window.scrollTo(0, 0);
+  mazzi();
+}
+function vai() {
+  const v = scegli();
+  if (v === vistaOra) return;
+  const titolo = () => $("#v-" + v + " [tabindex='-1']")?.focus({ preventScroll: true });
+  if (!document.startViewTransition || calmo() || vistaOra == null) { mostra(v); if (vistaOra) titolo(); return; }
+  const tipo = VISTE.indexOf(v) > VISTE.indexOf(vistaOra) ? "avanti" : "indietro";
+  try {
+    const t = document.startViewTransition({ update: () => mostra(v), types: [tipo] });
+    t.finished.finally(titolo);
+  } catch { mostra(v); titolo(); }
+}
+addEventListener("hashchange", vai);
+
+/* Azioni */
+document.addEventListener("click", async e => {
+  const p = e.target.closest("[data-p]");
+  if (p) { const k = p.dataset.p; stato.pronostico[k] = Math.min(9, Math.max(0, stato.pronostico[k] + Number(p.dataset.d))); disegnaPronostico(); return; }
+  if (e.target.closest(".salva-pron")) { let t; try { t = conferma(await salva("pronostico", PROSSIMA, { ...stato.pronostico })); } catch { t = "Non salvato. Riprova tra poco."; } tutti(".esito-pron").forEach(n => n.textContent = t); }
+});
+$("#salva-formazione").onclick = async () => { let t; try { t = conferma(await salva("formazione", PROSSIMA, [...stato.formazione])); modifiche = false; } catch { t = "Non salvata. Riprova tra poco."; } $("#esito-formazione").textContent = t; };
+
+/* Avvio */
+contenuti(); conto(); setInterval(conto, 30000); caroselloAutomatico();
+caricaMio(leggiLocale()); if (Object.keys(mioDoc).length) righe = [mioDoc];
+try { mieiAnnunci = annunciValidi({ lista: JSON.parse(localStorage.getItem("vr-annunci") || "[]") }); annunciTutti = mieiAnnunci.map(a => ({ ...a, mio: true })); } catch {}
+disegnaPronostico(); disegnaCampo(); disegnaRosa(); risultati(); xiTifosi(); bacheca(); vai();
+
+(async () => {
+  try {
+    await caricaApi();
+    notizieVere(); setInterval(notizieVere, 6e5);
+    setInterval(() => { if (!document.hidden && !modifiche) caricaApi().catch(() => {}); }, 3e4);
+    return;
+  } catch {}
+  try {
+    if (!window.claude?.use) return;
+    const [d, u] = await Promise.all([claude.use("db"), claude.use("user")]);
+    const id = u ? await u.id() : null;
+    if (!d || !id) return;
+    db = d; mioId = id; soloQui = false;
+    db.collection("votes").onSnapshot(s => {
+      righe = s.docs.map(x => x.data());
+      const mio = s.docs.find(x => x.id === mioId);
+      if (mio) { caricaMio(mio.data()); if (!modifiche) { disegnaPronostico(); disegnaCampo(); disegnaRosa(); } }
+      risultati(); esitoPronostico(); xiTifosi();
+      if (inviatoVoti && !rivedi) mazzi();
+    }, () => { soloQui = true; });
+    db.collection("annunci").onSnapshot(s => {
+      annunciTutti = s.docs.flatMap(x => annunciValidi(x.data()).map(a => ({ ...a, mio: x.id === mioId }))).sort((a, b) => String(b.quando).localeCompare(String(a.quando)));
+      mieiAnnunci = annunciTutti.filter(a => a.mio).map(({ mio, ...a }) => a);
+      bacheca();
+    }, () => {});
+  } catch { soloQui = true; }
+})();
+</script>
+
+</body>
+</html>
