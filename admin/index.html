@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Pannello Curva Roma</title>
+<link rel="icon" href="/img/favicon.png" type="image/png">
+<style>
+:root{--rosso:#8E1F2F;--scuro:#5F0E24;--giallo:#F0BC42;--fondo:#F6F1F2;--carta:#fff;--testo:#2B0A15;--muto:#6F5560;--linea:#E6D6DA}
+@media (prefers-color-scheme:dark){:root{--fondo:#1E0B12;--carta:#2C1019;--testo:#F8EDEF;--muto:#C3A6AE;--linea:#4A2531;color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--fondo);color:var(--testo);font:400 15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{background:var(--scuro);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:5}
+header img{height:34px}
+header b{flex:1}
+nav{display:flex;gap:6px;overflow-x:auto;padding:10px 16px;background:var(--carta);border-bottom:1px solid var(--linea);position:sticky;top:54px;z-index:4}
+nav button{flex:none;border:0;background:none;color:var(--testo);padding:9px 12px;border-radius:8px;font:600 14px system-ui;cursor:pointer}
+nav button[aria-selected="true"]{background:var(--rosso);color:#fff}
+main{max-width:1000px;margin:auto;padding:18px 16px 110px;display:grid;gap:16px}
+.card{background:var(--carta);border:1px solid var(--linea);border-radius:12px;padding:16px;display:grid;gap:12px;min-width:0}
+h2{margin:0;font-size:1.15rem}h3{margin:0;font-size:1rem}
+label{display:grid;gap:4px;font-weight:600;font-size:.88rem;min-width:0}
+input,textarea,select{font:400 15px system-ui;color:var(--testo);background:var(--fondo);border:1px solid var(--linea);border-radius:8px;padding:9px 10px;width:100%;min-width:0}
+input[type=checkbox]{width:20px;height:20px}
+textarea{min-height:110px;resize:vertical}
+.griglia{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+button.az{border:0;border-radius:8px;background:var(--rosso);color:#fff;font:600 14px system-ui;padding:10px 14px;cursor:pointer}
+button.sec{background:none;color:var(--testo);border:1px solid var(--muto)}
+button.pericolo{background:none;color:#C0392B;border:1px solid #C0392B}
+.riga{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.num{font-size:1.9rem;font-weight:800}
+.nota{font-size:.86rem;color:var(--muto);font-weight:400}
+.barre{display:grid;gap:6px}
+.barra{display:grid;grid-template-columns:110px minmax(0,1fr) 44px;gap:8px;align-items:center;font-size:.86rem}
+.barra i{display:block;height:10px;border-radius:5px;background:var(--rosso)}
+.barra span:last-child{text-align:right;font-weight:700}
+.prod{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;border-top:1px solid var(--linea);padding-top:12px}
+.prod img{width:96px;height:96px;object-fit:contain;background:#fff;border-radius:8px;border:1px solid var(--linea)}
+.manca{width:96px;height:96px;border-radius:8px;display:grid;place-items:center;text-align:center;font-size:.76rem;background:#FCE8E6;color:#A5281B;padding:6px}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.gal figure{margin:0;display:grid;gap:6px;font-size:.8rem}
+.gal img{width:100%;height:100px;object-fit:cover;border-radius:8px}
+.salva{position:fixed;left:0;right:0;bottom:0;background:var(--carta);border-top:1px solid var(--linea);padding:10px 16px;display:flex;justify-content:center;gap:12px;align-items:center;z-index:6}
+.login{max-width:360px;margin:12vh auto;padding:0 16px}
+.esito{font-weight:600;font-size:.9rem}
+</style>
+</head>
+<body>
+<div class="login" id="login"><form class="card" id="form-login">
+  <img src="/img/logo.png" alt="Curva Roma" style="width:150px;margin:auto">
+  <label>Password<input id="pw" type="password" autocomplete="current-password"></label>
+  <button class="az" type="submit">Entra</button><p class="esito" id="e-login"></p>
+</form></div>
+<div id="app" hidden>
+<header><img src="/img/logo-chiaro.png" alt=""><b>Pannello admin</b><a href="/" target="_blank" style="color:#fff">Vedi il sito</a><button class="az sec" style="color:#fff;border-color:#fff" id="esci">Esci</button></header>
+<nav id="schede" role="tablist"></nav>
+<main id="vista"></main>
+<div class="salva" id="barra-salva" hidden><span class="esito" id="e-salva">Modifiche da pubblicare</span><button class="az" id="pubblica">Pubblica sul sito</button></div>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
+const api = async (u, o = {}) => { const r = await fetch("/api/admin/" + u, o); const d = await r.json().catch(() => ({})); if (r.status === 401 && u !== "login") { entra(false); throw new Error("Accesso richiesto"); } if (!r.ok) throw new Error(d.errore || "Errore"); return d; };
+const post = (u, d, m = "POST") => api(u, { method: m, headers: { "content-type": "application/json" }, body: JSON.stringify(d) });
+const SCHEDE = [["traffico","Traffico"],["annunci","Annunci Amazon"],["immagini","Immagini"],["partita","Partita e pagelle"],["vigilia","Vigilia"],["analisi","Analisi"],["classifica","Classifica"],["biglietti","Biglietti"]];
+let C = null, ora = "traffico", sporco = false;
+const segna = () => { sporco = true; $("#barra-salva").hidden = false; $("#e-salva").textContent = "Modifiche da pubblicare"; };
+function campo(et, val, su, tipo = "text") {
+  const l = el("label", "", et), i = el(tipo === "area" ? "textarea" : "input");
+  if (tipo !== "area") i.type = tipo;
+  i.value = val ?? ""; i.addEventListener("input", () => { su(i.value); segna(); }); l.append(i); return l;
+}
+const righe = t => t.split("\n").map(x => x.trim()).filter(Boolean);
+const id = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+function comprimi(file, lato = 1600) {
+  return new Promise((ok, no) => {
+    const i = new Image(); i.onerror = () => no(new Error("File non valido"));
+    i.onload = () => { const k = Math.min(1, lato / Math.max(i.width, i.height)), c = el("canvas"); c.width = i.width * k; c.height = i.height * k; const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(i, 0, 0, c.width, c.height); URL.revokeObjectURL(i.src); ok(c.toDataURL("image/jpeg", .82)); };
+    i.src = URL.createObjectURL(file);
+  });
+}
+async function carica(file, lato) { return (await post("immagini", { nome: file.name, dati: await comprimi(file, lato) })).url; }
+function tastoFile(testo, suFile) {
+  const l = el("label", "az sec", testo); l.style.cssText = "display:inline-block;cursor:pointer;padding:9px 12px;border:1px solid var(--muto);border-radius:8px";
+  const i = el("input"); i.type = "file"; i.accept = "image/*"; i.hidden = true; i.onchange = async () => { if (i.files[0]) { l.firstChild.textContent = "Caricamento…"; try { await suFile(i.files[0]); } catch (e) { alert(e.message); } l.firstChild.textContent = testo; } }; l.append(i); return l;
+}
+
+const PAGINE = {
+  async traffico(v) {
+    const d = await api("riepilogo");
+    const gg = [...new Set(d.visite.map(x => x.giorno))], tot = g => d.visite.filter(x => x.giorno === g).reduce((a, b) => a + b.n, 0);
+    const oggi = gg[gg.length - 1], somma = d.visite.reduce((a, b) => a + b.n, 0), mob = d.visite.filter(x => x.dispositivo === "mobile").reduce((a, b) => a + b.n, 0);
+    const g = el("div", "griglia");
+    for (const [t, n] of [["Pagine viste oggi", oggi ? tot(oggi) : 0], ["Visitatori oggi", d.unici.at(-1)?.n || 0], ["Pagine viste, 14 giorni", somma], ["Da telefono", somma ? Math.round(mob / somma * 100) + "%" : "0%"], ["Tifosi che hanno votato", d.votanti], ["Annunci biglietti", d.annunci]]) { const c = el("div", "card"); c.append(el("span", "nota", t), el("span", "num", n)); g.append(c); }
+    v.append(g);
+    const barre = (tit, lista) => { const c = el("div", "card"), b = el("div", "barre"), max = Math.max(1, ...lista.map(x => x[1])); c.append(el("h2", "", tit)); if (!lista.length) c.append(el("p", "nota", "Ancora nessun dato.")); for (const [n, q] of lista) { const r = el("div", "barra"), i = el("i"); i.style.width = q / max * 100 + "%"; const w = el("span"); w.append(i); r.append(el("span", "", n), w, el("span", "", q)); b.append(r); } c.append(b); v.append(c); };
+    barre("Pagine viste al giorno", gg.map(x => [x.slice(5), tot(x)]));
+    barre("Sezioni più viste", d.sezioni.map(x => [x.sezione, x.n]));
+    barre("Clic sugli annunci, 14 giorni", d.clic.map(x => [x.nome, x.n]));
+  },
+  async annunci(v) {
+    const { prodotti } = await api("prodotti");
+    const c = el("div", "card"); c.append(el("h2", "", "Annunci Amazon"), el("p", "nota", "Per ogni prodotto carica la foto o incolla il link immagine di SiteStripe. Se manca, sul sito esce un disegno."));
+    const riga = p => {
+      const r = el("div", "prod"), vis = el("div");
+      const mostra = () => { vis.textContent = ""; if (p.foto) { const i = el("img"); i.src = p.foto; i.alt = ""; vis.append(i); } else vis.append(el("div", "manca", "Foto mancante")); };
+      mostra();
+      const f = el("div", ""); f.style.cssText = "display:grid;gap:8px;min-width:0";
+      const g = el("div", "griglia"), noSeg = (et, val, su, t) => { const x = campo(et, val, su, t); return x; };
+      g.append(noSeg("Nome", p.nome, x => p.nome = x), noSeg("Link Amazon", p.link, x => p.link = x), noSeg("Link immagine", p.foto, x => { p.foto = x; mostra(); }), noSeg("Ordine", p.ordine, x => p.ordine = x, "number"));
+      const tipo = el("label", "", "Disegno di riserva"), s = el("select"); for (const t of ["maglia","sciarpa","cappello","berretto","felpa","tazza"]) s.append(el("option", "", t)); s.value = p.tipo; s.onchange = () => p.tipo = s.value; tipo.append(s); g.append(tipo);
+      const b = el("div", "riga"), att = el("label", "riga", "Attivo"), ch = el("input"); ch.type = "checkbox"; ch.checked = !!p.attivo; ch.onchange = () => p.attivo = ch.checked ? 1 : 0; att.prepend(ch);
+      const sv = el("button", "az", "Salva"), es = el("span", "esito");
+      const salva = async () => { try { await post("prodotti", p); es.textContent = "Salvato"; $("#barra-salva").hidden = !sporco || !C; } catch (e) { es.textContent = e.message; } };
+      sv.onclick = salva;
+      const up = tastoFile("Carica foto", async file => { p.foto = await carica(file, 800); mostra(); await salva(); });
+      const del = el("button", "az pericolo", "Elimina"); del.onclick = async () => { if (window.confirm("Eliminare " + p.nome + "?")) { await api("prodotti/" + encodeURIComponent(p.id), { method: "DELETE" }); r.remove(); } };
+      b.append(att, sv, up, del, es); f.append(g, b); r.append(vis, f); return r;
+    };
+    for (const p of prodotti) c.append(riga(p));
+    const add = el("button", "az sec", "Aggiungi prodotto"); add.onclick = () => add.before(riga({ id: "", nome: "", link: "", foto: "", tipo: "maglia", attivo: 1, ordine: prodotti.length + 1 }));
+    c.append(add); v.append(c);
+  },
+  async immagini(v) {
+    const { scelte, immagini } = await api("aspetto");
+    const c = el("div", "card"); c.append(el("h2", "", "Immagini del sito"), el("p", "nota", "Usa foto tue o con licenza."));
+    const g = el("div", "griglia");
+    for (const [k, t, base] of [["testata", "Foto in testata", "/img/tifosi.jpg"], ["pagelle", "Sfondo Pagelle", "/img/curva.jpg"], ["vigilia", "Sfondo Vigilia", "/img/stadio.jpg"]]) {
+      const b = el("div", ""), i = el("img"); b.style.cssText = "display:grid;gap:8px"; i.src = scelte[k] || base; i.alt = ""; i.style.cssText = "width:100%;height:120px;object-fit:cover;border-radius:8px";
+      b.append(el("b", "", t), i, tastoFile("Cambia immagine", async f => { const u = await carica(f); scelte[k] = u; await post("aspetto", scelte); i.src = u; }));
+      if (scelte[k]) { const x = el("button", "az sec", "Rimetti originale"); x.onclick = async () => { delete scelte[k]; await post("aspetto", scelte); apri("immagini"); }; b.append(x); }
+      g.append(b);
+    }
+    c.append(g); v.append(c);
+    const d = el("div", "card"); d.append(el("h2", "", "Galleria"));
+    const gal = el("div", "gal");
+    for (const x of immagini) { const f = el("figure"), i = el("img"); i.src = "/api/img/" + x.id; i.alt = ""; const del = el("button", "az pericolo", "Elimina"); del.onclick = async () => { if (window.confirm("Eliminare l'immagine?")) { await api("immagini/" + x.id, { method: "DELETE" }); f.remove(); } }; f.append(i, el("span", "", x.nome), del); gal.append(f); }
+    if (!immagini.length) d.append(el("p", "nota", "Nessuna immagine caricata."));
+    d.append(gal); v.append(d);
+  },
+  partita(v) {
+    const p = C.partita, c = el("div", "card"); c.append(el("h2", "", "Ultima partita e pagelle"));
+    const g = el("div", "griglia");
+    g.append(campo("Competizione", p.competizione, x => p.competizione = x), campo("Data", p.data, x => p.data = x), campo("Squadra in casa", p.casa, x => p.casa = x), campo("Squadra ospite", p.ospiti, x => p.ospiti = x), campo("Gol casa", p.golCasa, x => p.golCasa = +x, "number"), campo("Gol ospiti", p.golOspiti, x => p.golOspiti = +x, "number"));
+    c.append(g);
+    c.append(campo("Gol, uno per riga (minuto casa oppure minuto ospiti)", p.gol.map(x => x.join(" ")).join("\n"), x => p.gol = righe(x).map(r => { const [m, s] = r.split(/\s+/); return [+m, s === "casa" ? "casa" : "ospiti"]; }), "area"));
+    c.append(campo("Giocatori da votare, uno per riga (Nome, Ruolo)", p.titolari.map(x => x.join(", ")).join("\n"), x => p.titolari = righe(x).map(r => { const [n, q] = r.split(","); return [n.trim(), (q || "").trim()]; }), "area"));
+    const nuova = el("button", "az sec", "È una nuova partita: azzera le pagelle"); nuova.onclick = () => { p.id = id(`${p.casa}-${p.ospiti}-${Date.now().toString(36)}`); segna(); nuova.textContent = "Pagelle nuove pronte, ora pubblica"; };
+    c.append(nuova, el("p", "nota", "Le pagelle sono legate alla partita: con una nuova partita si riparte da zero e i voti vecchi restano salvati."));
+    v.append(c);
+  },
+  vigilia(v) {
+    const p = C.prossima, c = el("div", "card"); c.append(el("h2", "", "Prossima partita"));
+    const g = el("div", "griglia");
+    const data = p.inizio ? new Date(new Date(p.inizio).getTime() - new Date(p.inizio).getTimezoneOffset() * 6e4).toISOString().slice(0, 16) : "";
+    g.append(campo("Squadra in casa", p.casa, x => p.casa = x), campo("Squadra ospite", p.ospiti, x => p.ospiti = x), campo("Competizione", p.competizione, x => p.competizione = x), campo("Testo data", p.quando, x => p.quando = x), campo("Calcio d'inizio", data, x => p.inizio = new Date(x).toISOString(), "datetime-local"), campo("Modulo", p.modulo, x => p.modulo = x));
+    c.append(g, campo("Presentazione della partita", p.nota, x => p.nota = x, "area"));
+    const nuova = el("button", "az sec", "È una nuova partita: azzera pronostici e formazioni"); nuova.onclick = () => { p.id = id(`${p.casa}-${p.ospiti}-${Date.now().toString(36)}`); segna(); nuova.textContent = "Pronto, ora pubblica"; };
+    c.append(nuova, campo("Rosa, una riga per reparto (Reparto | posti | nomi separati da virgola)", C.rosa.map(r => `${r.ruolo} | ${r.posti} | ${r.nomi.join(", ")}`).join("\n"), x => C.rosa = righe(x).map(r => { const [a, b, d] = r.split("|").map(s => s.trim()); return { ruolo: a, posti: +b || 1, nomi: (d || "").split(",").map(s => s.trim()).filter(Boolean) }; }), "area"));
+    v.append(c);
+  },
+  analisi(v) {
+    const add = el("button", "az", "Nuova analisi"); add.onclick = () => { C.analisi.unshift({ id: "a" + Date.now().toString(36), titolo: "", occhiello: "", riassunto: "", testo: "", copertina: "/img/lavagna.jpg", confronto: [] }); segna(); apri("analisi"); };
+    v.append(add, el("p", "nota", "La prima analisi della lista è quella che appare in home."));
+    C.analisi.forEach((a, n) => {
+      const c = el("div", "card"), i = el("img"); i.src = a.copertina; i.alt = ""; i.style.cssText = "width:100%;max-height:150px;object-fit:cover;border-radius:8px";
+      c.append(i, tastoFile("Cambia copertina", async f => { a.copertina = await carica(f); i.src = a.copertina; segna(); }), campo("Titolo", a.titolo, x => a.titolo = x), campo("Sottotitolo", a.occhiello, x => a.occhiello = x), campo("Riassunto per la home", a.riassunto, x => a.riassunto = x), campo("Testo, riga vuota tra i paragrafi", a.testo, x => a.testo = x, "area"));
+      c.append(campo("Statistiche, una per riga (Nome; Roma; Avversario)", (a.confronto || []).map(x => x.join("; ")).join("\n"), x => a.confronto = righe(x).map(r => { const [q, b, d] = r.split(";").map(s => s.trim()); return [q, +b || 0, +d || 0]; }), "area"));
+      const b = el("div", "riga"), su = el("button", "az sec", "Sposta su"), del = el("button", "az pericolo", "Elimina");
+      su.disabled = !n; su.onclick = () => { C.analisi.splice(n - 1, 0, C.analisi.splice(n, 1)[0]); segna(); apri("analisi"); };
+      del.onclick = () => { if (window.confirm("Eliminare l'analisi?")) { C.analisi.splice(n, 1); segna(); apri("analisi"); } };
+      b.append(su, del); c.append(b); v.append(c);
+    });
+  },
+  classifica(v) {
+    const c = el("div", "card"); c.append(el("h2", "", "Classifica e ultime cinque"));
+    c.append(campo("Classifica, una per riga (Squadra, punti)", C.classifica.map(x => x.join(", ")).join("\n"), x => C.classifica = righe(x).map(r => { const [n, q] = r.split(","); return [n.trim(), +q || 0]; }), "area"));
+    c.append(campo("Ultime cinque (Risultato, Avversario, v/n/p)", C.forma.map(x => x.join(", ")).join("\n"), x => C.forma = righe(x).map(r => r.split(",").map(s => s.trim())), "area"));
+    v.append(c);
+  },
+  async biglietti(v) {
+    const c = el("div", "card"); c.append(el("h2", "", "Partite per gli annunci"));
+    c.append(campo("Una per riga, come Roma-Monza, 29 novembre", C.partite_biglietti.join("\n"), x => C.partite_biglietti = righe(x), "area")); v.append(c);
+    const { annunci } = await api("annunci"), d = el("div", "card"); d.append(el("h2", "", `Annunci pubblicati: ${annunci.length}`));
+    for (const a of annunci) { const r = el("div", "riga"); r.style.cssText = "justify-content:space-between;border-top:1px solid var(--linea);padding-top:10px"; const t = el("div"); t.append(el("b", "", `${a.tipo}: ${a.partita}`), el("div", "nota", `${a.quanti} in ${a.settore}, ${a.prezzo} €, ${a.contatto}`)); const b = el("button", "az pericolo", "Rimuovi"); b.onclick = async () => { await api("annunci/" + a.id, { method: "DELETE" }); r.remove(); }; r.append(t, b); d.append(r); }
+    if (!annunci.length) d.append(el("p", "nota", "Nessun annuncio."));
+    v.append(d);
+  }
+};
+async function apri(s) {
+  ora = s;
+  document.querySelectorAll("#schede button").forEach(b => b.setAttribute("aria-selected", b.dataset.s === s));
+  const v = $("#vista"); v.textContent = "";
+  try { await PAGINE[s](v); } catch (e) { v.append(el("p", "esito", e.message)); }
+}
+async function entra(dentro) {
+  $("#login").hidden = dentro; $("#app").hidden = !dentro;
+  if (!dentro) return;
+  if (!$("#schede").children.length) for (const [k, t] of SCHEDE) { const b = el("button", "", t); b.dataset.s = k; b.setAttribute("role", "tab"); b.onclick = () => apri(k); $("#schede").append(b); }
+  const r = await api("contenuti");
+  C = r.contenuti || await (await fetch("/contenuti.json")).json();
+  apri(ora);
+}
+$("#form-login").addEventListener("submit", async e => {
+  e.preventDefault(); $("#e-login").textContent = "";
+  try { await post("login", { password: $("#pw").value }); $("#pw").value = ""; entra(true); } catch (x) { $("#e-login").textContent = x.message; }
+});
+$("#pubblica").onclick = async () => { try { await post("contenuti", C); sporco = false; $("#e-salva").textContent = "Pubblicato"; setTimeout(() => { if (!sporco) $("#barra-salva").hidden = true; }, 1500); } catch (e) { $("#e-salva").textContent = e.message; } };
+$("#esci").onclick = async () => { await api("esci", { method: "POST" }); entra(false); };
+addEventListener("beforeunload", e => { if (sporco) e.preventDefault(); });
+api("contenuti").then(() => entra(true)).catch(() => entra(false));
+</script>
+</body>
+</html>

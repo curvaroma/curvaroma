@@ -1,0 +1,27 @@
+{
+  "partita": {
+    "id": "mun-rom-2026-11-03", "competizione": "Champions League", "data": "3 novembre",
+    "casa": "Man. United", "ospiti": "Roma", "golCasa": 3, "golOspiti": 2,
+    "gol": [[11, "ospiti"], [17, "ospiti"], [58, "casa"], [83, "casa"], [86, "casa"]],
+    "titolari": [["Vasquez","Portiere"],["Mancini","Difensore"],["Balerdi","Difensore"],["Hermoso","Difensore"],["Rensch","Esterno"],["Cristante","Centrocampista"],["De Roon","Centrocampista"],["Wesley","Esterno"],["Mora","Trequartista"],["Soulé","Trequartista"],["Malen","Attaccante"]]
+  },
+  "prossima": {
+    "id": "rom-sas-2026-11-07", "casa": "Roma", "ospiti": "Sassuolo", "competizione": "Serie A",
+    "quando": "Sabato 7 novembre, 20:45", "inizio": "2026-11-07T19:45:00Z",
+    "nota": "Roma terza con 24 punti. Sassuolo diciassettesimo con 8: 2 vittorie, 2 pareggi e 6 sconfitte. Arbitra Di Bello.",
+    "modulo": "3-4-2-1"
+  },
+  "rosa": [
+    {"ruolo":"Portiere","posti":1,"nomi":["Gollini","Vasquez","De Marzi"]},
+    {"ruolo":"Difensori","posti":3,"nomi":["Mancini","Ndicka","Hermoso","Balerdi","Ghilardi"]},
+    {"ruolo":"Centrocampo ed esterni","posti":4,"nomi":["Wesley","Molina","Cristante","De Roon","Pisilli","Koné","Di Nunzio"]},
+    {"ruolo":"Attacco","posti":3,"nomi":["Soulé","Mora","Malen","Dybala","Camara"]}
+  ],
+  "forma": [["4-0","Slovan","v"],["3-3","Napoli","n"],["4-2","Cagliari","v"],["5-2","Udinese","v"],["2-3","Man. United","p"]],
+  "classifica": [["Lazio",28],["Inter",25],["Roma",24],["Como",23],["Milan",21],["Frosinone",20],["Juventus",17],["Napoli",14],["Bologna",14],["Torino",13],["Genoa",13],["Cagliari",13],["Atalanta",11],["Lecce",9],["Parma",8],["Fiorentina",8],["Sassuolo",8],["Monza",7],["Udinese",5],["Venezia",3]],
+  "partite_biglietti": ["Roma-Sassuolo, 7 novembre","Roma-Monza, 29 novembre","Roma-Sporting, 8 dicembre","Roma-Frosinone, 2 gennaio","Roma-Lille, 27 gennaio"],
+  "analisi": [
+    {"id":"man-united-roma","titolo":"Due gol con cinque tiri, poi tre subiti in 28 minuti","occhiello":"Manchester United-Roma 3-2, Champions League","riassunto":"La Roma è stata concreta a Manchester, ma ha concesso il triplo dei tiri: 15 contro 5.","testo":"La Roma ha segnato all'11' e al 17'. Il Manchester ha pareggiato i conti tra il 58' e l'83', poi l'ha ribaltata all'86'.\n\nIl dato più forte è il volume: 15 tiri contro 5. In porta però la distanza si riduce, 5 contro 4. La Roma è stata molto concreta e ha concesso troppo.\n\nLa partita è cambiata presto anche in panchina: il primo cambio della Roma è arrivato al 22', il secondo all'intervallo. I cinque cambi erano finiti al 78', prima del pareggio e del sorpasso.","copertina":"/img/lavagna.jpg","confronto":[["Tiri",5,15],["Tiri in porta",4,5],["Possesso %",48,52],["Calci d'angolo",1,3],["Falli",13,10],["Gialli",3,4]]},
+    {"id":"europa-doppio","titolo":"In Europa segna uguale e subisce il doppio","occhiello":"Roma, stagione 2026/27","riassunto":"In Champions la Roma prende 2 gol a partita contro 1 in campionato.","testo":"In Serie A la Roma è imbattuta: 7 vittorie e 3 pareggi, 28 gol fatti e 10 subiti. In Champions ha 1 vittoria, 1 pareggio e 2 sconfitte, con 10 gol fatti e 8 subiti.\n\nL'attacco regge in tutte e due le competizioni. La differenza è dietro: in Champions la Roma prende 2 gol a partita contro 1 in campionato.","copertina":"/img/stadio.jpg","confronto":[]}
+  ]
+}
