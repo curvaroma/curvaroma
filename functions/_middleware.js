@@ -1,0 +1,64 @@
+// Titoli, descrizioni e contenuti leggibili da Google per ogni pagina.
+const BASE = "https://curvaroma.it";
+const PAGINE = {
+  "/": ["Curva Roma: notizie AS Roma, pagelle e tifosi romanisti", "Curva Roma è il sito dei tifosi della Roma: notizie sull'AS Roma, pagelle dei tifosi, vigilia delle partite, analisi e annunci. Sito non ufficiale. Forza Roma!"],
+  "/pagelle": ["Pagelle dei tifosi della Roma | Curva Roma", "Vota i giocatori dell'AS Roma dopo ogni partita e confronta il tuo voto con quello degli altri romanisti."],
+  "/vigilia": ["Vigilia della Roma: formazione e pronostico | Curva Roma", "La prossima partita della Roma: scegli la formazione dei tifosi e indovina il risultato."],
+  "/analisi": ["Analisi AS Roma: tattica e dati | Curva Roma", "Analisi tattiche e dati sulle partite e sui giocatori dell'AS Roma, scritte per i tifosi romanisti."],
+  "/biglietti": ["Annunci biglietti Roma tra tifosi | Curva Roma", "Bacheca di annunci tra tifosi della Roma. Biglietti e cambio intestatario solo sui canali ufficiali."],
+  "/tifosi-roma": ["Tifosi della Roma: la casa dei romanisti | Curva Roma", "Curva Roma è il sito indipendente della tifoseria della Roma: notizie, pagelle, analisi e partecipazione per tutti i romanisti. Forza Roma!"]
+};
+const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+async function contenuti(ctx) {
+  try {
+    const r = await ctx.env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'").first();
+    if (r) return JSON.parse(r.valore);
+  } catch {}
+  const f = await ctx.env.ASSETS.fetch(new URL("/contenuti.json", ctx.request.url));
+  return f.json();
+}
+const ldJson = o => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, "\\u003c")}</script>`;
+
+export async function onRequest(ctx) {
+  const { request: req } = ctx;
+  const url = new URL(req.url);
+  const percorso = url.pathname.replace(/\/$/, "") || "/";
+  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/admin") || url.pathname.startsWith("/img/") || !["GET", "HEAD"].includes(req.method)) return ctx.next();
+  if (percorso === "/sitemap.xml") {
+    const c = await contenuti(ctx);
+    const voci = [...Object.keys(PAGINE), ...(c.analisi || []).map(a => "/analisi/" + a.id)];
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${voci.map(v => `<url><loc>${BASE}${v === "/" ? "/" : v}</loc></url>`).join("\n")}\n</urlset>\n`;
+    return new Response(xml, { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
+  }
+  const dettaglio = percorso.match(/^\/analisi\/([\w-]+)$/);
+  if (!PAGINE[percorso] && !dettaglio) return ctx.next();
+  const c = await contenuti(ctx);
+  let [titolo, descrizione] = PAGINE[dettaglio ? "/analisi" : percorso] || [];
+  const dati = [{ "@context": "https://schema.org", "@type": "WebSite", name: "Curva Roma", url: BASE + "/", inLanguage: "it" }];
+  const articolo = dettaglio && (c.analisi || []).find(a => a.id === dettaglio[1]);
+  if (dettaglio && !articolo) return new Response("Pagina non trovata", { status: 404 });
+  if (articolo) {
+    titolo = `${articolo.titolo} | Curva Roma`; descrizione = articolo.riassunto || descrizione;
+    dati.push({ "@context": "https://schema.org", "@type": "Article", headline: articolo.titolo, description: articolo.riassunto, image: new URL(articolo.copertina || "/img/anteprima.jpg", BASE).href, inLanguage: "it", mainEntityOfPage: BASE + percorso, publisher: { "@type": "Organization", name: "Curva Roma", logo: { "@type": "ImageObject", url: BASE + "/img/icona-512.png" } } });
+  }
+  if (percorso === "/vigilia" && c.prossima?.inizio) dati.push({ "@context": "https://schema.org", "@type": "SportsEvent", name: `${c.prossima.casa}-${c.prossima.ospiti}`, startDate: c.prossima.inizio, sport: "Calcio", homeTeam: { "@type": "SportsTeam", name: c.prossima.casa }, awayTeam: { "@type": "SportsTeam", name: c.prossima.ospiti } });
+  const canonico = BASE + (percorso === "/" ? "/" : percorso);
+  const risposta = await ctx.env.ASSETS.fetch(new URL("/", url));
+  const articoli = (c.analisi || []).map(a => `<article class="articolo"><h2><a href="/analisi/${esc(a.id)}">${esc(a.titolo)}</a></h2><p class="nota">${esc(a.occhiello)}</p>${String(a.testo || "").split(/\n\s*\n/).map(t => `<p>${esc(t)}</p>`).join("")}</article>`).join("");
+  const out = new HTMLRewriter()
+    .on("title", { element: e => e.setInnerContent(titolo) })
+    .on('meta[name="description"]', { element: e => e.setAttribute("content", descrizione) })
+    .on('meta[property="og:title"]', { element: e => e.setAttribute("content", titolo) })
+    .on('meta[property="og:description"]', { element: e => e.setAttribute("content", descrizione) })
+    .on('meta[property="og:url"]', { element: e => e.setAttribute("content", canonico) })
+    .on('link[rel="canonical"]', { element: e => e.setAttribute("href", canonico) })
+    .on("head", { element: e => e.append(dati.map(ldJson).join(""), { html: true }) })
+    .on("#analisi-tutte", { element: e => e.setInnerContent(articoli, { html: true }) })
+    .transform(risposta);
+  const h = new Headers(out.headers);
+  h.set("content-type", "text/html; charset=utf-8");
+  h.set("cache-control", "public, max-age=0, must-revalidate");
+  if (url.hostname.endsWith(".pages.dev")) h.set("x-robots-tag", "noindex");
+  return new Response(out.body, { status: 200, headers: h });
+}

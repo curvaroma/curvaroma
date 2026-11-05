@@ -80,12 +80,15 @@ async function notizie(ctx) {
     return r.ok ? leggiFeed(t, await r.text()) : [];
   }));
   const tutte = risposte.flatMap(r => r.status === "fulfilled" ? r.value : []).sort((a, b) => b.data - a.data);
-  const viste = new Set(), perTestata = {};
-  const lista = tutte.filter(n => {
-    if (viste.has(n.url) || (perTestata[n.t] || 0) >= PER_TESTATA) return false;
-    viste.add(n.url); perTestata[n.t] = (perTestata[n.t] || 0) + 1;
-    return true;
-  }).slice(0, 24);
+  const viste = new Set(), gruppi = new Map();
+  for (const n of tutte) {
+    if (viste.has(n.url)) continue;
+    viste.add(n.url);
+    const g = gruppi.get(n.t) || [];
+    if (g.length < PER_TESTATA) { g.push(n); gruppi.set(n.t, g); }
+  }
+  const lista = [];
+  for (let i = 0; i < PER_TESTATA; i++) for (const g of gruppi.values()) if (g[i]) lista.push(g[i]);
   const fonti = Object.fromEntries(FEED.map(([t], i) => [t, risposte[i].status === "fulfilled" ? risposte[i].value.length : "errore"]));
   const risposta = new Response(JSON.stringify({ notizie: lista, fonti }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=600" } });
   if (lista.length) ctx.waitUntil(caches.default.put(chiave, risposta.clone()));
@@ -100,7 +103,7 @@ async function sha(testo) {
 async function pubblico(env) {
   const [c, p, i] = await env.DB.batch([
     env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'"),
-    env.DB.prepare("SELECT id, nome, link, foto, tipo FROM prodotti WHERE attivo=1 ORDER BY ordine, nome"),
+    env.DB.prepare("SELECT id, nome, link, foto, tipo, asin FROM prodotti WHERE attivo=1 ORDER BY ordine, nome"),
     env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='immagini'")
   ]);
   return json({
@@ -226,8 +229,9 @@ async function admin(ctx, p) {
     const c = await req.json();
     if (!/^https:\/\//.test(c.link || "") || !c.nome) return errore("Nome e link sono obbligatori");
     const foto = c.foto && /^(https:\/\/|\/api\/img\/)/.test(c.foto) ? c.foto : null;
-    await env.DB.prepare("INSERT INTO prodotti (id, nome, link, foto, tipo, attivo, ordine) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET nome=excluded.nome, link=excluded.link, foto=excluded.foto, tipo=excluded.tipo, attivo=excluded.attivo, ordine=excluded.ordine")
-      .bind(c.id || crypto.randomUUID(), String(c.nome).slice(0, 80), c.link, foto, c.tipo || "maglia", c.attivo ? 1 : 0, Number(c.ordine) || 0).run();
+    const asin = (c.link.match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/) || [])[1] || null;
+    await env.DB.prepare("INSERT INTO prodotti (id, nome, link, foto, tipo, attivo, ordine, asin) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET nome=excluded.nome, link=excluded.link, foto=excluded.foto, tipo=excluded.tipo, attivo=excluded.attivo, ordine=excluded.ordine, asin=excluded.asin")
+      .bind(c.id || crypto.randomUUID(), String(c.nome).slice(0, 80), c.link, foto, c.tipo || "maglia", c.attivo ? 1 : 0, Number(c.ordine) || 0, asin).run();
     return json({ ok: true });
   }
   if (p[0] === "annunci") {

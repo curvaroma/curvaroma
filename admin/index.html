@@ -102,7 +102,7 @@ const PAGINE = {
   },
   async annunci(v) {
     const { prodotti } = await api("prodotti");
-    const c = el("div", "card"); c.append(el("h2", "", "Annunci Amazon"), el("p", "nota", "Scrivi nome e link. Foto: usa solo immagini tue, incollandole con Ctrl+V o con Carica foto, oppure il link immagine dato dalla Creators API di Amazon. Non copiare foto dalle pagine Amazon: i termini lo vietano."));
+    const c = el("div", "card"); c.append(el("h2", "", "Annunci Amazon"), el("p", "nota", "Incolla il link completo creato con SiteStripe: se contiene il codice del prodotto, il sito prova a mostrare l'anteprima di Amazon. Se Amazon non la dà, esce il disegno. Puoi anche caricare foto tue con Ctrl+V o Carica foto."));
     const riga = p => {
       const r = el("div", "prod"), vis = el("div");
       const mostra = () => { vis.textContent = ""; if (p.foto) { const i = el("img"); i.src = p.foto; i.alt = ""; vis.append(i); } else vis.append(el("div", "manca", "Foto mancante")); };
