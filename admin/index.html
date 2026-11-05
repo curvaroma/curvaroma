@@ -167,6 +167,13 @@ const PAGINE = {
       const b = el("div", ""), i = el("img"); b.style.cssText = "display:grid;gap:8px"; i.src = scelte[k] || base; i.alt = ""; i.style.cssText = "width:100%;height:120px;object-fit:cover;border-radius:8px";
       b.append(el("b", "", t), i, tastoFile("Cambia immagine", async f => { const u = await carica(f); scelte[k] = u; await post("aspetto", scelte); i.src = u; }));
       if (scelte[k]) { const x = el("button", "az sec", "Rimetti originale"); x.onclick = async () => { delete scelte[k]; await post("aspetto", scelte); apri("immagini"); }; b.append(x); }
+      if (k === "testata") {
+        const l = el("label", "", "Intensità della foto"), r = el("input"), es = el("span", "conto");
+        r.type = "range"; r.min = 10; r.max = 100; r.step = 5; r.value = scelte.testataForza || 30; es.textContent = r.value + "%";
+        r.oninput = () => { es.textContent = r.value + "%"; };
+        r.onchange = async () => { scelte.testataForza = +r.value; await post("aspetto", scelte); es.textContent = r.value + "%, salvato"; };
+        l.append(r, es); b.append(l);
+      }
       g.append(b);
     }
     c.append(g); v.append(c);
