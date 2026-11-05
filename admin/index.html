@@ -81,12 +81,12 @@ const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
 const api = async (u, o = {}) => { const r = await fetch("/api/admin/" + u, o); const d = await r.json().catch(() => ({})); if (r.status === 401 && u !== "login") { entra(false); throw new Error("Accesso richiesto"); } if (!r.ok) throw new Error(d.errore || "Errore"); return d; };
 const post = (u, d, m = "POST") => api(u, { method: m, headers: { "content-type": "application/json" }, body: JSON.stringify(d) });
-const SCHEDE = [["traffico","Traffico"],["contenuti","Contenuti"],["post","Post Instagram"],["seo","SEO"],["partita","Partita e pagelle"],["vigilia","Vigilia"],["classifica","Classifica"],["annunci","Annunci Amazon"],["immagini","Immagini"],["biglietti","Biglietti"]];
+const SCHEDE = [["traffico","Traffico"],["contenuti","Contenuti"],["post","Post Instagram"],["seo","SEO"],["partita","Partita e pagelle"],["vigilia","Vigilia"],["tifosi","Classifica tifosi"],["classifica","Classifica Serie A"],["annunci","Annunci Amazon"],["immagini","Immagini"],["biglietti","Biglietti"]];
 const TIPI = { partita: "Analisi partita", stagione: "Analisi di stagione", focus: "Focus giocatore", extra: "Approfondimento" };
 const conta = t => (String(t || "").match(/\S+/g) || []).length;
 const oggi = () => new Date().toISOString().slice(0, 10);
 let C = null, ora = "traffico", sporco = false, aperto = null;
-const segna = () => { if (ora === "post" || ora === "seo") return; sporco = true; $("#barra-salva").hidden = false; $("#e-salva").textContent = "Modifiche da pubblicare"; };
+const segna = () => { if (["post", "seo", "tifosi"].includes(ora)) return; sporco = true; $("#barra-salva").hidden = false; $("#e-salva").textContent = "Modifiche da pubblicare"; };
 function campo(et, val, su, tipo = "text") {
   const l = el("label", "", et), i = el(tipo === "area" ? "textarea" : "input");
   if (tipo !== "area") i.type = tipo;
@@ -276,6 +276,24 @@ const PAGINE = {
     sc.append(t); cc.append(el("h2", "", "Controllo contenuti"), sc); if (!C.analisi.length) cc.append(el("p", "nota", "Nessun contenuto.")); v.append(cc);
     const bb = el("div", "riga"); sv.onclick = async () => { try { for (const u of Object.keys(seo.pagine)) if (!seo.pagine[u].titolo && !seo.pagine[u].descrizione) delete seo.pagine[u]; await post("seo", seo); es.textContent = "Salvato"; } catch (e) { es.textContent = e.message; } };
     bb.append(sv, es); v.append(bb);
+  },
+  async tifosi(v) {
+    const { partite, nomi } = await api("tifosi");
+    const c = el("div", "card"); c.append(el("h2", "", "Risultati per la classifica"), el("p", "nota", "Quando una partita finisce, scrivi il risultato: i punti si assegnano da soli."));
+    if (!partite.length) c.append(el("p", "nota", "Ancora nessun pronostico."));
+    for (const p of partite) {
+      const qui = p.partita === C.prossima.id, r = el("div", ""), e = el("span", "esito"); r.style.cssText = "display:grid;gap:8px;border-top:1px solid var(--linea);padding-top:12px";
+      const nome = p.nome || (qui ? `${C.prossima.casa}-${C.prossima.ospiti}` : p.partita), g = el("div", "griglia");
+      const a = el("label", "", "Gol casa"), ia = el("input"), b = el("label", "", "Gol ospiti"), ib = el("input");
+      for (const [i, val, lab] of [[ia, p.casa, a], [ib, p.ospiti, b]]) { i.type = "number"; i.min = 0; i.max = 30; i.value = val ?? ""; lab.append(i); g.append(lab); }
+      const sv = el("button", "az", p.nome ? "Correggi risultato" : "Chiudi la partita"), riga = el("div", "riga");
+      sv.onclick = async () => { if (ia.value === "" || ib.value === "") { e.textContent = "Scrivi il risultato"; return; } try { await post("risultato", { partita: p.partita, nome, casa: +ia.value, ospiti: +ib.value }); e.textContent = "Punti assegnati"; sv.textContent = "Correggi risultato"; } catch (x) { e.textContent = x.message; } };
+      riga.append(sv, e); r.append(el("b", "", nome), el("span", "nota", `${p.pronostici} ${p.pronostici === 1 ? "pronostico" : "pronostici"}`), g, riga); c.append(r);
+    }
+    v.append(c);
+    const n = el("div", "card"); n.append(el("h2", "", `Nomi dei tifosi: ${nomi.length}`), el("p", "nota", "Rimuovi i nomi offensivi: il tifoso potrà sceglierne un altro."));
+    for (const x of nomi) { const r = el("div", "voce"), b = el("button", "az pericolo", "Rimuovi"); b.onclick = async () => { if (window.confirm(`Rimuovere ${x}?`)) { await api("tifosi/" + encodeURIComponent(x), { method: "DELETE" }); r.remove(); } }; r.append(el("span", "", x), b); n.append(r); }
+    v.append(n);
   },
   classifica(v) {
     const c = el("div", "card"); c.append(el("h2", "", "Classifica e ultime cinque"));

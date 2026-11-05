@@ -213,6 +213,8 @@ p{margin:0}
 .testo-pub strong{font-weight:600;line-height:1.25}
 .testo-pub small{color:var(--accento);font-weight:600}
 .lato{display:none}
+.nome-form input{font:inherit;color:var(--testo);background:var(--superficie);border:1px solid var(--muto);border-radius:10px;min-height:48px;padding:8px 12px;width:100%}
+.classifica tr.noi td{font-weight:700;color:var(--accento)}
 [data-annuncio]:empty{display:none}
 .apertura{display:grid;gap:6px}
 .apertura h1{font:900 1.5rem/1.1 var(--display)}
@@ -365,6 +367,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
           <p class="conto c-conto" role="timer"></p>
         </div>
         <div data-pronostico></div>
+        <div class="lista" data-podio></div>
         <a class="bottone" href="/vigilia">Scegli la tua formazione</a>
       </div>
     </section>
@@ -423,6 +426,13 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
         <p data-nota-gara></p>
         <div data-pronostico></div>
       </div>
+    </section>
+    <div class="in" data-annuncio></div>
+    <section class="sezione in">
+      <h2 class="striscione">Classifica tifosi</h2>
+      <p class="nota">Risultato esatto 5 punti, segno giusto 2. Il pronostico si chiude al calcio d'inizio.</p>
+      <div id="classifica-tifosi" class="lista"></div>
+      <div data-nome></div>
     </section>
     <div class="in" data-annuncio></div>
     <section class="sezione in">
@@ -566,7 +576,7 @@ function lineaGol() {
 function pronosticoHtml() {
   const nomi = [C.prossima.casa, C.prossima.ospiti];
   const blocco = (nome, k) => { const a = String(nome).replace(/[<>&"]/g, ""); return `<div><span>${a}</span><div class="passo"><button type="button" data-p="${k}" data-d="-1" aria-label="Un gol in meno a ${a}">−</button><output class="p-${k}">0</output><button type="button" data-p="${k}" data-d="1" aria-label="Un gol in più a ${a}">+</button></div></div>`; };
-  tutti("[data-pronostico]").forEach(b => b.innerHTML = `<div class="lista"><p style="font-weight:600">Indovina il risultato</p><div class="pronostico">${blocco(nomi[0],"casa")}${blocco(nomi[1],"ospiti")}</div><button class="bottone vuoto salva-pron" type="button">Salva il risultato</button><p class="esito esito-pron" role="status"></p></div>`);
+  tutti("[data-pronostico]").forEach(b => b.innerHTML = `<div class="lista"><p style="font-weight:600">Indovina il risultato</p><div class="pronostico">${blocco(nomi[0],"casa")}${blocco(nomi[1],"ospiti")}</div><button class="bottone vuoto salva-pron" type="button">Salva il risultato</button><p class="esito esito-pron" role="status"></p><div data-nome></div></div>`);
 }
 function tabellini() {
   const riga = (nome, gol) => {
@@ -827,6 +837,10 @@ function mazzo(box, dir) {
     medie().slice(0, 3).forEach(x => lista.append(barra(x)));
     c.append(lista);
     if (avvisoVoti) c.append(el("p", "nota", avvisoVoti));
+    if (Object.keys(stato.pagella).length) {
+      const st = el("button", "bottone pieno", "Condividi in Storia"); st.type = "button"; st.onclick = () => condividiPagella(st);
+      const av = el("p", "nota esito-storia", "Aggiungi il link curvaroma.it alla Storia."); c.append(st, av);
+    }
     if (home) { const a = el("a", "bottone pieno", "Vedi tutte le pagelle"); a.href = "/pagelle"; c.append(a); }
     const b = el("button", "bottone vuoto", "Cambia i tuoi voti"); b.type = "button"; b.style.color = "var(--testo)";
     b.onclick = () => { rivedi = true; indice = 0; modifiche = true; mazzi(1); };
@@ -891,7 +905,100 @@ function risultati() {
 }
 
 /* Pronostico */
-function disegnaPronostico() { tutti(".p-casa").forEach(n => n.textContent = stato.pronostico.casa); tutti(".p-ospiti").forEach(n => n.textContent = stato.pronostico.ospiti); }
+function disegnaPronostico() {
+  tutti(".p-casa").forEach(n => n.textContent = stato.pronostico.casa); tutti(".p-ospiti").forEach(n => n.textContent = stato.pronostico.ospiti);
+  const chiuso = Date.now() >= CALCIO_INIZIO;
+  tutti("[data-p], .salva-pron").forEach(b => b.disabled = chiuso);
+  tutti(".salva-pron").forEach(b => b.textContent = chiuso ? "Pronostici chiusi" : "Salva il risultato");
+}
+
+/* Classifica dei tifosi */
+let tifosi = null;
+const haPronostico = () => !!mioDoc.pronostico?.[PROSSIMA];
+async function caricaClassifica() {
+  try { const r = await fetch("/api/classifica"); if (r.ok) { tifosi = await r.json(); disegnaClassifica(); } } catch {}
+}
+function formaNome(box, esplicita) {
+  box.textContent = "";
+  if (!tifosi) return;
+  if (tifosi.io.nome) { if (esplicita) box.append(el("p", "nota", `In classifica sei ${tifosi.io.nome}.`)); return; }
+  if (esplicita === haPronostico()) return;
+  const f = el("form", "nome-form lista"), l = el("label", "campo-form", "Il tuo nome in classifica"), i = el("input"), b = el("button", "bottone pieno", "Entra in classifica"), e = el("p", "esito");
+  i.name = "nome"; i.maxLength = 20; i.minLength = 3; i.required = true; i.autocomplete = "nickname"; e.setAttribute("role", "status");
+  l.append(i); f.append(l, b, e); box.append(f);
+}
+function disegnaClassifica() {
+  if (!tifosi) return;
+  tutti("[data-nome]").forEach(b => formaNome(b, !!b.closest(".sezione")));
+  const box = $("#classifica-tifosi"); box.textContent = "";
+  if (tifosi.righe.length) {
+    const t = el("table", "classifica"), b = el("tbody");
+    for (const x of tifosi.righe) { const r = el("tr", x.nome === tifosi.io.nome ? "noi" : ""); r.append(el("td", "", x.pos), el("td", "", x.nome), el("td", "", `${x.punti} pt`)); b.append(r); }
+    t.append(b); box.append(t);
+  } else box.append(el("p", "vuoto-box", "La classifica parte con la prima partita chiusa. Fai il tuo pronostico."));
+  const mio = tifosi.io.riga;
+  if (mio && !tifosi.righe.some(x => x.nome === mio.nome)) box.append(el("p", "nota", `Sei ${mio.pos}° con ${mio.punti} punti.`));
+  if (tifosi.ultima) box.append(el("p", "nota", `Ultima partita chiusa: ${tifosi.ultima.nome} ${tifosi.ultima.casa}-${tifosi.ultima.ospiti}.`));
+  tutti("[data-podio]").forEach(p => {
+    p.textContent = "";
+    const top = tifosi.righe.slice(0, 3);
+    p.append(el("p", "", top.length ? `In testa: ${top.map(x => `${x.pos}. ${x.nome} ${x.punti} pt`).join(", ")}` : "Indovina il risultato e scala la classifica dei tifosi."));
+  });
+}
+document.addEventListener("submit", async e => {
+  const f = e.target.closest(".nome-form"); if (!f) return;
+  e.preventDefault();
+  const esito = f.querySelector(".esito"), b = f.querySelector("button");
+  b.disabled = true; esito.textContent = "";
+  try {
+    const r = await fetch("/api/nome", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ nome: f.elements.nome.value }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.errore || "Non salvato. Riprova tra poco.");
+    await caricaClassifica();
+  } catch (x) { esito.textContent = x.message; b.disabled = false; }
+});
+
+/* La tua pagella da condividere */
+async function immaginePagella() {
+  await Promise.all([document.fonts.load('900 60px "Big Shoulders Display"'), document.fonts.load('600 40px "Libre Franklin"')]);
+  const carica = u => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = u; });
+  const [foto, logo] = await Promise.all([carica("/img/tifosi-800.webp"), carica("/img/logo-chiaro.webp")]);
+  const t = el("canvas"); t.width = 1080; t.height = 1920;
+  const g = t.getContext("2d"), TIT = '"Big Shoulders Display",Impact,sans-serif', TES = '"Libre Franklin",Arial,sans-serif';
+  const voti = TITOLARI.filter(([n]) => stato.pagella[n] != null);
+  g.fillStyle = "#5F0E24"; g.fillRect(0, 0, 1080, 1920);
+  const k = Math.max(1080 / foto.width, 520 / foto.height), sw = 1080 / k, sh = 520 / k;
+  g.drawImage(foto, (foto.width - sw) / 2, (foto.height - sh) * .6, sw, sh, 0, 0, 1080, 520);
+  g.fillStyle = "rgba(43,10,21,.78)"; g.fillRect(0, 0, 1080, 520);
+  g.font = `900 92px ${TIT}`; const ln = g.measureText("CURVA ROMA").width, x0 = (1080 - 210 - 22 - ln) / 2;
+  g.drawImage(logo, x0, 232, 210, 210 * logo.height / logo.width);
+  g.fillStyle = "#FFF6F0"; g.fillText("CURVA ROMA", x0 + 232, 306);
+  g.fillStyle = "#F0BC42"; g.textAlign = "center"; g.font = `900 124px ${TIT}`; g.fillText("LA MIA PAGELLA", 540, 462); g.textAlign = "left";
+  g.fillStyle = "#8E1F2F"; g.fillRect(0, 520, 1080, 980);
+  const p = C.partita, gara = `${p.casa} ${p.golCasa}-${p.golOspiti} ${p.ospiti}`;
+  g.fillStyle = "#FFF6F0"; g.textAlign = "center"; g.font = `900 66px ${TIT}`; g.fillText(gara.toUpperCase(), 540, 600); g.textAlign = "left";
+  const passo = Math.min(76, 840 / Math.max(voti.length, 1));
+  voti.forEach(([n], i) => {
+    const y = 680 + i * passo;
+    g.fillStyle = "#FFF6F0"; g.font = `600 ${Math.min(44, passo * .6)}px ${TES}`; g.fillText(n, 70, y);
+    g.fillStyle = "#F0BC42"; g.textAlign = "right"; g.font = `900 ${Math.min(62, passo * .84)}px ${TIT}`; g.fillText(virgola(stato.pagella[n]), 1010, y + 3); g.textAlign = "left";
+  });
+  g.fillStyle = "#FFF6F0"; g.font = `600 40px ${TES}`; g.textAlign = "center"; g.fillText("E tu che voti dai?", 540, 1566);
+  g.fillStyle = "#F0BC42"; g.font = `900 62px ${TIT}`; const ls = g.measureText("curvaroma.it").width; g.fillRect(540 - ls / 2 - 28, 1594, ls + 56, 88);
+  g.fillStyle = "#2B0A15"; g.fillText("curvaroma.it", 540, 1658);
+  g.fillStyle = "#FFF6F0"; g.font = `600 24px ${TES}`; g.fillText("Sito di tifosi non ufficiale", 540, 1722);
+  return new Promise((ok, no) => t.toBlob(b => b ? ok(b) : no(new Error("immagine")), "image/jpeg", .9));
+}
+async function condividiPagella(b) {
+  const testo = b.textContent; b.disabled = true; b.textContent = "Preparo la Storia…";
+  try {
+    const blob = await immaginePagella(), file = new File([blob], "la-mia-pagella-curvaroma.jpg", { type: "image/jpeg" });
+    navigator.sendBeacon?.("/api/visita", new Blob([JSON.stringify({ sezione: "storia", mobile: innerWidth < 900 })], { type: "application/json" }));
+    if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file] });
+    else { const a = el("a"); a.href = URL.createObjectURL(blob); a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3e4); }
+  } catch (x) { if (x?.name !== "AbortError") b.closest(".scheda")?.querySelector(".esito-storia")?.replaceChildren("Non riuscita. Riprova tra poco."); }
+  b.disabled = false; b.textContent = testo;
+}
 function esitoPronostico() {
   if (riepilogo) { const q = riepilogo.pronostico; if (q) tutti(".esito-pron").forEach(n => n.textContent = `Il risultato più scelto è ${q.casa}-${q.ospiti}, con ${q.n === 1 ? "1 tifoso" : q.n + " tifosi"}.`); return; }
   const conti = {};
@@ -1009,7 +1116,7 @@ document.addEventListener("click", e => {
 document.addEventListener("click", async e => {
   const p = e.target.closest("[data-p]");
   if (p) { const k = p.dataset.p; stato.pronostico[k] = Math.min(9, Math.max(0, stato.pronostico[k] + Number(p.dataset.d))); disegnaPronostico(); return; }
-  if (e.target.closest(".salva-pron")) { let t; try { t = conferma(await salva("pronostico", PROSSIMA, { ...stato.pronostico })); } catch { t = "Non salvato. Riprova tra poco."; } tutti(".esito-pron").forEach(n => n.textContent = t); }
+  if (e.target.closest(".salva-pron")) { let t; try { t = conferma(await salva("pronostico", PROSSIMA, { ...stato.pronostico })); } catch { t = "Non salvato. Riprova tra poco."; } tutti(".esito-pron").forEach(n => n.textContent = t); disegnaClassifica(); }
 });
 $("#salva-formazione").onclick = async () => { let t; try { t = conferma(await salva("formazione", PROSSIMA, [...stato.formazione])); modifiche = false; } catch { t = "Non salvata. Riprova tra poco."; } $("#esito-formazione").textContent = t; };
 
@@ -1027,7 +1134,7 @@ function applica(p) {
   contenuti(); conto();
   caricaMio(leggiLocale()); if (Object.keys(mioDoc).length) righe = [mioDoc];
   try { mieiAnnunci = annunciValidi({ lista: JSON.parse(localStorage.getItem("vr-annunci") || "[]") }); annunciTutti = mieiAnnunci.map(a => ({ ...a, mio: true })); } catch {}
-  disegnaPronostico(); disegnaCampo(); disegnaRosa(); risultati(); xiTifosi(); bacheca(); vai();
+  disegnaPronostico(); disegnaCampo(); disegnaRosa(); risultati(); xiTifosi(); bacheca(); vai(); caricaClassifica();
 }
 (async () => {
   let p = { contenuti: null, prodotti: [], immagini: {} };

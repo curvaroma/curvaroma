@@ -133,7 +133,7 @@ async function immagine(env, id) {
 async function visita(ctx) {
   const { request: req, env } = ctx;
   const c = await req.json().catch(() => ({}));
-  const sezione = ["casa", "pagella", "vigilia", "analisi", "biglietti"].includes(c.sezione) ? c.sezione : "altro";
+  const sezione = ["casa", "pagella", "vigilia", "analisi", "biglietti", "storia"].includes(c.sezione) ? c.sezione : "altro";
   const dispositivo = c.mobile ? "mobile" : "computer", g = giorno();
   const impronta = (await sha(`${g}|${req.headers.get("cf-connecting-ip")}|${req.headers.get("user-agent")}`)).slice(0, 24);
   ctx.waitUntil(env.DB.batch([
@@ -148,6 +148,48 @@ async function clic(ctx) {
   if (typeof c.prodotto !== "string" || c.prodotto.length > 60) return new Response(null, { status: 204 });
   ctx.waitUntil(ctx.env.DB.prepare("INSERT INTO clic (giorno, prodotto, n) SELECT ?, id, 1 FROM prodotti WHERE id=? ON CONFLICT DO UPDATE SET n=n+1").bind(giorno(), c.prodotto).run());
   return new Response(null, { status: 204 });
+}
+
+/* Classifica dei pronostici: 5 punti al risultato esatto, 2 al segno giusto. */
+const PUNTI = `CASE WHEN p.casa=r.casa AND p.ospiti=r.ospiti THEN 5
+  WHEN (p.casa>p.ospiti)-(p.casa<p.ospiti)=(r.casa>r.ospiti)-(r.casa<r.ospiti) THEN 2 ELSE 0 END`;
+const VIETATI = ["admin", "curvaroma", "asroma", "ufficiale", "moderator", "stronz", "cazz", "merd", "vaffa", "coglion", "puttan", "troia", "negro", "frocio", "ebreo", "mussolini", "hitler", "duce", "nazi"];
+async function classifica(env, id) {
+  const [l, u, io] = await env.DB.batch([
+    env.DB.prepare(`SELECT t.tifoso_id, t.nickname nome, SUM(${PUNTI}) punti, SUM(p.casa=r.casa AND p.ospiti=r.ospiti) esatti, COUNT(*) giocate
+      FROM tifosi t JOIN pronostici p ON p.tifoso_id=t.tifoso_id JOIN risultati r ON r.partita=p.partita
+      GROUP BY t.tifoso_id ORDER BY punti DESC, esatti DESC, giocate ASC, t.creato ASC LIMIT 1000`),
+    env.DB.prepare("SELECT nome, casa, ospiti FROM risultati ORDER BY creato DESC LIMIT 1"),
+    env.DB.prepare("SELECT nickname FROM tifosi WHERE tifoso_id=?").bind(id || "")
+  ]);
+  let pos = 0, prima = null;
+  const righe = l.results.map((r, i) => {
+    const chiave = `${r.punti}|${r.esatti}`;
+    if (chiave !== prima) { pos = i + 1; prima = chiave; }
+    return { ...r, pos };
+  });
+  const mio = righe.find(r => r.tifoso_id === id);
+  const pulita = ({ tifoso_id, ...r }) => r;
+  return {
+    righe: righe.slice(0, 20).map(pulita),
+    ultima: u.results[0] || null,
+    io: { nome: io.results[0]?.nickname || null, riga: mio ? pulita(mio) : null }
+  };
+}
+async function scegliNome(ctx, id, c, fine) {
+  const { request: req, env } = ctx;
+  const n = String(c.nome || "").trim().replace(/\s+/g, " ");
+  if (!/^[\p{L}\p{N}][\p{L}\p{N} ._-]{2,19}$/u.test(n)) return fine({ errore: "Usa da 3 a 20 tra lettere e numeri" }, 400);
+  const piano = n.toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g, "");
+  if (VIETATI.some(v => piano.includes(v))) return fine({ errore: "Questo nome non si può usare" }, 400);
+  const ora = Date.now(), ip = (await sha("nome|" + req.headers.get("cf-connecting-ip"))).slice(0, 24);
+  const t = await env.DB.prepare("SELECT n, scade FROM tentativi WHERE impronta=?").bind(ip).first();
+  if (t && t.scade > ora && t.n >= 10) return fine({ errore: "Troppi tentativi. Riprova domani." }, 429);
+  await env.DB.prepare("INSERT INTO tentativi (impronta, n, scade) VALUES (?,1,?) ON CONFLICT(impronta) DO UPDATE SET n=CASE WHEN scade>? THEN n+1 ELSE 1 END, scade=CASE WHEN scade>? THEN scade ELSE excluded.scade END").bind(ip, ora + 864e5, ora, ora).run();
+  const preso = await env.DB.prepare("SELECT tifoso_id FROM tifosi WHERE nickname=?").bind(n).first("tifoso_id");
+  if (preso && preso !== id) return fine({ errore: "Nome già preso" }, 409);
+  await env.DB.prepare("INSERT INTO tifosi (tifoso_id, nickname) VALUES (?,?) ON CONFLICT(tifoso_id) DO UPDATE SET nickname=excluded.nickname").bind(id, n).run();
+  return fine({ ok: true, nome: n });
 }
 
 /* Pannello admin. La password sta nella variabile segreta ADMIN_PASSWORD del progetto Pages. */
@@ -204,6 +246,26 @@ async function admin(ctx, p) {
     const c = JSON.parse(testo);
     if (!c.partita?.id || !c.prossima?.id || !Array.isArray(c.classifica)) return errore("Contenuti non validi");
     await env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('contenuti',?) ON CONFLICT DO UPDATE SET valore=excluded.valore, aggiornato=CURRENT_TIMESTAMP").bind(testo).run();
+    return json({ ok: true });
+  }
+  if (p[0] === "tifosi") {
+    if (req.method === "GET") {
+      const [a, b] = await env.DB.batch([
+        env.DB.prepare(`SELECT p.partita, COUNT(*) pronostici, r.nome, r.casa, r.ospiti FROM pronostici p LEFT JOIN risultati r ON r.partita=p.partita GROUP BY p.partita ORDER BY MAX(p.creato) DESC LIMIT 60`),
+        env.DB.prepare("SELECT nickname FROM tifosi ORDER BY creato DESC LIMIT 500")
+      ]);
+      return json({ partite: a.results, nomi: b.results.map(x => x.nickname) });
+    }
+    if (req.method === "DELETE") {
+      await env.DB.prepare("DELETE FROM tifosi WHERE nickname=?").bind(decodeURIComponent(p[1] || "")).run();
+      return json({ ok: true });
+    }
+  }
+  if (p[0] === "risultato") {
+    if (req.method === "DELETE") { await env.DB.prepare("DELETE FROM risultati WHERE partita=?").bind(p[1] || "").run(); return json({ ok: true }); }
+    const c = await req.json();
+    if (!idPartita(c.partita) || ![c.casa, c.ospiti].every(n => Number.isInteger(n) && n >= 0 && n <= 30)) return errore("Risultato non valido");
+    await env.DB.prepare("INSERT INTO risultati (partita, nome, casa, ospiti) VALUES (?,?,?,?) ON CONFLICT(partita) DO UPDATE SET nome=excluded.nome, casa=excluded.casa, ospiti=excluded.ospiti").bind(c.partita, String(c.nome || c.partita).slice(0, 60), c.casa, c.ospiti).run();
     return json({ ok: true });
   }
   if (p[0] === "seo") {
@@ -281,6 +343,7 @@ export async function onRequest(ctx) {
       if (!idPartita(p) || !idPartita(q)) return errore("Partita non valida");
       return json(await stato(env, id, p, q));
     }
+    if (req.method === "GET" && percorso[0] === "classifica") return json(await classifica(env, id));
     if (req.method !== "POST" && req.method !== "DELETE") return errore("Metodo non consentito", 405);
     const origine = req.headers.get("origin");
     if (origine && new URL(origine).host !== url.host) return errore("Origine non valida", 403);
@@ -306,9 +369,15 @@ export async function onRequest(ctx) {
     }
     if (percorso[0] === "pronostico") {
       if (!idPartita(c.partita) || ![c.casa, c.ospiti].every(n => Number.isInteger(n) && n >= 0 && n <= 9)) return errore("Risultato non valido");
+      const riga = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'").first("valore");
+      if (riga) {
+        const { prossima } = JSON.parse(riga);
+        if (c.partita !== prossima?.id || Date.now() >= Date.parse(prossima?.inizio)) return fine({ errore: "Pronostici chiusi" }, 409);
+      }
       await env.DB.prepare("INSERT OR REPLACE INTO pronostici (tifoso_id, partita, casa, ospiti) VALUES (?,?,?,?)").bind(id, c.partita, c.casa, c.ospiti).run();
       return fine({ ok: true });
     }
+    if (percorso[0] === "nome") return scegliNome(ctx, id, c, fine);
     if (percorso[0] === "formazione") {
       if (!idPartita(c.partita) || !Array.isArray(c.giocatori) || c.giocatori.length !== 11 || !c.giocatori.every(nome)) return errore("Formazione non valida");
       await env.DB.prepare("INSERT OR REPLACE INTO formazioni (tifoso_id, partita, giocatori) VALUES (?,?,?)").bind(id, c.partita, JSON.stringify(c.giocatori)).run();
