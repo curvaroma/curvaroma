@@ -6,7 +6,7 @@
 <title>Curva Roma: notizie AS Roma, pagelle e tifosi romanisti</title>
 <meta name="description" content="Curva Roma è il sito dei tifosi della Roma: notizie sull'AS Roma, pagelle dei tifosi, vigilia delle partite, analisi e annunci. Sito non ufficiale. Forza Roma!">
 <link rel="canonical" href="https://curvaroma.it/">
-<meta name="theme-color" content="#8E1F2F">
+<meta name="theme-color" content="#1E0B12">
 <link rel="icon" href="/img/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/img/icona-180.png">
 <meta property="og:type" content="website">
@@ -25,23 +25,17 @@
 @font-face{font-family:"Libre Franklin";font-weight:400 500;font-display:swap;src:url(/fonts/testo-400.woff2) format("woff2")}
 @font-face{font-family:"Libre Franklin";font-weight:600;font-display:swap;src:url(/fonts/testo-600.woff2) format("woff2")}
 @font-face{font-family:"Libre Franklin";font-weight:700;font-display:swap;src:url(/fonts/testo-700.woff2) format("woff2")}
-/* Layout: una colonna da telefono. Roma vera: Colosseo al tramonto in testata, curva e stadio dietro le sezioni, sciarpa che scorre, striscioni come titoli. */
+/* Layout: una colonna da telefono. Notte allo stadio: fondo scuro, curva nell'apertura, punteggi come sul tabellone. */
 :root{
   --banda:#8E1F2F; --banda-scura:#5F0E24; --giallo:#F0BC42; --su-banda:#FFF6F0;
-  --fondo:#F7F1F2; --superficie:#FFFFFF; --testo:#2B0A15; --muto:#6F5560; --linea:#E6D6DA;
-  --accento:#8E1F2F; --su-accento:#FFFFFF; --campo:#6E1229; --campo2:#7A1630;
+  --fondo:#1E0B12; --superficie:#2A1019; --rilievo:#14060A; --testo:#FFF6F0; --muto:#CDB8BF; --linea:rgba(255,246,240,.13);
+  --accento:#F0BC42; --su-accento:#2B0A15; --campo:#6E1229; --campo2:#7A1630; --vedi-rosso:none; --vedi-crema:block; color-scheme:dark;
   --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
   --corpo:"Libre Franklin","Helvetica Neue",Arial,sans-serif;
   --molla:cubic-bezier(.2,.9,.3,1.25); --dolce:cubic-bezier(.2,.8,.2,1);
   --archi:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='64'%3E%3Cpath fill='%23FFF6F0' fill-opacity='.09' d='M0 64V0h60v64h-7V30a23 23 0 0 0-46 0v34z'/%3E%3C/svg%3E");
   --sanpietrini:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cg fill='%238E1F2F' fill-opacity='.06'%3E%3Crect x='1' y='1' width='18' height='18' rx='3'/%3E%3Crect x='21' y='1' width='18' height='18' rx='3'/%3E%3Crect x='-9' y='21' width='18' height='18' rx='3'/%3E%3Crect x='11' y='21' width='18' height='18' rx='3'/%3E%3Crect x='31' y='21' width='18' height='18' rx='3'/%3E%3C/g%3E%3C/svg%3E");
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --fondo:#1E0B12; --superficie:#2C1019; --testo:#F8EDEF; --muto:#C3A6AE; --linea:#4A2531;
-  --accento:#F0BC42; --su-accento:#2B0A15; --vedi-rosso:none; --vedi-crema:block; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --fondo:#1E0B12; --superficie:#2C1019; --testo:#F8EDEF; --muto:#C3A6AE; --linea:#4A2531;
-  --accento:#F0BC42; --su-accento:#2B0A15; --vedi-rosso:none; --vedi-crema:block; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{margin:0;background:var(--fondo);color:var(--testo);font:400 16px/1.5 var(--corpo);padding-bottom:calc(84px + env(safe-area-inset-bottom,0px));overflow-x:clip}
@@ -64,22 +58,19 @@ p{margin:0}
 .su-chiaro{display:var(--vedi-rosso,block)}
 .su-scuro{display:var(--vedi-crema,none)}
 .logo-piede{width:132px;height:auto}
-.timbro{width:92px;height:auto;flex:none}
 .cornice{position:relative;display:block}
-.cornice .timbro{position:absolute;right:10px;bottom:10px;width:84px;filter:drop-shadow(0 2px 4px rgba(14,8,26,.8))}
 
 /* Viste e sezioni */
 .vista{display:grid;gap:34px;padding-bottom:30px}
 .sezione{display:grid;gap:14px;min-width:0}
-.striscione{justify-self:start;background:var(--accento);color:var(--su-accento);font:900 1.75rem/1 var(--display);padding:8px 16px 9px;clip-path:polygon(0 4%,100% 0,98.5% 96%,1% 100%);margin-left:-4px}
-.su-banda .striscione{background:var(--giallo);color:#2B0A15}
+.striscione{font:900 2.15rem/1 var(--display);text-transform:uppercase;color:var(--testo)}
+h1.striscione{font-size:2.9rem}
 .fila{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .nota{font-size:.9rem;color:var(--muto)}
 .legami{font-size:.95rem;font-weight:600;color:var(--accento)}
-.fascia{background:linear-gradient(180deg,rgba(43,10,21,.5),rgba(95,14,36,.93) 52%,var(--banda) 100%),var(--img-pagelle,url("/img/curva.jpg")) top center/cover no-repeat var(--banda);color:var(--su-banda)}
+.fascia{background:linear-gradient(rgba(20,6,10,.84),rgba(20,6,10,.94)),var(--img-pagelle,none) center/cover,var(--rilievo);border-block:1px solid rgba(240,188,66,.2);color:var(--testo)}
 .fascia .in{display:grid;gap:14px;padding-block:22px 26px}
-.fascia .nota{color:var(--su-banda)}
-.fascia-vigilia{background:linear-gradient(180deg,rgba(14,8,26,.45),rgba(43,10,21,.93) 56%,var(--banda-scura) 100%),var(--img-vigilia,url("/img/stadio.jpg")) top center/cover no-repeat var(--banda-scura)}
+.fascia-vigilia{background:linear-gradient(rgba(20,6,10,.84),rgba(20,6,10,.94)),var(--img-vigilia,none) center/cover,var(--rilievo)}
 .copertina{display:block;width:100%;aspect-ratio:2.1;object-fit:cover;border-radius:10px}
 
 /* Bottoni */
@@ -97,7 +88,6 @@ p{margin:0}
 .foto img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
 .foto::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,transparent 45%,rgba(43,10,21,.85))}
 .foto span{position:relative;z-index:2}
-.foto::after{content:"";position:absolute;z-index:2;top:10px;right:10px;width:64px;height:24px;background:url("/img/logo-chiaro.png") center/contain no-repeat;filter:drop-shadow(0 1px 3px rgba(14,8,26,.8))}
 .foto{position:relative;height:150px;display:flex;align-items:flex-end;padding:12px 14px;background:linear-gradient(180deg,transparent 45%,rgba(43,10,21,.85)),url("/img/curva.jpg") center/cover;color:var(--giallo);font:800 1.4rem/1 var(--display)}
 .notizia:nth-child(3n+2) .foto{background-image:linear-gradient(180deg,transparent 45%,rgba(43,10,21,.85)),url("/img/stadio.jpg")}
 .notizia:nth-child(3n) .foto{background-image:linear-gradient(180deg,transparent 45%,rgba(43,10,21,.85)),url("/img/colosseo.jpg")}
@@ -108,8 +98,6 @@ p{margin:0}
   @media (prefers-reduced-motion:no-preference){
     @keyframes entra-lato{from{scale:.92;opacity:.55}}
     .notizia{animation:entra-lato linear backwards;animation-timeline:view(inline);animation-range:entry 0% entry 100%}
-    @keyframes sale{from{opacity:.65;translate:0 18px}}
-    .compare{animation:sale linear backwards;animation-timeline:view();animation-range:entry 0% entry 40%}
   }
 }
 
@@ -220,9 +208,9 @@ p{margin:0}
 body[data-vista="casa"] .testata{position:absolute;inset:0 0 auto;z-index:3;background:none}
 body[data-vista="casa"] .foto-testata{display:none}
 body:not([data-vista="casa"]) .eroe{display:none}
-.eroe{position:relative;isolation:isolate;display:flex;align-items:flex-end;min-height:min(calc(100svh - 84px - env(safe-area-inset-bottom,0px)),820px);overflow:hidden;background:#2B0A15;color:var(--su-banda)}
+.eroe{position:relative;isolation:isolate;display:flex;align-items:flex-end;min-height:min(calc(100svh - 84px - env(safe-area-inset-bottom,0px)),820px);overflow:hidden;background:var(--fondo);color:var(--su-banda)}
 .eroe-foto{position:absolute;inset:auto 0 0;z-index:-2;width:100%;height:128%;object-fit:cover;object-position:56% 100%;animation:eroe-foto 1.6s var(--dolce) both}
-.eroe::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(43,10,21,.7) 0,rgba(43,10,21,.1) 20%,rgba(43,10,21,.58) 46%,rgba(43,10,21,.95) 66%,#2B0A15 100%)}
+.eroe::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(43,10,21,.7) 0,rgba(43,10,21,.1) 20%,rgba(43,10,21,.58) 46%,rgba(30,11,18,.96) 66%,var(--fondo) 100%)}
 @keyframes eroe-foto{from{transform:scale(1.07)}to{transform:none}}
 .eroe-in{width:100%;max-width:640px;margin-inline:auto;padding:96px 16px 18px;display:grid;gap:18px}
 .eroe-testo{display:grid;gap:10px}
@@ -245,15 +233,13 @@ body:not([data-vista="casa"]) .eroe{display:none}
 @media (min-width:900px){
   .eroe{min-height:clamp(560px,84vh,760px)}
   .eroe-foto{height:100%;object-position:center 82%}
-  .eroe::after{background:linear-gradient(180deg,rgba(43,10,21,.66) 0,rgba(43,10,21,.05) 26%,rgba(43,10,21,.5) 66%,#2B0A15 100%),linear-gradient(90deg,rgba(43,10,21,.72),rgba(43,10,21,0) 62%)}
+  .eroe::after{background:linear-gradient(180deg,rgba(43,10,21,.66) 0,rgba(43,10,21,.05) 26%,rgba(30,11,18,.5) 66%,var(--fondo) 100%),linear-gradient(90deg,rgba(43,10,21,.72),rgba(43,10,21,0) 62%)}
   .eroe-in{max-width:1200px;padding:120px 24px 40px;grid-template-columns:minmax(0,1fr) 400px;gap:48px;align-items:end}
   .eroe h1{font-size:clamp(5rem,8vw,7.4rem)}
   .eroe-testo p{font-size:1.25rem;max-width:36ch}
   .tabellone{padding:18px}
   .t-gara{font-size:2.1rem}
-  .fascia .in>#migliori-casa{grid-column:2;grid-row:2/span 3}
 }
-@media (max-width:899px){.fascia .fila .timbro{display:none}}
 .apertura{display:grid;gap:6px}
 .apertura h2{font:900 1.5rem/1.1 var(--display)}
 .apertura p{color:var(--muto);font-size:.95rem}
@@ -345,6 +331,67 @@ fieldset.campo-form{border:0;margin:0;padding:0}
 .navigazione a[aria-current="page"]{color:var(--giallo)}
 .navigazione a[aria-current="page"] svg{scale:1.14}
 
+/* Notte allo stadio: ogni punteggio è un pezzo di tabellone */
+.vista{gap:40px}
+.bottone{border-radius:8px}
+.bottone.pieno{background:var(--giallo);color:#2B0A15}
+.riga-punti{font-size:2.2rem}
+.riga-punti b{display:grid;place-items:center;min-width:64px;padding:6px 8px 5px;border-radius:4px;font-size:1em;color:var(--giallo);background:radial-gradient(rgba(240,188,66,.11) 1px,transparent 1.5px) 0 0/5px 5px,#21090F}
+.tabellino{gap:6px}
+.grafico .asse{stroke:var(--muto)}
+.tacche i{background:var(--linea)}
+.scheda{background:var(--superficie);border:1px solid var(--linea);border-radius:10px;box-shadow:none}
+.scheda h3{font-size:3rem}
+.scheda.chiusa h3{font-size:2rem}
+.voti{grid-template-columns:repeat(5,minmax(0,1fr))}
+.voti button{height:48px;border-radius:6px;background:var(--rilievo);border-color:var(--linea);color:var(--testo)}
+.voti button[aria-pressed="true"]{background:var(--giallo);border-color:var(--giallo);color:#2B0A15}
+.pronostico>div{background:var(--superficie);border:1px solid var(--linea);border-radius:10px}
+.passo button{background:var(--rilievo);color:var(--testo);border-radius:6px}
+.titolo-gara{font-size:2.3rem;text-shadow:none;margin-bottom:6px}
+#v-casa .c-conto{display:none}
+.vuoto-box{border:1px solid var(--linea);background:var(--superficie)}
+.notizia{background:var(--superficie);border-color:var(--linea);border-radius:10px}
+.notizia strong{font-size:1.02rem;line-height:1.28}
+.foto{font-size:1.25rem}
+.articolo{border-radius:10px}
+.copertina{border-radius:6px}
+.tag{background:none;color:var(--giallo);padding:0;font-size:.86rem}
+.pubblicita{grid-template-columns:92px minmax(0,1fr);gap:12px;align-items:center;padding:10px;border-radius:10px}
+.vetrina{min-height:92px;height:92px;border-radius:6px;overflow:hidden;background:#fff}
+.vetrina img[src]{max-height:92px}
+.testo-pub{padding:0}
+.testo-pub small{color:var(--giallo)}
+.pubblicita .tag{color:var(--muto);font-size:.76rem;font-weight:600}
+.forma div{background:var(--rilievo);border-color:var(--linea);border-radius:6px}
+.forma .v{border-width:1px;border-color:rgba(240,188,66,.5)}
+.forma .v b{color:var(--giallo)}
+.classifica{background:var(--superficie);border-radius:10px;overflow:hidden}
+.classifica td{padding:9px 12px;border-bottom-color:var(--linea)}
+.classifica tr:last-child td{border-bottom:0}
+.classifica td:first-child{width:38px}
+.classifica .noi td{background:rgba(240,188,66,.1);color:var(--giallo)}
+.tipo-annuncio label,.annuncio,.scelte button{border-radius:8px}
+.piede{background:var(--rilievo)}
+.navigazione{background:rgba(20,6,10,.94);border-top:1px solid var(--linea)}
+@media (min-width:900px){
+  .testata{border-bottom:1px solid var(--linea)}
+  body[data-vista="casa"] .testata{border-bottom:0}
+  .pagina{padding-top:32px}
+  main .fascia{border:1px solid rgba(240,188,66,.2);border-radius:10px}
+  h1.striscione{font-size:3.4rem}
+  .striscione{font-size:2.5rem}
+  #v-casa{grid-template-columns:repeat(12,minmax(0,1fr));column-gap:28px;row-gap:44px}
+  #v-casa>*{grid-column:1/-1}
+  #v-casa>.sez-analisi{grid-column:1/8;grid-row:span 2;align-content:start}
+  #v-casa .fascia .in>.pag-dx{grid-column:2;grid-row:2/span 3;align-self:center}
+  #v-casa>.sez-forma,#v-casa>.sez-serie{grid-column:8/-1}
+  #v-casa>.in[data-annuncio]~.in[data-annuncio]{display:none}
+  .lato .pubblicita{padding:10px;gap:10px}
+  .lato .vetrina{height:130px}
+  .lato .vetrina img[src]{max-height:130px}
+}
+
 /* Passaggio tra le sezioni */
 @keyframes esce-sx{to{translate:-28% 0;opacity:0}}
 @keyframes entra-dx{from{translate:28% 0;opacity:0}}
@@ -397,11 +444,13 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
   <div class="vista" id="v-casa">
     <section class="fascia su-banda">
       <div class="in">
-        <div class="fila"><h2 class="striscione" tabindex="-1">Le pagelle</h2><img class="timbro" src="/img/logo-chiaro.webp" alt="" width="480" height="179" loading="lazy"></div>
+        <div class="fila"><h2 class="striscione" tabindex="-1">Le pagelle</h2></div>
         <p class="nota"><span class="conteggio n-votanti">0</span> <span class="testo-votanti">tifosi hanno votato</span></p>
         <div class="tabellino" data-tabellino></div>
-        <div class="lista" id="migliori-casa"></div>
-        <a class="bottone" href="/pagelle">Vota le pagelle</a>
+        <div class="lista pag-dx">
+          <div class="lista" id="migliori-casa"></div>
+          <a class="bottone" href="/pagelle">Vota le pagelle</a>
+        </div>
       </div>
     </section>
 
@@ -414,7 +463,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
 
     <section class="fascia fascia-vigilia su-banda">
       <div class="in">
-        <div class="fila"><h2 class="striscione">Vigilia</h2><img class="timbro" src="/img/logo-chiaro.webp" alt="" width="480" height="179" loading="lazy"></div>
+        <div class="fila"><h2 class="striscione">Vigilia</h2></div>
         <div>
           <p class="titolo-gara" data-gara></p>
           <p class="nota" data-quando></p>
@@ -428,21 +477,21 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
 
     <div class="in" data-annuncio></div>
 
-    <section class="sezione in compare">
+    <section class="sezione in sez-analisi">
       <h2 class="striscione">Analisi</h2>
       <div id="analisi-casa"></div>
     </section>
 
     <div class="in" data-annuncio></div>
 
-    <section class="sezione in compare">
+    <section class="sezione in sez-forma">
       <h2 class="striscione">Ultime cinque</h2>
       <div class="forma" id="forma"></div>
     </section>
 
     <div class="in" data-annuncio></div>
 
-    <section class="sezione in compare">
+    <section class="sezione in sez-serie">
       <h2 class="striscione">Classifica</h2>
       <table class="classifica"><tbody id="classifica"></tbody></table>
     </section>
@@ -453,7 +502,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
   <div class="vista" id="v-pagella" hidden>
     <section class="fascia su-banda">
       <div class="in">
-        <div class="fila"><h1 class="striscione" tabindex="-1">Pagella dei tifosi</h1><img class="timbro" src="/img/logo-chiaro.webp" alt="" width="480" height="179" loading="lazy"></div>
+        <div class="fila"><h1 class="striscione" tabindex="-1">Pagella dei tifosi</h1></div>
         <div class="tabellino" data-tabellino></div>
         <div class="grafico" data-linea></div>
         <div class="mazzo" data-mazzo="pagella"></div>
@@ -471,7 +520,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
   <div class="vista" id="v-vigilia" hidden>
     <section class="fascia fascia-vigilia su-banda">
       <div class="in">
-        <div class="fila"><h1 class="striscione" tabindex="-1">Vigilia</h1><img class="timbro" src="/img/logo-chiaro.webp" alt="" width="480" height="179" loading="lazy"></div>
+        <div class="fila"><h1 class="striscione" tabindex="-1">Vigilia</h1></div>
         <div>
           <p class="titolo-gara" data-gara></p>
           <p class="nota" data-quando-comp></p>
@@ -673,7 +722,7 @@ function articolo(a, modo) {
   const art = el("article", "articolo");
   if (pieno) art.id = "a-" + a.id;
   const cor = el("span", "cornice"), img = el("img", "copertina"); img.src = a.copertina || "/img/lavagna.jpg"; img.alt = ""; img.loading = "lazy";
-  const t = el("img", "timbro"); t.src = "/img/logo-chiaro.webp"; t.alt = ""; cor.append(img, t); art.append(cor);
+  cor.append(img); art.append(cor);
   art.append(el("span", "tag", TIPI[a.tipo] || (casa ? "Ultima analisi" : "Analisi")));
   art.append(el(pieno ? "h1" : casa ? "h3" : "h2", "", a.titolo));
   if (casa) art.lastChild.style.fontSize = "1.9rem";
