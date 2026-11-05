@@ -216,9 +216,46 @@ p{margin:0}
 .nome-form input{font:inherit;color:var(--testo);background:var(--superficie);border:1px solid var(--muto);border-radius:10px;min-height:48px;padding:8px 12px;width:100%}
 .classifica tr.noi td{font-weight:700;color:var(--accento)}
 [data-annuncio]:empty{display:none}
+/* Home: la curva a tutto schermo e il tabellone dello stadio */
+body[data-vista="casa"] .testata{position:absolute;inset:0 0 auto;z-index:3;background:none}
+body[data-vista="casa"] .foto-testata{display:none}
+body:not([data-vista="casa"]) .eroe{display:none}
+.eroe{position:relative;isolation:isolate;display:flex;align-items:flex-end;min-height:min(calc(100svh - 84px - env(safe-area-inset-bottom,0px)),820px);overflow:hidden;background:#2B0A15;color:var(--su-banda)}
+.eroe-foto{position:absolute;inset:auto 0 0;z-index:-2;width:100%;height:128%;object-fit:cover;object-position:56% 100%;animation:eroe-foto 1.6s var(--dolce) both}
+.eroe::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(43,10,21,.7) 0,rgba(43,10,21,.1) 20%,rgba(43,10,21,.58) 46%,rgba(43,10,21,.95) 66%,#2B0A15 100%)}
+@keyframes eroe-foto{from{transform:scale(1.07)}to{transform:none}}
+.eroe-in{width:100%;max-width:640px;margin-inline:auto;padding:96px 16px 18px;display:grid;gap:18px}
+.eroe-testo{display:grid;gap:10px}
+.eroe h1{font:900 clamp(3.5rem,16.5vw,4.6rem)/.9 var(--display);text-transform:uppercase;text-wrap:balance}
+.eroe-testo p{font-size:1.05rem;line-height:1.35;max-width:32ch}
+.tabellone{--led:#F0BC42;display:grid;gap:10px;padding:14px;background:#14060A;border:1px solid rgba(240,188,66,.32);border-radius:8px}
+.t-gara{display:flex;align-items:center;gap:.3em;flex-wrap:wrap;font:900 1.75rem/1 var(--display)}
+.t-gara .stemma{width:1.05em;height:1.05em}
+.t-quando{font-size:.92rem;color:#D9C7CC;margin-top:-4px}
+.t-tempo{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.t-tempo div{display:grid;justify-items:center;padding:8px 2px 7px;border-radius:4px;background:radial-gradient(rgba(240,188,66,.11) 1px,transparent 1.5px) 0 0/5px 5px,#21090F}
+.t-tempo b{font:900 2.7rem/1 var(--display);color:var(--led);font-variant-numeric:tabular-nums}
+.t-tempo small{font-size:.74rem;color:#D9C7CC}
+.t-tempo.finale{grid-template-columns:minmax(0,1fr)}
+.t-tempo.finale b{font-size:3.2rem}
+.tabellone .bottone{width:100%}
+.t-link{justify-self:center;color:var(--su-banda);font-weight:600;font-size:.95rem;padding:6px 8px}
+.tabellone a:focus-visible,.bottone:focus-visible{outline:3px solid var(--giallo);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.eroe-foto{animation:none}}
+@media (min-width:900px){
+  .eroe{min-height:clamp(560px,84vh,760px)}
+  .eroe-foto{height:100%;object-position:center 82%}
+  .eroe::after{background:linear-gradient(180deg,rgba(43,10,21,.66) 0,rgba(43,10,21,.05) 26%,rgba(43,10,21,.5) 66%,#2B0A15 100%),linear-gradient(90deg,rgba(43,10,21,.72),rgba(43,10,21,0) 62%)}
+  .eroe-in{max-width:1200px;padding:120px 24px 40px;grid-template-columns:minmax(0,1fr) 400px;gap:48px;align-items:end}
+  .eroe h1{font-size:clamp(5rem,8vw,7.4rem)}
+  .eroe-testo p{font-size:1.25rem;max-width:36ch}
+  .tabellone{padding:18px}
+  .t-gara{font-size:2.1rem}
+  .fascia .in>#migliori-casa{grid-column:2;grid-row:2/span 3}
+}
 @media (max-width:899px){.fascia .fila .timbro{display:none}}
 .apertura{display:grid;gap:6px}
-.apertura h1{font:900 1.5rem/1.1 var(--display)}
+.apertura h2{font:900 1.5rem/1.1 var(--display)}
 .apertura p{color:var(--muto);font-size:.95rem}
 .testo-pagina{display:grid;gap:12px;max-width:68ch}
 .testo-pagina h1,.testo-pagina h2{font-family:var(--display)}
@@ -324,7 +361,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
 }
 </style>
 </head>
-<body>
+<body data-vista="casa">
 
 
 <header class="testata"><div class="in">
@@ -337,6 +374,23 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
 </div>
 <img class="foto-testata" id="foto-testata" src="/img/tifosi.webp" srcset="/img/tifosi-800.webp 800w,/img/tifosi.webp 1600w" sizes="100vw" width="1600" height="1065" fetchpriority="high" alt="Curva Sud dei tifosi della Roma allo Stadio Olimpico piena di bandiere giallorosse"></header>
 
+<section class="eroe" aria-label="Curva Roma">
+  <img class="eroe-foto" id="eroe-foto" src="/img/tifosi.webp" srcset="/img/tifosi-800.webp 800w,/img/tifosi.webp 1600w" sizes="100vw" width="1600" height="1065" fetchpriority="high" alt="">
+  <div class="eroe-in">
+    <div class="eroe-testo">
+      <h1>La casa dei romanisti</h1>
+      <p>Il sito dei tifosi della Roma: voti, pronostici e analisi dopo ogni partita.</p>
+    </div>
+    <div class="tabellone">
+      <p class="t-gara" id="t-gara"></p>
+      <p class="t-quando" id="t-quando"></p>
+      <div class="t-tempo" id="t-tempo"></div>
+      <a class="bottone" id="t-azione" href="/vigilia">Indovina il risultato</a>
+      <a class="t-link" id="t-link" href="/pagelle">Vota le pagelle</a>
+    </div>
+  </div>
+</section>
+
 <div class="pagina">
 <aside class="lato sinistra" aria-label="Annunci"><div data-annuncio></div><div data-annuncio></div></aside>
 <main>
@@ -346,8 +400,8 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
         <div class="fila"><h2 class="striscione" tabindex="-1">Le pagelle</h2><img class="timbro" src="/img/logo-chiaro.webp" alt="" width="480" height="179" loading="lazy"></div>
         <p class="nota"><span class="conteggio n-votanti">0</span> <span class="testo-votanti">tifosi hanno votato</span></p>
         <div class="tabellino" data-tabellino></div>
-        <div class="grafico" data-linea></div>
-        <div class="mazzo" data-mazzo="casa"></div>
+        <div class="lista" id="migliori-casa"></div>
+        <a class="bottone" href="/pagelle">Vota le pagelle</a>
       </div>
     </section>
 
@@ -393,7 +447,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
       <table class="classifica"><tbody id="classifica"></tbody></table>
     </section>
 
-    <section class="in apertura"><h1>Curva Roma, il sito dei tifosi della Roma</h1><p>Notizie sull'AS Roma, pagelle dei tifosi, vigilia delle partite e analisi. Qui ogni romanista vota e discute, e la tifoseria segue la squadra ogni giorno. <a href="/tifosi-roma">Chi siamo</a>. Forza Roma!</p></section>
+    <section class="in apertura"><h2>Curva Roma, il sito dei tifosi della Roma</h2><p>Notizie sull'AS Roma, pagelle dei tifosi, vigilia delle partite e analisi. Qui ogni romanista vota e discute, e la tifoseria segue la squadra ogni giorno. <a href="/tifosi-roma">Chi siamo</a>. Forza Roma!</p></section>
   </div>
 
   <div class="vista" id="v-pagella" hidden>
@@ -578,6 +632,26 @@ function pronosticoHtml() {
   const blocco = (nome, k) => { const a = String(nome).replace(/[<>&"]/g, ""); return `<div><span>${a}</span><div class="passo"><button type="button" data-p="${k}" data-d="-1" aria-label="Un gol in meno a ${a}">−</button><output class="p-${k}">0</output><button type="button" data-p="${k}" data-d="1" aria-label="Un gol in più a ${a}">+</button></div></div>`; };
   tutti("[data-pronostico]").forEach(b => b.innerHTML = `<div class="lista"><p style="font-weight:600">Indovina il risultato</p><div class="pronostico">${blocco(nomi[0],"casa")}${blocco(nomi[1],"ospiti")}</div><button class="bottone vuoto salva-pron" type="button">Salva il risultato</button><p class="esito esito-pron" role="status"></p><div data-nome></div></div>`);
 }
+function tabellone() {
+  if (!C) return;
+  const { partita: p, prossima: q } = C, ms = CALCIO_INIZIO - Date.now(), box = $("#t-tempo"), g = $("#t-gara");
+  const prima = ms > 0, nomi = prima ? [q.casa, q.ospiti] : [p.casa, p.ospiti];
+  const chiave = nomi.join("|");
+  if (g.dataset.k !== chiave) {
+    g.dataset.k = chiave; g.textContent = "";
+    nomi.forEach((n, i) => { const st = stemma(n); if (st) g.append(st); g.append(document.createTextNode(i ? n : n + " -")); });
+  }
+  $("#t-quando").textContent = prima ? `${q.competizione}, ${q.quando}` : `${p.competizione}, ${p.data}`;
+  box.classList.toggle("finale", !prima);
+  const cella = (v, u) => { const d = el("div"); d.append(el("b", "", v)); if (u) d.append(el("small", "", u)); return d; };
+  if (prima) {
+    const s = Math.floor(ms / 1e3), due = n => String(n).padStart(2, "0");
+    box.replaceChildren(cella(Math.floor(s / 86400), s < 172800 && s >= 86400 ? "giorno" : "giorni"), cella(due(Math.floor(s / 3600) % 24), "ore"), cella(due(Math.floor(s / 60) % 60), "minuti"), cella(due(s % 60), "secondi"));
+  } else box.replaceChildren(cella(`${p.golCasa}-${p.golOspiti}`, "risultato finale"));
+  const az = $("#t-azione"), li = $("#t-link");
+  az.textContent = prima ? "Indovina il risultato" : "Vota le pagelle"; az.href = prima ? "/vigilia" : "/pagelle";
+  li.textContent = prima ? "Vota le pagelle" : "Scegli la formazione"; li.href = prima ? "/pagelle" : "/vigilia";
+}
 function tabellini() {
   const riga = (nome, gol) => {
     const r = el("div", "riga-punti" + (nome === "Roma" ? " nostra" : ""));
@@ -586,6 +660,7 @@ function tabellini() {
   };
   const { partita: p, prossima: q } = C;
   tutti("[data-tabellino]").forEach(t => { t.textContent = ""; t.setAttribute("aria-label", `${p.casa} ${p.golCasa}, ${p.ospiti} ${p.golOspiti}, ${p.competizione}, ${p.data}`); t.append(riga(p.casa, p.golCasa), riga(p.ospiti, p.golOspiti)); });
+  tabellone();
   tutti("[data-gara]").forEach(t => { t.textContent = ""; for (const [i, nome] of [q.casa, q.ospiti].entries()) { const st = stemma(nome); if (st) t.append(st); t.append(document.createTextNode(i ? nome : nome + " -")); } });
   tutti("[data-quando]").forEach(t => t.textContent = q.quando);
   tutti("[data-quando-comp]").forEach(t => t.textContent = `${q.competizione}, ${q.quando}`);
@@ -898,6 +973,9 @@ function passa(dir) {
 function risultati() {
   tutti(".n-votanti").forEach(n => n.textContent = quanteSchede());
   tutti(".testo-votanti").forEach(n => n.textContent = quanteSchede() === 1 ? "tifoso ha votato" : "tifosi hanno votato");
+  const casa = $("#migliori-casa"); casa.textContent = "";
+  if (inviatoVoti && quanteSchede()) { casa.append(el("p", "", "I migliori per i tifosi")); medie().slice(0, 3).forEach(x => casa.append(barra(x))); }
+  else casa.append(el("p", "", quanteSchede() ? "Dai i tuoi voti e scopri i migliori secondo i tifosi." : "Dai i tuoi voti per primo."));
   const box = $("#risultati"); box.textContent = "";
   if (!quanteSchede()) { box.append(el("p", "vuoto-box", "Nessun voto ancora. Vota per primo e apri la classifica.")); return; }
   if (!inviatoVoti) { box.append(el("p", "vuoto-box", "Invia i tuoi voti per vedere la media dei tifosi.")); return; }
@@ -1078,6 +1156,7 @@ function disegnaAnalisi() {
 }
 function mostra(v) {
   vistaOra = v;
+  document.body.dataset.vista = v;
   for (const n of VISTE) $("#v-" + n).hidden = n !== v;
   visitaSezione.pronta && visitaSezione(v);
   visitaSezione.pronta = true;
@@ -1128,7 +1207,7 @@ function applica(p) {
   C = p.contenuti; PRODOTTI = p.prodotti || [];
   for (const [v, u] of Object.entries(PERCORSI)) if (p.seo?.pagine?.[u]?.titolo) TITOLI[v] = p.seo.pagine[u].titolo;
   const im = p.immagini || {};
-  if (im.testata) { $("#foto-testata").srcset = ""; $("#foto-testata").src = im.testata; }
+  if (im.testata) for (const f of [$("#foto-testata"), $("#eroe-foto")]) { f.srcset = ""; f.src = im.testata; }
   if (im.testataForza) document.documentElement.style.setProperty("--foto-forza", Number(im.testataForza) / 100);
   if (im.pagelle) document.documentElement.style.setProperty("--img-pagelle", `url("${encodeURI(im.pagelle)}")`);
   if (im.vigilia) document.documentElement.style.setProperty("--img-vigilia", `url("${encodeURI(im.vigilia)}")`);
@@ -1143,6 +1222,7 @@ function applica(p) {
   if (!p.contenuti) p.contenuti = await (await fetch("/contenuti.json")).json();
   applica(p);
   caroselloAutomatico(); setInterval(conto, 30000);
+  setInterval(() => { if (!document.hidden && vistaOra === "casa") tabellone(); }, 1000);
   visitaSezione(scegli());
   notizieVere(); setInterval(notizieVere, 6e5);
   try {

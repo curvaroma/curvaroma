@@ -71,6 +71,8 @@ export async function onRequest(ctx) {
     .on('meta[property="og:url"]', { element: e => e.setAttribute("content", canonico) })
     .on('link[rel="canonical"]', { element: e => e.setAttribute("href", canonico) })
     .on("head", { element: e => e.append(dati.map(ldJson).join(""), { html: true }) })
+    .on("body", { element: e => e.setAttribute("data-vista", attiva) })
+    .on(".eroe h1", { element: e => { if (attiva !== "casa") e.tagName = "h2"; } })
     .on(".vista", { element: e => { if (e.getAttribute("id") === "v-" + attiva) e.removeAttribute("hidden"); else e.setAttribute("hidden", ""); } })
     .on("#analisi-tutte", { element: e => e.setInnerContent(articoli, { html: true }) });
   if (articolo) rw = rw
