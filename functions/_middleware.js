@@ -1,6 +1,6 @@
 // Titoli, descrizioni e contenuti leggibili da Google per ogni pagina.
 const BASE = "https://curvaroma.it";
-const PAGINE = {
+export const PAGINE = {
   "/": ["Curva Roma: notizie AS Roma, pagelle e tifosi romanisti", "Curva Roma è il sito dei tifosi della Roma: notizie sull'AS Roma, pagelle dei tifosi, vigilia delle partite, analisi e annunci. Sito non ufficiale. Forza Roma!"],
   "/pagelle": ["Pagelle dei tifosi della Roma | Curva Roma", "Vota i giocatori dell'AS Roma dopo ogni partita e confronta il tuo voto con quello degli altri romanisti."],
   "/vigilia": ["Vigilia della Roma: formazione e pronostico | Curva Roma", "La prossima partita della Roma: scegli la formazione dei tifosi e indovina il risultato."],
@@ -11,13 +11,21 @@ const PAGINE = {
 const VISTE = { "/": "casa", "/pagelle": "pagella", "/vigilia": "vigilia", "/analisi": "analisi", "/biglietti": "biglietti", "/tifosi-roma": "tifosi" };
 const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+const oggi = () => new Date(Date.now() + 36e5).toISOString().slice(0, 10);
 async function contenuti(ctx) {
+  let c = null, seo = {};
   try {
-    const r = await ctx.env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'").first();
-    if (r) return JSON.parse(r.valore);
+    const r = await ctx.env.DB.batch([
+      ctx.env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'"),
+      ctx.env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='seo'")
+    ]);
+    if (r[0].results[0]) c = JSON.parse(r[0].results[0].valore);
+    if (r[1].results[0]) seo = JSON.parse(r[1].results[0].valore);
   } catch {}
-  const f = await ctx.env.ASSETS.fetch(new URL("/contenuti.json", ctx.request.url));
-  return f.json();
+  c ||= await (await ctx.env.ASSETS.fetch(new URL("/contenuti.json", ctx.request.url))).json();
+  c.analisi = (c.analisi || []).filter(a => a.stato !== "bozza" && (!a.data || a.data <= oggi()));
+  c.seo = seo;
+  return c;
 }
 const ldJson = o => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, "\\u003c")}</script>`;
 
@@ -36,18 +44,21 @@ export async function onRequest(ctx) {
   if (!PAGINE[percorso] && !dettaglio) return ctx.next();
   const c = await contenuti(ctx);
   let [titolo, descrizione] = PAGINE[dettaglio ? "/analisi" : percorso] || [];
+  const scelta = !dettaglio && c.seo.pagine?.[percorso];
+  if (scelta?.titolo) titolo = scelta.titolo;
+  if (scelta?.descrizione) descrizione = scelta.descrizione;
   const dati = [{ "@context": "https://schema.org", "@type": "WebSite", name: "Curva Roma", alternateName: "curvaroma.it", url: BASE + "/", inLanguage: "it" }];
   if (percorso === "/") dati.push({ "@context": "https://schema.org", "@type": "Organization", name: "Curva Roma", url: BASE + "/", logo: BASE + "/img/icona-512.png" });
   const articolo = dettaglio && (c.analisi || []).find(a => a.id === dettaglio[1]);
   if (dettaglio && !articolo) return new Response("Pagina non trovata", { status: 404 });
   if (articolo) {
-    titolo = `${articolo.titolo} | Curva Roma`; descrizione = articolo.riassunto || descrizione;
+    titolo = articolo.seoTitolo || `${articolo.titolo} | Curva Roma`; descrizione = articolo.seoDescrizione || articolo.riassunto || descrizione;
     dati.push({ "@context": "https://schema.org", "@type": "Article", headline: articolo.titolo, description: articolo.riassunto, image: new URL(articolo.copertina || "/img/anteprima.jpg", BASE).href, inLanguage: "it", mainEntityOfPage: BASE + percorso, author: { "@type": "Organization", name: "Curva Roma", url: BASE + "/" }, ...(articolo.data ? { datePublished: articolo.data, dateModified: articolo.data } : {}), publisher: { "@type": "Organization", name: "Curva Roma", logo: { "@type": "ImageObject", url: BASE + "/img/icona-512.png" } } });
   }
   if (percorso === "/vigilia" && c.prossima?.inizio) dati.push({ "@context": "https://schema.org", "@type": "SportsEvent", name: `${c.prossima.casa}-${c.prossima.ospiti}`, startDate: c.prossima.inizio, sport: "Calcio", homeTeam: { "@type": "SportsTeam", name: c.prossima.casa }, awayTeam: { "@type": "SportsTeam", name: c.prossima.ospiti } });
   const canonico = BASE + (percorso === "/" ? "/" : percorso);
   const risposta = await ctx.env.ASSETS.fetch(new URL("/", url));
-  const paragrafi = a => String(a.testo || "").split(/\n\s*\n/).map(t => `<p>${esc(t)}</p>`).join("");
+  const paragrafi = a => String(a.testo || "").split(/\n\s*\n/).map(t => t.trim().startsWith("## ") ? `<h2>${esc(t.trim().slice(3))}</h2>` : `<p>${esc(t)}</p>`).join("");
   const articoli = articolo
     ? `<article class="articolo"><h1>${esc(articolo.titolo)}</h1><p class="nota">${esc(articolo.occhiello)}</p>${paragrafi(articolo)}</article>`
     : (c.analisi || []).map(a => `<article class="articolo"><h2><a href="/analisi/${esc(a.id)}">${esc(a.titolo)}</a></h2><p class="nota">${esc(a.occhiello)}</p><p>${esc(a.riassunto)}</p></article>`).join("");

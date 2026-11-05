@@ -1,3 +1,4 @@
+import { PAGINE } from "../_middleware.js";
 // API di Curva Roma. Binding richiesto nel progetto Pages: D1 con nome DB.
 const COOKIE = "cr_tifoso";
 const ANNO = 60 * 60 * 24 * 365;
@@ -103,14 +104,21 @@ async function sha(testo) {
   const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(testo));
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
 }
+// Le bozze e i contenuti con data futura restano fuori dal sito.
+const visibili = l => (l || []).filter(a => a.stato !== "bozza" && (!a.data || a.data <= giorno()));
 async function pubblico(env) {
-  const [c, p, i] = await env.DB.batch([
+  const [c, p, i, s] = await env.DB.batch([
     env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'"),
     env.DB.prepare("SELECT id, nome, link, foto, tipo, asin FROM prodotti WHERE attivo=1 ORDER BY ordine, nome"),
-    env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='immagini'")
+    env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='immagini'"),
+    env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='seo'")
   ]);
+  const contenuti = c.results[0] ? JSON.parse(c.results[0].valore) : null;
+  if (contenuti) contenuti.analisi = visibili(contenuti.analisi);
+  const seo = s.results[0] ? JSON.parse(s.results[0].valore) : {};
   return json({
-    contenuti: c.results[0] ? JSON.parse(c.results[0].valore) : null,
+    contenuti,
+    seo: { pagine: seo.pagine || {} },
     prodotti: p.results,
     immagini: i.results[0] ? JSON.parse(i.results[0].valore) : {}
   });
@@ -192,10 +200,21 @@ async function admin(ctx, p) {
       return json({ contenuti: r ? JSON.parse(r.valore) : null });
     }
     const testo = await req.text();
-    if (testo.length > 200000) return errore("Contenuti troppo grandi", 413);
+    if (testo.length > 1500000) return errore("Contenuti troppo grandi", 413);
     const c = JSON.parse(testo);
     if (!c.partita?.id || !c.prossima?.id || !Array.isArray(c.classifica)) return errore("Contenuti non validi");
     await env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('contenuti',?) ON CONFLICT DO UPDATE SET valore=excluded.valore, aggiornato=CURRENT_TIMESTAMP").bind(testo).run();
+    return json({ ok: true });
+  }
+  if (p[0] === "seo") {
+    if (req.method === "GET") {
+      const r = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='seo'").first();
+      return json({ seo: r ? JSON.parse(r.valore) : {}, predefiniti: PAGINE });
+    }
+    const testo = await req.text();
+    if (testo.length > 20000) return errore("Dati SEO troppo grandi", 413);
+    JSON.parse(testo);
+    await env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('seo',?) ON CONFLICT DO UPDATE SET valore=excluded.valore, aggiornato=CURRENT_TIMESTAMP").bind(testo).run();
     return json({ ok: true });
   }
   if (p[0] === "aspetto") {

@@ -582,13 +582,14 @@ function tabellini() {
   tutti("[data-nota-gara]").forEach(t => t.textContent = q.nota || "");
   tutti("[data-modulo]").forEach(t => t.textContent = `Modulo ${q.modulo || "3-4-2-1"}. Tocca i giocatori per metterli in campo.`);
 }
+const TIPI = { partita: "Analisi partita", stagione: "Analisi di stagione", focus: "Focus giocatore", extra: "Approfondimento" };
 function articolo(a, modo) {
   const pieno = modo === "pieno", casa = modo === "casa";
   const art = el("article", "articolo");
   if (pieno) art.id = "a-" + a.id;
   const cor = el("span", "cornice"), img = el("img", "copertina"); img.src = a.copertina || "/img/lavagna.jpg"; img.alt = ""; img.loading = "lazy";
   const t = el("img", "timbro"); t.src = "/img/logo-chiaro.webp"; t.alt = ""; cor.append(img, t); art.append(cor);
-  art.append(el("span", "tag", casa ? "Ultima analisi" : "Analisi"));
+  art.append(el("span", "tag", TIPI[a.tipo] || (casa ? "Ultima analisi" : "Analisi")));
   art.append(el(pieno ? "h1" : casa ? "h3" : "h2", "", a.titolo));
   if (casa) art.lastChild.style.fontSize = "1.9rem";
   art.append(el("p", "nota", a.occhiello || ""));
@@ -599,7 +600,10 @@ function articolo(a, modo) {
     if (casa) { const v = el("a", "legami", "Vedi tutte le analisi"); v.href = "/analisi"; art.append(v); }
     return art;
   }
-  for (const par of String(a.testo || "").split(/\n\s*\n/)) if (par.trim()) art.append(el("p", "", par.trim()));
+  for (const par of String(a.testo || "").split(/\n\s*\n/)) {
+    const t = par.trim();
+    if (t) art.append(t.startsWith("## ") ? el("h2", "", t.slice(3)) : el("p", "", t));
+  }
   if (a.confronto?.length) {
     const box = el("div", "confronto");
     for (const [n, x, y] of a.confronto) {
@@ -962,7 +966,7 @@ function disegnaAnalisi() {
   const id = (location.pathname.match(/^\/analisi\/([\w-]+)/) || [])[1];
   const scelta = id && lista.find(a => a.id === id);
   box.textContent = "";
-  if (scelta) { box.append(articolo(scelta, "pieno")); document.title = `${scelta.titolo} | Curva Roma`; }
+  if (scelta) { box.append(articolo(scelta, "pieno")); document.title = scelta.seoTitolo || `${scelta.titolo} | Curva Roma`; }
   else { lista.forEach(a => box.append(articolo(a, "lista"))); if (vistaOra === "analisi") document.title = TITOLI.analisi; }
 }
 function mostra(v) {
@@ -1015,6 +1019,7 @@ function visitaSezione(v) {
 }
 function applica(p) {
   C = p.contenuti; PRODOTTI = p.prodotti || [];
+  for (const [v, u] of Object.entries(PERCORSI)) if (p.seo?.pagine?.[u]?.titolo) TITOLI[v] = p.seo.pagine[u].titolo;
   const im = p.immagini || {};
   if (im.testata) { $("#foto-testata").srcset = ""; $("#foto-testata").src = im.testata; }
   if (im.pagelle) document.documentElement.style.setProperty("--img-pagelle", `url("${encodeURI(im.pagelle)}")`);
