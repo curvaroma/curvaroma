@@ -86,7 +86,8 @@ async function notizie(ctx) {
     viste.add(n.url); perTestata[n.t] = (perTestata[n.t] || 0) + 1;
     return true;
   }).slice(0, 24);
-  const risposta = new Response(JSON.stringify({ notizie: lista }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=600" } });
+  const fonti = Object.fromEntries(FEED.map(([t], i) => [t, risposte[i].status === "fulfilled" ? risposte[i].value.length : "errore"]));
+  const risposta = new Response(JSON.stringify({ notizie: lista, fonti }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=600" } });
   if (lista.length) ctx.waitUntil(caches.default.put(chiave, risposta.clone()));
   return risposta;
 }

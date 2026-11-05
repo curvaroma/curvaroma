@@ -48,24 +48,16 @@ p{margin:0}
 
 /* Testata */
 .testata{background:var(--banda-scura);color:var(--su-banda)}
-.testata .in{display:flex;align-items:center;justify-content:center;padding-block:10px}
-.foto-testata{display:block;width:100%;height:clamp(210px,56vw,380px);object-fit:cover;object-position:center 62%}
+.testata .in{display:flex;align-items:center;justify-content:center;padding-block:6px}
+.foto-testata{display:block;width:100%;height:clamp(130px,38vw,170px);object-fit:cover;object-position:center 66%}
 .marchio{display:flex;align-items:center;gap:10px;text-decoration:none;min-width:0}
-.marchio img{display:block;width:190px;height:auto}
+.marchio img{display:block;width:140px;height:auto}
 .su-chiaro{display:var(--vedi-rosso,block)}
 .su-scuro{display:var(--vedi-crema,none)}
 .logo-piede{width:132px;height:auto}
 .timbro{width:92px;height:auto;flex:none}
 .cornice{position:relative;display:block}
 .cornice .timbro{position:absolute;right:10px;bottom:10px;width:84px;filter:drop-shadow(0 2px 4px rgba(14,8,26,.8))}
-.sciarpa{overflow:hidden;background:var(--giallo);color:var(--banda-scura);border-block:4px solid var(--banda);font:900 1.2rem/1.5 var(--display);white-space:nowrap}
-.sciarpa span{display:inline-block;padding-inline:8px;letter-spacing:.14em}
-@supports (animation-timeline:scroll()){
-  @media (prefers-reduced-motion:no-preference){
-    @keyframes scorri{to{translate:-34% 0}}
-    .sciarpa div{animation:scorri linear both;animation-timeline:scroll(root block)}
-  }
-}
 
 /* Viste e sezioni */
 .vista{display:grid;gap:34px;padding-bottom:30px}
@@ -136,9 +128,9 @@ p{margin:0}
 .scheda>*{margin-inline:16px}
 .scheda small{color:var(--muto);font-size:.9rem}
 .scheda h3{font-size:2.5rem;font-weight:900;line-height:1}
-.voti{position:relative;display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x proximity;margin-inline:0!important;padding:4px 16px;scrollbar-width:none}
+.voti{display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:6px;margin-inline:16px!important}
 .voti::-webkit-scrollbar{display:none}
-.voti button{flex:0 0 54px;height:54px;border-radius:12px;border:1px solid var(--linea);background:var(--fondo);font:800 1.45rem/1 var(--display);font-variant-numeric:tabular-nums;scroll-snap-align:center;cursor:pointer;transition:scale .18s var(--molla),background .15s,color .15s}
+.voti button{height:46px;min-width:0;padding:0;border-radius:10px;border:1px solid var(--linea);background:var(--fondo);font:800 1.3rem/1 var(--display);font-variant-numeric:tabular-nums;cursor:pointer;transition:scale .18s var(--molla),background .15s,color .15s}
 .voti button:active{scale:.9}
 .voti button[aria-pressed="true"]{background:var(--accento);color:var(--su-accento);border-color:var(--accento)}
 .azioni{display:flex;justify-content:space-between;gap:8px}
@@ -236,13 +228,13 @@ p{margin:0}
   .fascia .in>.fila{grid-column:1/-1}
   .fascia .in>[data-mazzo],.fascia .in>[data-pronostico]{grid-column:2;grid-row:2/span 5}
   .fascia .in>:not(.fila):not([data-mazzo]):not([data-pronostico]){grid-column:1}
-  .foto-testata{height:300px}
+  .foto-testata{height:190px}
   .vista{padding-top:0!important;padding-bottom:0}
-  .carosello{display:grid;grid-template-rows:repeat(2,auto);grid-auto-flow:column;grid-auto-columns:calc((100% - 36px) / 4);margin-right:0;overflow-x:auto}
+  .carosello{display:grid;grid-template-rows:auto;grid-auto-flow:column;grid-auto-columns:calc((100% - 36px) / 4);margin-right:0;overflow-x:auto}
   .notizia{max-width:none}
   .foto{height:130px}
-  .pubblicita{grid-template-columns:150px minmax(0,1fr)}
-  .marchio img{width:210px}
+  .pubblicita{grid-template-columns:170px minmax(0,1fr)}
+  .marchio img{width:150px}
 }
 @media (min-width:1180px){
   .pagina{grid-template-columns:172px minmax(0,1fr) 172px}
@@ -324,28 +316,27 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
   <nav class="menu destra" aria-label="Altre sezioni"><a href="#analisi">Analisi</a><a href="#biglietti">Biglietti</a></nav>
 </div>
 <img class="foto-testata" id="foto-testata" src="/img/tifosi.jpg" alt="Curva dei tifosi della Roma all'Olimpico piena di bandiere giallorosse"></header>
-<div class="sciarpa" aria-hidden="true"><div id="sciarpa"></div></div>
 
 <div class="pagina">
 <aside class="lato sinistra" aria-label="Annunci"><div data-annuncio></div><div data-annuncio></div></aside>
 <main>
-  <div class="vista" id="v-casa" style="padding-top:20px">
-    <section class="sezione in" aria-label="Notizie">
-      <div class="fila"><h2 class="striscione" tabindex="-1">Notizie sulla Roma</h2><button class="ferma" id="ferma" type="button">Pausa</button></div>
-      <div class="carosello" id="carosello" tabindex="0" aria-label="Notizie, scorrono da sole o di lato col dito"></div>
-    </section>
-
-    <div class="in" data-annuncio></div>
-
+  <div class="vista" id="v-casa">
     <section class="fascia su-banda">
       <div class="in">
-        <div class="fila"><h2 class="striscione">Le pagelle</h2><img class="timbro" src="/img/logo-chiaro.png" alt=""></div>
+        <div class="fila"><h2 class="striscione" tabindex="-1">Le pagelle</h2><img class="timbro" src="/img/logo-chiaro.png" alt=""></div>
         <p class="nota"><span class="conteggio n-votanti">0</span> tifosi hanno votato</p>
         <div class="tabellino" data-tabellino></div>
         <div class="grafico" data-linea></div>
         <div class="mazzo" data-mazzo="casa"></div>
       </div>
     </section>
+
+    <section class="sezione in" aria-label="Notizie">
+      <div class="fila"><h2 class="striscione">Notizie sulla Roma</h2><button class="ferma" id="ferma" type="button">Pausa</button></div>
+      <div class="carosello" id="carosello" tabindex="0" aria-label="Notizie, scorrono da sole o di lato col dito"></div>
+    </section>
+
+    <div class="in" data-annuncio></div>
 
     <div class="in" data-annuncio></div>
 
@@ -592,7 +583,6 @@ function articolo(a, completo) {
   return art;
 }
 function contenuti() {
-  if (!$("#sciarpa").children.length) $("#sciarpa").append(...Array.from({length:40}, () => el("span", "", "ROMA")));
   ({ id: PARTITA, titolari: TITOLARI } = C.partita);
   PROSSIMA = C.prossima.id; CALCIO_INIZIO = Date.parse(C.prossima.inizio); ROSA = C.rosa; PARTITE_CASA = C.partite_biglietti;
   lineaGol(); pronosticoHtml(); tabellini();
@@ -623,7 +613,7 @@ function contenuti() {
   $("#a-settore").append(...SETTORI.map(x => el("option", "", x)));
 }
 function disegnaNotizie(tutte) {
-  const lista = tutte.slice(0, tutte.length - tutte.length % 2);
+  const lista = tutte;
   const box = $("#carosello"); box.textContent = "";
   for (const copia of [false, true]) for (const { t, titolo, url, foto, data } of lista) {
     const a = el("a", "notizia"); a.href = url; a.target = "_blank"; a.rel = "noopener";
@@ -833,12 +823,10 @@ function mazzo(box, dir) {
   const c = el("div", "scheda");
   c.append(el("small", "", `${ruolo}, ${indice + 1} di 11`), el("h3", "", nome));
   const r = el("div", "voti"); r.setAttribute("role", "group"); r.setAttribute("aria-label", "Voto a " + nome);
-  let bersaglio = null;
   for (const v of VALORI) {
     const b = el("button", "", virgola(v)); b.type = "button";
     b.setAttribute("aria-label", `${nome}, voto ${virgola(v)}`);
     b.setAttribute("aria-pressed", stato.pagella[nome] === v);
-    if (stato.pagella[nome] === v || (stato.pagella[nome] == null && v === 6)) bersaglio = b;
     b.onclick = () => { stato.pagella[nome] = v; modifiche = true; passa(1); };
     r.append(b);
   }
@@ -846,7 +834,6 @@ function mazzo(box, dir) {
   const ind = el("button", "", "Indietro"), salta = el("button", "", "Salta"); ind.type = salta.type = "button";
   ind.disabled = indice === 0; ind.onclick = () => passa(-1); salta.onclick = () => passa(1);
   az.append(ind, salta); c.append(r, az); box.append(c);
-  if (bersaglio && r.clientWidth) r.scrollLeft = bersaglio.offsetLeft - (r.clientWidth - bersaglio.offsetWidth) / 2;
   entra(c, dir);
 }
 function entra(c, dir) {

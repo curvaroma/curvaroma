@@ -102,7 +102,7 @@ const PAGINE = {
   },
   async annunci(v) {
     const { prodotti } = await api("prodotti");
-    const c = el("div", "card"); c.append(el("h2", "", "Annunci Amazon"), el("p", "nota", "Per ogni prodotto carica la foto o incolla il link immagine di SiteStripe. Se manca, sul sito esce un disegno."));
+    const c = el("div", "card"); c.append(el("h2", "", "Annunci Amazon"), el("p", "nota", "Scrivi nome e link. Foto: usa solo immagini tue, incollandole con Ctrl+V o con Carica foto, oppure il link immagine dato dalla Creators API di Amazon. Non copiare foto dalle pagine Amazon: i termini lo vietano."));
     const riga = p => {
       const r = el("div", "prod"), vis = el("div");
       const mostra = () => { vis.textContent = ""; if (p.foto) { const i = el("img"); i.src = p.foto; i.alt = ""; vis.append(i); } else vis.append(el("div", "manca", "Foto mancante")); };
@@ -117,6 +117,13 @@ const PAGINE = {
       sv.onclick = salva;
       const up = tastoFile("Carica foto", async file => { p.foto = await carica(file, 800); mostra(); await salva(); });
       const del = el("button", "az pericolo", "Elimina"); del.onclick = async () => { if (window.confirm("Eliminare " + p.nome + "?")) { await api("prodotti/" + encodeURIComponent(p.id), { method: "DELETE" }); r.remove(); } };
+      r.tabIndex = -1;
+      r.addEventListener("paste", async e => {
+        const file = [...e.clipboardData.files].find(x => x.type.startsWith("image/"));
+        if (!file) return;
+        e.preventDefault(); es.textContent = "Caricamento…";
+        try { p.foto = await carica(file, 800); mostra(); await salva(); } catch (x) { es.textContent = x.message; }
+      });
       b.append(att, sv, up, del, es); f.append(g, b); r.append(vis, f); return r;
     };
     for (const p of prodotti) c.append(riga(p));
