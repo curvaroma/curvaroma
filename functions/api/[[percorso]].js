@@ -107,12 +107,13 @@ async function sha(testo) {
 // Le bozze e i contenuti con data futura restano fuori dal sito.
 const visibili = l => (l || []).filter(a => a.stato !== "bozza" && (!a.data || a.data <= giorno()));
 async function pubblico(env) {
-  const [c, p, i, s, a] = await env.DB.batch([
+  const [c, p, i, s, a, ra] = await env.DB.batch([
     env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'"),
     env.DB.prepare("SELECT id, nome, link, foto, tipo, asin FROM prodotti WHERE attivo=1 ORDER BY ordine, nome"),
     env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='immagini'"),
     env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='seo'"),
-    env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='pagelle'")
+    env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='pagelle'"),
+    env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='radio'")
   ]);
   const contenuti = c.results[0] ? JSON.parse(c.results[0].valore) : null;
   if (contenuti) contenuti.analisi = visibili(contenuti.analisi);
@@ -120,11 +121,33 @@ async function pubblico(env) {
   const seo = s.results[0] ? JSON.parse(s.results[0].valore) : {};
   return json({
     contenuti,
+    radio: !!ra.results[0],
     pagelle: elencoPagelle(a.results[0]?.valore, contenuti?.partita).map(({ slug, casa, ospiti, golCasa, golOspiti, data, competizione }) => ({ slug, casa, ospiti, golCasa, golOspiti, data, competizione })),
     seo: { pagine: seo.pagine || {} },
     prodotti: p.results,
     immagini: i.results[0] ? JSON.parse(i.results[0].valore) : {}
   });
+}
+// Palinsesto uguale per tutti: l'ordine cambia ogni giorno, la posizione dipende solo dall'ora.
+async function radio(env) {
+  const [a, c] = await env.DB.batch([env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='radio'"), env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'")]);
+  const lista = a.results[0] ? JSON.parse(a.results[0].valore) : [], storia = c.results[0] ? JSON.parse(c.results[0].valore).storia || [] : [];
+  const ora = Date.now(), seme = Math.floor(ora / 864e5);
+  const pesa = id => [...id].reduce((h, x) => (h * 31 + x.charCodeAt(0)) >>> 0, seme);
+  const brani = lista.map(x => { const s = storia.find(y => y.id === x.id); return s && { ...x, titolo: s.titolo, anno: s.anno, peso: pesa(x.id) % 9973 }; }).filter(Boolean).sort((a, b) => a.peso - b.peso).map(({ peso, ...x }) => x);
+  return json({ brani, secondi: Math.floor(ora / 1000) % 86400 });
+}
+async function audio(env, req, id) {
+  if (!env.AUDIO || !/^[\w-]+$/.test(id || "")) return errore("Audio non trovato", 404);
+  const m = (req.headers.get("range") || "").match(/^bytes=(\d+)-(\d*)$/);
+  const testa = await env.AUDIO.head(`radio/${id}.mp3`);
+  if (!testa) return errore("Audio non trovato", 404);
+  const base = { "content-type": "audio/mpeg", "accept-ranges": "bytes", "cache-control": "public, max-age=86400" };
+  if (!m) return new Response((await env.AUDIO.get(`radio/${id}.mp3`)).body, { headers: { ...base, "content-length": String(testa.size) } });
+  const da = +m[1], a = Math.min(m[2] ? +m[2] : testa.size - 1, testa.size - 1);
+  if (da >= testa.size) return new Response(null, { status: 416, headers: { "content-range": `bytes */${testa.size}` } });
+  const o = await env.AUDIO.get(`radio/${id}.mp3`, { range: { offset: da, length: a - da + 1 } });
+  return new Response(o.body, { status: 206, headers: { ...base, "content-range": `bytes ${da}-${a}/${testa.size}`, "content-length": String(a - da + 1) } });
 }
 async function immagine(env, id) {
   if (!/^[a-f0-9-]{36}$/.test(id || "")) return errore("Immagine non trovata", 404);
@@ -136,7 +159,7 @@ async function immagine(env, id) {
 async function visita(ctx) {
   const { request: req, env } = ctx;
   const c = await req.json().catch(() => ({}));
-  const sezione = ["casa", "pagella", "vigilia", "analisi", "biglietti", "giocatori", "storia", "racconti"].includes(c.sezione) ? c.sezione : "altro";
+  const sezione = ["casa", "pagella", "vigilia", "analisi", "biglietti", "giocatori", "storia", "radio"].includes(c.sezione) ? c.sezione : "altro";
   const dispositivo = c.mobile ? "mobile" : "computer", g = giorno();
   const impronta = (await sha(`${g}|${req.headers.get("cf-connecting-ip")}|${req.headers.get("user-agent")}`)).slice(0, 24);
   ctx.waitUntil(env.DB.batch([
@@ -284,12 +307,30 @@ async function admin(ctx, p) {
   if (p[0] === "esci") return json({ ok: true }, 200, { "set-cookie": `${ADMIN_COOKIE}=; Path=/api/admin; Max-Age=0; HttpOnly; Secure; SameSite=Strict` });
   if (p[0] === "radio") {
     if (!env.GOOGLE_TTS_KEY) return errore("Manca GOOGLE_TTS_KEY su Cloudflare", 503);
+    if (p[1] === "stato") { const v = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='radio'").first("valore"); return json({ brani: v ? JSON.parse(v) : [] }); }
     const url = u => `https://texttospeech.googleapis.com/v1/${u}${u.includes("?") ? "&" : "?"}key=${encodeURIComponent(env.GOOGLE_TTS_KEY)}`;
     const leggi = async r => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error?.message || "Errore di Google"); return d; };
     try {
       if (p[1] === "voci") {
         const d = await leggi(await fetch(url("voices?languageCode=it-IT")));
         return json({ voci: (d.voices || []).map(v => ({ nome: v.name, genere: v.ssmlGender })).filter(v => /Chirp3-HD|Chirp-HD|Neural2|Wavenet/.test(v.nome)) });
+      }
+      // Passa la risposta di Google senza elaborarla: la decodifica la fa il browser.
+      if (p[1] === "sintesi" && req.method === "POST") {
+        const { voce, testo } = await req.json();
+        if (!/^it-IT-[\w-]+$/.test(voce || "") || typeof testo !== "string" || !testo.trim() || new TextEncoder().encode(testo).length > 4900) return errore("Richiesta non valida");
+        const r = await fetch(url("text:synthesize"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ input: { text: testo }, voice: { languageCode: "it-IT", name: voce }, audioConfig: { audioEncoding: "MP3" } }) });
+        return new Response(r.body, { status: r.status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+      }
+      if (p[1] === "salva" && req.method === "POST") {
+        if (!env.AUDIO) return errore("Manca il collegamento AUDIO su Cloudflare", 503);
+        const u = new URL(req.url), id = u.searchParams.get("id"), durata = Number(u.searchParams.get("durata"));
+        if (!/^[\w-]+$/.test(id || "") || !(durata > 0)) return errore("Richiesta non valida");
+        await env.AUDIO.put(`radio/${id}.mp3`, req.body, { httpMetadata: { contentType: "audio/mpeg" } });
+        const v = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='radio'").first("valore");
+        const l = (v ? JSON.parse(v) : []).filter(x => x.id !== id); l.push({ id, durata, v: Date.now() });
+        await env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('radio',?) ON CONFLICT DO UPDATE SET valore=excluded.valore, aggiornato=CURRENT_TIMESTAMP").bind(JSON.stringify(l)).run();
+        return json({ ok: true });
       }
       if (p[1] === "prova" && req.method === "POST") {
         const { voce, testo } = await req.json();
@@ -492,6 +533,8 @@ export async function onRequest(ctx) {
     if (percorso[0] === "admin") return admin(ctx, percorso.slice(1));
     if (req.method === "GET" && percorso[0] === "pubblico") return pubblico(env);
     if (req.method === "GET" && percorso[0] === "img") return immagine(env, percorso[1]);
+    if (req.method === "GET" && percorso[0] === "radio") return radio(env);
+    if (req.method === "GET" && percorso[0] === "audio") return audio(env, req, percorso[1]);
     if (req.method === "POST" && percorso[0] === "visita") return visita(ctx);
     if (req.method === "POST" && percorso[0] === "clic") return clic(ctx);
     let id = leggiCookie(req);

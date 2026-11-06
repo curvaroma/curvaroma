@@ -35,10 +35,11 @@ export const PAGINE = {
   "/analisi": ["Analisi AS Roma: tattica e dati | Curva Roma", "Analisi tattiche e dati sulle partite e sui giocatori dell'AS Roma, scritte per i tifosi romanisti."],
   "/biglietti": ["Annunci biglietti Roma tra tifosi | Curva Roma", "Bacheca di annunci tra tifosi della Roma. Biglietti e cambio intestatario solo sui canali ufficiali."],
   "/giocatori": ["Giocatori della Roma: la rosa e i voti dei tifosi | Curva Roma", "Tutti i giocatori della Roma 2026/27: numeri di maglia, ruoli e media voto dei tifosi romanisti, partita dopo partita."],
+  "/radio": ["Radio Curva: la storia della Roma in onda | Curva Roma", "Radio Curva trasmette i racconti della storia della Roma: scudetti, notti europee, capitani e Curva Sud. Una radio di tifosi, sempre in onda."],
   "/storia": ["Storia della Roma: partite, Curva Sud e ricordi | Curva Roma", "La storia della Roma raccontata dai tifosi: Campo Testaccio, la Curva Sud, gli scudetti, le notti europee e i capitani che non dimentichiamo."],
   "/tifosi-roma": ["Tifosi della Roma: la casa dei romanisti | Curva Roma", "Curva Roma è il sito indipendente della tifoseria della Roma: notizie, pagelle, analisi e partecipazione per tutti i romanisti. Forza Roma!"]
 };
-const VISTE = { "/": "casa", "/pagelle": "pagella", "/vigilia": "vigilia", "/analisi": "analisi", "/biglietti": "biglietti", "/giocatori": "giocatori", "/storia": "storia", "/tifosi-roma": "tifosi" };
+const VISTE = { "/": "casa", "/pagelle": "pagella", "/vigilia": "vigilia", "/analisi": "analisi", "/biglietti": "biglietti", "/giocatori": "giocatori", "/storia": "storia", "/radio": "radio", "/tifosi-roma": "tifosi" };
 const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const oggi = () => new Date(Date.now() + 36e5).toISOString().slice(0, 10);
@@ -97,21 +98,23 @@ function schedaGiocatore(g, righe, pagelle) {
     + `<a class="bottone" href="/pagelle">Vota le pagelle</a><p><a href="/giocatori">Tutti i giocatori della Roma</a></p>`;
 }
 async function contenuti(ctx) {
-  let c = null, seo = {}, pagelle = null;
+  let c = null, seo = {}, pagelle = null, radio = false;
   try {
     const r = await ctx.env.DB.batch([
       ctx.env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'"),
       ctx.env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='seo'"),
-      ctx.env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='pagelle'")
+      ctx.env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='pagelle'"),
+      ctx.env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='radio'")
     ]);
     if (r[0].results[0]) c = JSON.parse(r[0].results[0].valore);
     if (r[1].results[0]) seo = JSON.parse(r[1].results[0].valore);
     pagelle = r[2].results[0]?.valore;
+    radio = !!r[3].results[0];
   } catch {}
   c ||= await (await ctx.env.ASSETS.fetch(new URL("/contenuti.json", ctx.request.url))).json();
   c.analisi = (c.analisi || []).filter(a => a.stato !== "bozza" && (!a.data || a.data <= oggi()));
   c.storia = (c.storia || []).filter(a => a.stato !== "bozza").sort((a, b) => annoStoria(a) - annoStoria(b));
-  c.seo = seo;
+  c.seo = seo; c.haRadio = radio;
   c.pagelle = elencoPagelle(pagelle, c.partita);
   return c;
 }
@@ -124,7 +127,7 @@ export async function onRequest(ctx) {
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/admin") || url.pathname.startsWith("/img/") || !["GET", "HEAD"].includes(req.method)) return ctx.next();
   if (percorso === "/sitemap.xml") {
     const c = await contenuti(ctx);
-    const voci = [...Object.keys(PAGINE).filter(u => u !== "/storia" || c.storia.length), ...c.storia.map(a => "/storia/" + a.id), ...(c.analisi || []).map(a => "/analisi/" + a.id), ...c.pagelle.map(p => "/pagelle/" + p.slug), ...GIOCATORI.map(g => "/giocatori/" + g.slug)];
+    const voci = [...Object.keys(PAGINE).filter(u => (u !== "/storia" || c.storia.length) && (u !== "/radio" || c.haRadio)), ...c.storia.map(a => "/storia/" + a.id), ...(c.analisi || []).map(a => "/analisi/" + a.id), ...c.pagelle.map(p => "/pagelle/" + p.slug), ...GIOCATORI.map(g => "/giocatori/" + g.slug)];
     const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${voci.map(v => { const d = (c.analisi || []).find(a => "/analisi/" + a.id === v)?.data; return `<url><loc>${BASE}${v}</loc>${d ? `<lastmod>${esc(d)}</lastmod>` : ""}</url>`; }).join("\n")}\n</urlset>\n`;
     return new Response(xml, { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
   }

@@ -83,7 +83,7 @@ button.pericolo{background:none;color:#C0392B;border:1px solid #C0392B}
 <script>
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
-const api = async (u, o = {}) => { const r = await fetch("/api/admin/" + u, o); const d = await r.json().catch(() => ({})); if (r.status === 401 && u !== "login") { entra(false); throw new Error("Accesso richiesto"); } if (!r.ok) throw new Error(d.errore || "Errore"); return d; };
+const api = async (u, o = {}) => { const r = await fetch("/api/admin/" + u, o); const d = await r.json().catch(() => ({})); if (r.status === 401 && u !== "login") { entra(false); throw new Error("Accesso richiesto"); } if (!r.ok) throw new Error(d.errore || d.error?.message || "Errore"); return d; };
 const post = (u, d, m = "POST") => api(u, { method: m, headers: { "content-type": "application/json" }, body: JSON.stringify(d) });
 const SCHEDE = [["bozze","Bozze"],["traffico","Traffico"],["contenuti","Contenuti"],["post","Post Instagram"],["seo","SEO"],["partita","Partita e pagelle"],["vigilia","Vigilia"],["tifosi","Classifica tifosi"],["classifica","Classifica Serie A"],["annunci","Annunci Amazon"],["immagini","Immagini"],["biglietti","Biglietti"],["radio","Radio"],["sicurezza","Sicurezza"]];
 const TIPI = { partita: "Analisi partita", stagione: "Analisi di stagione", focus: "Focus giocatore", extra: "Approfondimento" };
@@ -168,6 +168,34 @@ const PAGINE = {
   },
   async radio(v) {
     const c = el("div", "card"), es = el("p", "esito"), lista = el("div"), storie = C.storia || [];
+    const VOCE = "it-IT-Chirp3-HD-Algenib", g = el("div", "card"), eg = el("p", "esito"), tutti = el("button", "az", "Genera gli audio mancanti"), righe_ = el("div");
+    righe_.style.cssText = "display:grid;gap:6px";
+    let pronti = (await api("radio/stato")).brani;
+    // Spezza il racconto in parti accettate da Google, senza tagliare i paragrafi.
+    const parti = a => { const para = [`${a.titolo}.`, ...String(a.testo).split(/\n\s*\n/).map(t => t.replace(/^## (.*)$/, "$1.").trim())].filter(Boolean), l = []; let cur = ""; const b = t => new TextEncoder().encode(t).length; for (const q of para) { if (cur && b(cur) + b(q) > 4000) { l.push(cur); cur = ""; } cur = cur ? cur + "\n\n" + q : q; } if (cur) l.push(cur); return l; };
+    const genera = async a => {
+      const pezzi = [];
+      for (const testo of parti(a)) {
+        const r = await post("radio/sintesi", { voce: VOCE, testo });
+        pezzi.push(Uint8Array.from(atob(r.audioContent), x => x.charCodeAt(0)));
+      }
+      const blob = new Blob(pezzi, { type: "audio/mpeg" }), u = URL.createObjectURL(blob), au = new Audio(u);
+      const durata = await new Promise((ok, no) => { au.onloadedmetadata = () => ok(au.duration); au.onerror = () => no(new Error("Audio non valido")); });
+      URL.revokeObjectURL(u);
+      const q = await fetch(`/api/admin/radio/salva?id=${encodeURIComponent(a.id)}&durata=${Math.ceil(durata)}`, { method: "POST", headers: { "content-type": "audio/mpeg" }, body: blob });
+      if (!q.ok) throw new Error((await q.json().catch(() => ({}))).errore || "Salvataggio non riuscito");
+    };
+    const disegna = () => { righe_.textContent = ""; for (const a of storie) { const p = pronti.find(x => x.id === a.id), r = el("div", "voce"), inf = el("div"); inf.append(el("b", "", a.titolo), el("span", "nota", p ? `${Math.round(p.durata / 60)} minuti` : "Audio da generare")); r.append(inf, el("span", "segno" + (p ? " ok" : ""), p ? "Pronto" : "Manca")); righe_.append(r); } };
+    tutti.onclick = async () => {
+      tutti.disabled = true;
+      try {
+        const mancanti = storie.filter(a => !pronti.some(x => x.id === a.id));
+        for (let i = 0; i < mancanti.length; i++) { eg.textContent = `Genero ${i + 1} di ${mancanti.length}: ${mancanti[i].titolo}. Non chiudere la pagina.`; await genera(mancanti[i]); pronti = (await api("radio/stato")).brani; disegna(); }
+        eg.textContent = mancanti.length ? "Fatto: la radio è aggiornata." : "Non manca nessun audio.";
+      } catch (e) { eg.textContent = e.message; }
+      tutti.disabled = false;
+    };
+    g.append(el("h2", "", "Radio Curva"), el("p", "nota", "Voce Algenib. Tieni aperta la pagina mentre genera."), tutti, eg, righe_); disegna(); v.append(g);
     c.append(el("h2", "", "Prova le voci"), el("p", "nota", "Ogni prova legge l'inizio del racconto scelto. Scegli la voce che ti sembra più vera e dimmi il nome."));
     const l = el("label", "", "Racconto"), sel = el("select");
     storie.forEach((a, i) => { const o = el("option", "", `${a.anno}: ${a.titolo}`); o.value = i; sel.append(o); });

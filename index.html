@@ -182,6 +182,12 @@ body[data-partita] #v-pagella>:not(#pagella-partita,#sezione-archivio){display:n
 .voti-partita small{color:var(--muto);font-size:.8rem}
 .voti-partita b{font:800 1.5rem/1 var(--display);color:var(--accento)}
 .voce-pagelle{display:grid;gap:2px;background:var(--superficie);border:1px solid var(--linea);border-radius:10px;padding:10px 14px;color:inherit;text-decoration:none}
+#radio-box{display:grid;gap:22px;padding-block:32px 20px}
+.radio-ora{display:grid;gap:12px;padding:18px;border:1px solid var(--giallo);border-radius:12px}
+.radio-ora b{font:400 1.5rem/1.25 Georgia,"Times New Roman",serif}
+.radio-barra{height:4px;background:var(--linea);border-radius:2px;overflow:hidden}
+.radio-barra i{display:block;height:100%;width:0;background:var(--giallo)}
+.sez-storia{display:grid;gap:12px}
 #storia-box{display:grid;gap:30px;padding-block:32px 20px}
 .testa-storia{display:grid;gap:10px;padding:28px 20px;border-radius:12px;background:linear-gradient(rgba(36,18,10,.74),rgba(20,8,8,.93)),url(/img/stadio.jpg) center/cover;color:#F4E6CF;background-blend-mode:normal}
 .testa-storia h1{font:400 clamp(2.2rem,8vw,3.6rem)/1.08 Georgia,"Times New Roman",serif;text-wrap:balance}
@@ -455,7 +461,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
     <span class="scritta">Curva</span>
     <img src="/img/logo-chiaro.webp" alt="" width="480" height="179">
   </a>
-  <nav class="menu destra" aria-label="Altre sezioni"><a href="/storia" data-storia hidden>Storia</a><a href="/analisi">Analisi</a><a href="/biglietti">Biglietti</a></nav>
+  <nav class="menu destra" aria-label="Altre sezioni"><a href="/radio" data-radio hidden>Radio</a><a href="/storia" data-storia hidden>Storia</a><a href="/analisi">Analisi</a><a href="/biglietti">Biglietti</a></nav>
 </div>
 <img class="foto-testata" id="foto-testata" src="/img/tifosi.webp" srcset="/img/tifosi-800.webp 800w,/img/tifosi.webp 1600w" sizes="100vw" width="1600" height="1065" fetchpriority="high" alt="Curva Sud dei tifosi della Roma allo Stadio Olimpico piena di bandiere giallorosse"></header>
 
@@ -557,6 +563,16 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
     <section class="sezione in" id="sezione-archivio">
       <h2 class="striscione">Tutte le pagelle</h2>
       <div class="lista" id="pagelle-archivio"></div>
+    </section>
+  </div>
+
+  <div class="vista" id="v-radio" hidden>
+    <section class="in" id="radio-box">
+      <div class="testa-storia"><h1>Radio Curva</h1><p>I racconti della nostra storia, sempre in onda. Quando entri, la trasmissione è già cominciata.</p></div>
+      <div class="radio-ora"><span class="nota" id="radio-stato">Ora in onda</span><b id="radio-titolo">Presto in onda</b><div class="radio-barra"><i id="radio-i"></i></div><button class="bottone pieno" id="radio-play" type="button">Ascolta</button></div>
+      <h2 class="striscione">A seguire</h2>
+      <ol class="voti-partita" id="radio-dopo"></ol>
+      <p class="nota">Voce generata con intelligenza artificiale. I racconti sono scritti da Curva Roma.</p>
     </section>
   </div>
 
@@ -676,7 +692,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
 </div>
 
 <footer class="piede"><div class="in">
-  <nav aria-label="Link utili"><a href="/">Notizie AS Roma</a><a href="/pagelle">Pagelle dei tifosi</a><a href="/giocatori">Giocatori della Roma</a><a href="/storia" data-storia hidden>Storia della Roma</a><a href="/analisi">Analisi</a><a href="/tifosi-roma">Tifosi della Roma</a></nav>
+  <nav aria-label="Link utili"><a href="/">Notizie AS Roma</a><a href="/pagelle">Pagelle dei tifosi</a><a href="/giocatori">Giocatori della Roma</a><a href="/storia" data-storia hidden>Storia della Roma</a><a href="/radio" data-radio hidden>Radio Curva</a><a href="/analisi">Analisi</a><a href="/tifosi-roma">Tifosi della Roma</a></nav>
   <img class="logo-piede su-chiaro" src="/img/logo.webp" alt="Curva Roma" width="480" height="179" loading="lazy"><img class="logo-piede su-scuro" src="/img/logo-chiaro.webp" alt="Curva Roma" width="480" height="179" loading="lazy">
   <p>Sito di tifosi non ufficiale. Curva Roma non è collegato ad AS Roma.</p>
   <p>In qualità di Affiliato Amazon, ricevo un guadagno dagli acquisti idonei.</p>
@@ -844,6 +860,50 @@ function disegnaAnnunci() {
   try { localStorage.setItem("cr_annunci", JSON.stringify(ora)); } catch {}
 }
 matchMedia("(min-width:1180px)").addEventListener("change", disegnaAnnunci);
+/* Radio Curva: tutti ascoltano lo stesso punto, come in una radio vera. */
+let RADIO = null, inOnda = false, branoOra = null;
+const lettoreRadio = new Audio();
+function puntoRadio(ritardo = 0) {
+  const b = RADIO.brani, tot = b.reduce((s, x) => s + x.durata, 0);
+  let s = ((Date.now() - RADIO.t0) / 1000 + ritardo) % tot;
+  for (let i = 0; i < b.length; i++) { if (s < b[i].durata) return { i, off: s }; s -= b[i].durata; }
+  return { i: 0, off: 0 };
+}
+function disegnaRadio() {
+  if (!RADIO?.brani.length) return;
+  const { i, off } = puntoRadio(), b = RADIO.brani, ora = b[i], box = $("#radio-dopo");
+  $("#radio-titolo").textContent = ora.titolo;
+  $("#radio-i").style.width = off / ora.durata * 100 + "%";
+  box.textContent = "";
+  let tra = ora.durata - off;
+  for (let k = 1; k <= Math.min(5, b.length - 1); k++) {
+    const x = b[(i + k) % b.length], li = el("li"), quando = new Date(Date.now() + tra * 1000);
+    li.append(el("span", "", x.titolo), el("small", "", quando.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })));
+    box.append(li); tra += x.durata;
+  }
+}
+function mandaInOnda() {
+  const { i, off } = puntoRadio(), x = RADIO.brani[i];
+  branoOra = x.id; lettoreRadio.src = `/api/audio/${x.id}?v=${x.v}`;
+  lettoreRadio.addEventListener("loadedmetadata", () => { lettoreRadio.currentTime = off; }, { once: true });
+  lettoreRadio.play().catch(() => { inOnda = false; $("#radio-play").textContent = "Ascolta"; });
+  if ("mediaSession" in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: x.titolo, artist: "Radio Curva" });
+}
+lettoreRadio.addEventListener("ended", () => { if (inOnda) mandaInOnda(); });
+async function caricaRadio() {
+  try {
+    const d = await (await fetch("/api/radio")).json();
+    RADIO = { ...d, t0: Date.now() - d.secondi * 1000 };
+    disegnaRadio();
+  } catch {}
+}
+$("#radio-play").onclick = () => {
+  if (!RADIO?.brani.length) return;
+  inOnda = !inOnda; $("#radio-play").textContent = inOnda ? "Ferma" : "Ascolta";
+  if (inOnda) mandaInOnda(); else lettoreRadio.pause();
+};
+setInterval(() => { if (document.body.dataset.vista === "radio") disegnaRadio(); }, 5000);
+
 function disegnaNotizie(tutte) {
   const lista = tutte;
   const box = $("#carosello"); box.textContent = "";
@@ -1247,7 +1307,7 @@ function xiTifosi() {
 function aggiorna() { caricaMio(mioDoc); risultati(); esitoPronostico(); xiTifosi(); }
 
 /* Navigazione con passaggio animato */
-const VISTE = ["casa", "pagella", "vigilia", "analisi", "biglietti", "tifosi", "giocatori", "storia"];
+const VISTE = ["casa", "pagella", "vigilia", "analisi", "biglietti", "tifosi", "giocatori", "storia", "radio"];
 const PERCORSI = { casa: "/", pagella: "/pagelle", vigilia: "/vigilia", analisi: "/analisi", biglietti: "/biglietti", tifosi: "/tifosi-roma" };
 const TITOLI = { casa: "Curva Roma: notizie AS Roma, pagelle e tifosi romanisti", pagella: "Pagelle dei tifosi della Roma | Curva Roma", vigilia: "Vigilia della Roma: formazione e pronostico | Curva Roma", analisi: "Analisi AS Roma: tattica e dati | Curva Roma", biglietti: "Annunci biglietti Roma tra tifosi | Curva Roma", tifosi: "Tifosi della Roma: la casa dei romanisti | Curva Roma" };
 let vistaOra = null;
@@ -1258,6 +1318,7 @@ const scegli = () => {
   if (p.startsWith("/pagelle")) return "pagella";
   if (p.startsWith("/giocatori")) return "giocatori";
   if (p.startsWith("/storia")) return "storia";
+  if (p.startsWith("/radio")) return "radio";
   return VISTE.find(v => PERCORSI[v] === p) || "casa";
 };
 const schedaPartita = () => /^\/pagelle\/[\w-]+/.test(location.pathname);
@@ -1328,6 +1389,7 @@ function visitaSezione(v) {
 }
 function applica(p) {
   C = p.contenuti; PRODOTTI = p.prodotti || [];
+  tutti("[data-radio]").forEach(a => { a.hidden = !p.radio; });
   const racconti = C?.storia || [];
   tutti("[data-storia]").forEach(a => { a.hidden = !racconti.length; });
   const cs = $("#casa-storia"); cs.hidden = !racconti.length; cs.textContent = "";
@@ -1336,6 +1398,8 @@ function applica(p) {
     a.append(el("i", "", `La nostra storia, ${x.anno}`), el("b", "", x.titolo), el("span", "", "Leggi il racconto"));
     cs.append(a);
   }
+  if (p.radio) { const a = el("a"); a.href = "/radio"; a.append(el("i", "", "Radio Curva"), el("b", "", "La nostra storia, sempre in onda"), el("span", "", "Ascolta ora")); cs.hidden = false; cs.append(a); }
+  if (location.pathname.startsWith("/radio")) caricaRadio();
   const arch = $("#pagelle-archivio"); arch.textContent = "";
   for (const x of p.pagelle || []) {
     const a = el("a", "voce-pagelle"); a.href = "/pagelle/" + x.slug;
