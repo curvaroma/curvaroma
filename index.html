@@ -343,7 +343,6 @@ fieldset.campo-form{border:0;margin:0;padding:0}
 .annuncio strong{font-size:1.05rem}
 .annuncio button{justify-self:start;background:none;border:0;color:var(--accento);font-weight:600;min-height:40px;padding:0;cursor:pointer}
 .link-ufficiali{display:grid;gap:10px}
-.ferma{background:none;border:1px solid var(--muto);color:var(--testo);border-radius:8px;min-height:36px;padding:2px 12px;font-size:.88rem;font-weight:600;cursor:pointer;flex:none}
 
 /* Ultime cinque e classifica */
 .forma{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
@@ -493,7 +492,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
     </section>
 
     <section class="sezione in" aria-label="Notizie">
-      <div class="fila"><h2 class="striscione">Notizie sulla Roma</h2><button class="ferma" id="ferma" type="button">Pausa</button></div>
+      <div class="fila"><h2 class="striscione">Notizie sulla Roma</h2></div>
       <div class="carosello" id="carosello" tabindex="0" aria-label="Notizie, scorrono da sole o di lato col dito"></div>
     </section>
 
@@ -865,20 +864,19 @@ async function notizieVere() {
   } catch {}
 }
 function caroselloAutomatico() {
-  const c = $("#carosello"), tasto = $("#ferma");
-  let fermo = false, toccato = false, ripresa = null;
+  const c = $("#carosello");
+  let toccato = false, ripresa = null;
   const metà = () => Math.floor(c.children.length / 2);
   const giro = () => c.children[metà()] ? c.children[metà()].offsetLeft - c.children[0].offsetLeft : 0;
   const passo = () => c.children[0] ? c.children[0].getBoundingClientRect().width + 12 : 0;
   const riavvolgi = () => { const g = giro(); if (g > 0 && c.scrollLeft >= g - 2) c.scrollTo({ left: c.scrollLeft - g, behavior: "instant" }); };
-  tasto.onclick = () => { fermo = !fermo; tasto.textContent = fermo ? "Riparti" : "Pausa"; };
   const lascia = () => { clearTimeout(ripresa); ripresa = setTimeout(() => { toccato = false; }, 3000); };
   c.addEventListener("pointerdown", () => { toccato = true; clearTimeout(ripresa); });
   c.addEventListener("pointerup", lascia);
   c.addEventListener("pointercancel", lascia);
   c.addEventListener("scrollend", riavvolgi);
   setInterval(() => {
-    if (fermo || toccato || document.hidden || !c.offsetParent) return;
+    if (toccato || document.hidden || !c.offsetParent) return;
     riavvolgi();
     c.scrollBy({ left: passo(), behavior: calmo() ? "auto" : "smooth" });
   }, 3200);
