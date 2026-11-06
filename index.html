@@ -174,6 +174,14 @@ h1.striscione{font-size:2.9rem}
 .scelte button[aria-pressed="true"]{background:var(--accento);color:var(--su-accento);border-color:var(--accento);font-weight:700}
 
 /* Analisi */
+body:not([data-partita]) #pagella-partita{display:none}
+body[data-partita] #v-pagella>:not(#pagella-partita,#sezione-archivio){display:none}
+#pagella-partita{display:grid;gap:12px;padding-top:28px}
+.voti-partita{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.voti-partita li{display:flex;justify-content:space-between;gap:12px;align-items:center;background:var(--superficie);border:1px solid var(--linea);border-radius:10px;padding:10px 14px}
+.voti-partita small{color:var(--muto);font-size:.8rem}
+.voti-partita b{font:800 1.5rem/1 var(--display);color:var(--accento)}
+.voce-pagelle{display:grid;gap:2px;background:var(--superficie);border:1px solid var(--linea);border-radius:10px;padding:10px 14px;color:inherit;text-decoration:none}
 .articolo{display:grid;gap:12px;background:var(--superficie);border:1px solid var(--linea);border-radius:14px;padding:18px 16px}
 .articolo h2{font-size:2.1rem}
 .titolo-analisi{view-transition-name:analisi;width:fit-content}
@@ -500,6 +508,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
   </div>
 
   <div class="vista" id="v-pagella" hidden>
+    <section class="sezione in" id="pagella-partita"></section>
     <section class="fascia su-banda">
       <div class="in">
         <div class="fila"><h1 class="striscione" tabindex="-1">Pagella dei tifosi</h1></div>
@@ -515,6 +524,10 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
       <p class="nota">Il confronto con i numeri esce con l'analisi.</p>
     </section>
     <div class="in" data-annuncio></div>
+    <section class="sezione in" id="sezione-archivio">
+      <h2 class="striscione">Tutte le pagelle</h2>
+      <div class="lista" id="pagelle-archivio"></div>
+    </section>
   </div>
 
   <div class="vista" id="v-vigilia" hidden>
@@ -1192,8 +1205,10 @@ const scegli = () => {
   const h = location.hash.slice(1), p = location.pathname.replace(/\/$/, "") || "/";
   if (VISTE.includes(h)) return h;
   if (p.startsWith("/analisi")) return "analisi";
+  if (p.startsWith("/pagelle")) return "pagella";
   return VISTE.find(v => PERCORSI[v] === p) || "casa";
 };
+const schedaPartita = () => /^\/pagelle\/[\w-]+/.test(location.pathname);
 function disegnaAnalisi() {
   const box = $("#analisi-tutte"), lista = (C && C.analisi) || [];
   if (!C) return;
@@ -1211,13 +1226,16 @@ function mostra(v) {
   visitaSezione.pronta = true;
   tutti(".navigazione a, .menu a").forEach(a => a.getAttribute("href") === PERCORSI[v] ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
   $("#cursore").style.setProperty("--i", VISTE.indexOf(v));
-  document.title = TITOLI[v];
+  if (!schedaPartita()) document.title = TITOLI[v];
+  document.body.toggleAttribute("data-partita", schedaPartita());
   window.scrollTo(0, 0);
   disegnaAnalisi();
   mazzi();
 }
 function vai() {
   const v = scegli();
+  document.body.toggleAttribute("data-partita", schedaPartita());
+  if (!schedaPartita() && v === "pagella") document.title = TITOLI.pagella;
   if (v === vistaOra) { disegnaAnalisi(); window.scrollTo(0, 0); return; }
   const titolo = () => $("#v-" + v + " [tabindex='-1']")?.focus({ preventScroll: true });
   if (!document.startViewTransition || calmo() || vistaOra == null) { mostra(v); if (vistaOra) titolo(); return; }
@@ -1254,6 +1272,12 @@ function visitaSezione(v) {
 }
 function applica(p) {
   C = p.contenuti; PRODOTTI = p.prodotti || [];
+  const arch = $("#pagelle-archivio"); arch.textContent = "";
+  for (const x of p.pagelle || []) {
+    const a = el("a", "voce-pagelle"); a.href = "/pagelle/" + x.slug;
+    a.append(el("b", "", `${x.casa}-${x.ospiti} ${x.golCasa}-${x.golOspiti}`), el("span", "nota", `${x.data}, ${x.competizione}`));
+    arch.append(a);
+  }
   for (const [v, u] of Object.entries(PERCORSI)) if (p.seo?.pagine?.[u]?.titolo) TITOLI[v] = p.seo.pagine[u].titolo;
   const im = p.immagini || {};
   if (im.testata) for (const f of [$("#foto-testata"), $("#eroe-foto")]) { f.srcset = ""; f.src = im.testata; }

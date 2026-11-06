@@ -1,4 +1,4 @@
-import { PAGINE } from "../_middleware.js";
+import { PAGINE, slugPartita, elencoPagelle } from "../_middleware.js";
 // API di Curva Roma. Binding richiesto nel progetto Pages: D1 con nome DB.
 const COOKIE = "cr_tifoso";
 const ANNO = 60 * 60 * 24 * 365;
@@ -107,17 +107,19 @@ async function sha(testo) {
 // Le bozze e i contenuti con data futura restano fuori dal sito.
 const visibili = l => (l || []).filter(a => a.stato !== "bozza" && (!a.data || a.data <= giorno()));
 async function pubblico(env) {
-  const [c, p, i, s] = await env.DB.batch([
+  const [c, p, i, s, a] = await env.DB.batch([
     env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'"),
     env.DB.prepare("SELECT id, nome, link, foto, tipo, asin FROM prodotti WHERE attivo=1 ORDER BY ordine, nome"),
     env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='immagini'"),
-    env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='seo'")
+    env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='seo'"),
+    env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='pagelle'")
   ]);
   const contenuti = c.results[0] ? JSON.parse(c.results[0].valore) : null;
   if (contenuti) contenuti.analisi = visibili(contenuti.analisi);
   const seo = s.results[0] ? JSON.parse(s.results[0].valore) : {};
   return json({
     contenuti,
+    pagelle: elencoPagelle(a.results[0]?.valore, contenuti?.partita).map(({ slug, casa, ospiti, golCasa, golOspiti, data, competizione }) => ({ slug, casa, ospiti, golCasa, golOspiti, data, competizione })),
     seo: { pagine: seo.pagine || {} },
     prodotti: p.results,
     immagini: i.results[0] ? JSON.parse(i.results[0].valore) : {}
@@ -212,6 +214,18 @@ function unisci(base, modifiche) {
     else base[k] = v;
   }
 }
+// Tiene nell'archivio ogni partita, così i voti restano leggibili anche dopo la gara successiva.
+async function archivioPagelle(env, ...partite) {
+  const r = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='pagelle'").first("valore");
+  const lista = r ? JSON.parse(r) : [];
+  for (const q of partite) {
+    if (!q?.id) continue;
+    const i = lista.findIndex(x => x.id === q.id);
+    if (i >= 0) lista[i] = { ...q, slug: lista[i].slug };
+    else lista.unshift({ ...q, slug: slugPartita(q) });
+  }
+  return env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('pagelle',?) ON CONFLICT DO UPDATE SET valore=excluded.valore, aggiornato=CURRENT_TIMESTAMP").bind(JSON.stringify(lista));
+}
 async function admin(ctx, p) {
   const { request: req, env } = ctx;
   if (!env.ADMIN_PASSWORD) return errore("Imposta la variabile ADMIN_PASSWORD su Cloudflare", 503);
@@ -253,7 +267,11 @@ async function admin(ctx, p) {
     if (testo.length > 1500000) return errore("Contenuti troppo grandi", 413);
     const c = JSON.parse(testo);
     if (!c.partita?.id || !c.prossima?.id || !Array.isArray(c.classifica)) return errore("Contenuti non validi");
-    await env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('contenuti',?) ON CONFLICT DO UPDATE SET valore=excluded.valore, aggiornato=CURRENT_TIMESTAMP").bind(testo).run();
+    const vecchi = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'").first("valore");
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('contenuti',?) ON CONFLICT DO UPDATE SET valore=excluded.valore, aggiornato=CURRENT_TIMESTAMP").bind(testo),
+      await archivioPagelle(env, vecchi ? JSON.parse(vecchi).partita : null, c.partita)
+    ]);
     return json({ ok: true });
   }
   if (p[0] === "bozze") {
@@ -274,6 +292,7 @@ async function admin(ctx, p) {
       const v = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'").first("valore");
       const c = v ? JSON.parse(v) : null;
       if (!c) return errore("Contenuti non trovati");
+      const prima = structuredClone(c.partita);
       unisci(c, b.sito.modifiche || {});
       if (b.sito.articolo) {
         c.analisi ||= [];
@@ -281,7 +300,7 @@ async function admin(ctx, p) {
         c.analisi.unshift({ ...b.sito.articolo, stato: "pubblicato" });
       }
       if (!c.partita?.id || !c.prossima?.id || !Array.isArray(c.classifica)) return errore("Contenuti non validi");
-      scritture.push(env.DB.prepare("UPDATE impostazioni SET valore=?, aggiornato=CURRENT_TIMESTAMP WHERE chiave='contenuti'").bind(JSON.stringify(c)));
+      scritture.push(env.DB.prepare("UPDATE impostazioni SET valore=?, aggiornato=CURRENT_TIMESTAMP WHERE chiave='contenuti'").bind(JSON.stringify(c)), await archivioPagelle(env, prima, c.partita));
     }
     const r = b.sito?.risultato;
     if (r) {
