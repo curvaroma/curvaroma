@@ -54,7 +54,7 @@ p{margin:0}
 .foto-testata{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 58%;opacity:var(--foto-forza,.3)}
 .marchio{display:flex;align-items:center;gap:10px;text-decoration:none;min-width:0}
 .marchio img{display:block;width:92px;height:auto}
-.scritta{font:900 1.85rem/1 var(--display);letter-spacing:.02em;text-transform:uppercase;color:var(--su-banda);white-space:nowrap}
+.scritta{font:900 1.85rem/1 var(--display);letter-spacing:.02em;text-transform:uppercase;color:var(--su-banda);white-space:nowrap;transform:translateY(4px)}
 .su-chiaro{display:var(--vedi-rosso,block)}
 .su-scuro{display:var(--vedi-crema,none)}
 .logo-piede{width:132px;height:auto}
@@ -452,8 +452,8 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
 <header class="testata"><div class="in">
   <nav class="menu sinistra" aria-label="Sezioni"><a href="/">Casa</a><a href="/pagelle">Pagella</a><a href="/vigilia">Vigilia</a></nav>
   <a class="marchio" href="/" aria-label="Curva Roma, vai alla home">
+    <span class="scritta">Curva</span>
     <img src="/img/logo-chiaro.webp" alt="" width="480" height="179">
-    <span class="scritta">Curva Roma</span>
   </a>
   <nav class="menu destra" aria-label="Altre sezioni"><a href="/storia" data-storia hidden>Storia</a><a href="/analisi">Analisi</a><a href="/biglietti">Biglietti</a></nav>
 </div>
