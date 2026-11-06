@@ -423,8 +423,8 @@ async function disegnaPost(tela, d) {
   const [logo, foto] = await Promise.all([caricaImg("/img/logo-chiaro.png"), caricaImg(d.foto)]), g = tela.getContext("2d");
   g.fillStyle = "#5F0E24"; g.fillRect(0, 0, 1080, 1350);
   g.textBaseline = "alphabetic"; g.textAlign = "left"; g.font = '96px TitoliPost';
-  const nome = "CURVA ROMA", ln = g.measureText(nome).width, x0 = (1080 - 216 - 24 - ln) / 2;
-  g.drawImage(logo, x0, 38, 216, 216 * logo.height / logo.width); g.fillStyle = "#FFF6F0"; g.fillText(nome, x0 + 240, 113);
+  const nome = "CURVA", ln = g.measureText(nome).width, x0 = (1080 - 216 - 24 - ln) / 2;
+  g.fillStyle = "#FFF6F0"; g.fillText(nome, x0, 118); g.drawImage(logo, x0 + ln + 24, 38, 216, 216 * logo.height / logo.width);
   const k = Math.max(1080 / foto.width, 590 / foto.height), sw = 1080 / k, sh = 590 / k;
   g.drawImage(foto, (foto.width - sw) / 2, (foto.height - sh) * d.alto / 100, sw, sh, 0, 158, 1080, 590);
   g.fillStyle = "#8E1F2F"; g.fillRect(0, 748, 1080, 602);
