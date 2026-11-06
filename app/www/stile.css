@@ -23,6 +23,7 @@ main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .notizia b{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;font-size:1rem;line-height:1.25;margin-top:3px}
 .adv{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;align-items:center;margin:10px 14px;padding:10px;border-radius:12px;background:var(--carta);color:inherit;text-decoration:none}
 .adv img{width:64px;height:64px;object-fit:contain;background:#fff;border-radius:8px}
+.adv .meta,.adv b{display:block}
 .adv u{color:var(--giallo);text-decoration:none;font-size:.82rem}
 .sez{padding:16px 14px;display:grid;gap:12px}
 h1,h2{font:900 1.9rem/1.05 T;text-transform:uppercase;margin:0}

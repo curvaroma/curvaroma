@@ -34,7 +34,7 @@ function prodottiMisti() {
 function annuncio(p) {
   const a = el("a", "adv"); a.href = "#";
   const i = el("img"); i.src = assoluta(p.foto); i.alt = ""; i.loading = "lazy";
-  const t = el("div"); t.append(el("span", "meta", "Annuncio"), el("b", "", p.nome), el("br"), el("u", "", "Vedi su Amazon"));
+  const t = el("div"); t.append(el("span", "meta", "Annuncio"), el("b", "", p.nome), el("u", "", "Vedi su Amazon"));
   a.append(i, t);
   a.onclick = e => { e.preventDefault(); fetch(API + "/api/clic", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prodotto: p.id }) }).catch(() => {}); apriLink(p.link); };
   return a;
