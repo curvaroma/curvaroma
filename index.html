@@ -785,20 +785,29 @@ function contenuti() {
   $("#analisi-casa").textContent = "";
   if (lista[0]) $("#analisi-casa").append(articolo(lista[0], "casa"));
   disegnaAnalisi();
+  disegnaAnnunci();
+  $("#a-partita").textContent = ""; $("#a-settore").textContent = "";
+  $("#a-partita").append(...PARTITE_CASA.map(x => el("option", "", x)));
+  $("#a-settore").append(...SETTORI.map(x => el("option", "", x)));
+}
+// A ogni pagina gli annunci cambiano ordine e posizione.
+function disegnaAnnunci() {
   const conFoto = PRODOTTI.filter(p => p.foto);
-  tutti("[data-annuncio]").forEach((slot, i) => {
+  for (let i = conFoto.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [conFoto[i], conFoto[j]] = [conFoto[j], conFoto[i]]; }
+  let prima = []; try { prima = JSON.parse(localStorage.getItem("cr_annunci")) || []; } catch {}
+  const slots = tutti("[data-annuncio]"), ora = [];
+  for (let k = 1; k < conFoto.length && conFoto.some((x, i) => x.id === prima[i]); k++) conFoto.push(conFoto.shift());
+  slots.forEach((slot, i) => {
     slot.textContent = "";
     if (!conFoto.length) return;
-    const p = conFoto[(i + (slot.closest(".destra") ? 3 : 0)) % conFoto.length];
+    const p = conFoto[i % conFoto.length]; ora.push(p.id);
     const a = el("a", "pubblicita"); a.href = p.link; a.target = "_blank"; a.rel = "noopener sponsored";
     a.addEventListener("click", () => navigator.sendBeacon("/api/clic", new Blob([JSON.stringify({ prodotto: p.id })], { type: "application/json" })));
     const v = el("div", "vetrina"), img = el("img"); img.src = p.foto; img.alt = p.nome; img.loading = "lazy"; img.referrerPolicy = "no-referrer"; v.append(img);
     const t = el("div", "testo-pub"); t.append(el("span", "tag", "Annuncio"), el("strong", "", p.nome), el("small", "", "Vedi su Amazon"));
     a.append(v, t); slot.append(a);
   });
-  $("#a-partita").textContent = ""; $("#a-settore").textContent = "";
-  $("#a-partita").append(...PARTITE_CASA.map(x => el("option", "", x)));
-  $("#a-settore").append(...SETTORI.map(x => el("option", "", x)));
+  try { localStorage.setItem("cr_annunci", JSON.stringify(ora)); } catch {}
 }
 function disegnaNotizie(tutte) {
   const lista = tutte;
@@ -1240,6 +1249,7 @@ function mostra(v) {
   window.scrollTo(0, 0);
   disegnaAnalisi();
   mazzi();
+  disegnaAnnunci();
 }
 function vai() {
   const v = scegli();
