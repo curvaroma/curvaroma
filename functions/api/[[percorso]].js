@@ -99,6 +99,28 @@ async function notizie(ctx) {
   return risposta;
 }
 
+// Archivio per l'app: le notizie restano nel database, così scorrendo si torna indietro nel tempo.
+const FONTI_APP = ["Corriere dello Sport", "Giallorossi.net", "RomaNews"];
+async function aggiornaArchivio(env) {
+  const ora = Date.now(), ultimo = Number(await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='notizie_agg'").first("valore")) || 0;
+  if (ora - ultimo < 6e5) return;
+  await env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('notizie_agg',?) ON CONFLICT DO UPDATE SET valore=excluded.valore").bind(String(ora)).run();
+  const esiti = await Promise.allSettled(FEED.filter(([t]) => FONTI_APP.includes(t)).map(async ([t, u]) => {
+    const r = await fetch(u, { headers: { "user-agent": "CurvaRoma/1.0 (+https://curvaroma.it)" } });
+    return r.ok ? leggiFeed(t, await r.text()) : [];
+  }));
+  const nuove = esiti.flatMap(e => e.status === "fulfilled" ? e.value : []).filter(n => n.data);
+  if (nuove.length) await env.DB.batch(nuove.map(n => env.DB.prepare("INSERT OR IGNORE INTO notizie (url, testata, titolo, foto, pubblicata) VALUES (?,?,?,?,?)").bind(n.url, n.t, n.titolo, n.foto, new Date(n.data).toISOString())));
+}
+async function archivioNotizie(ctx, url) {
+  const { env } = ctx, prima = url.searchParams.get("prima"), n = Math.min(50, Math.max(1, Number(url.searchParams.get("limite")) || 30));
+  if (prima && !/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(prima)) return errore("Data non valida");
+  const vuoto = !(await env.DB.prepare("SELECT 1 x FROM notizie LIMIT 1").first("x"));
+  if (vuoto) await aggiornaArchivio(env); else ctx.waitUntil(aggiornaArchivio(env));
+  const q = prima ? env.DB.prepare("SELECT testata, titolo, url, foto, pubblicata FROM notizie WHERE pubblicata < ? ORDER BY pubblicata DESC LIMIT ?").bind(prima, n) : env.DB.prepare("SELECT testata, titolo, url, foto, pubblicata FROM notizie ORDER BY pubblicata DESC LIMIT ?").bind(n);
+  return json({ notizie: (await q.all()).results });
+}
+
 const giorno = () => new Date(Date.now() + 36e5).toISOString().slice(0, 10);
 async function sha(testo) {
   const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(testo));
@@ -545,6 +567,7 @@ export async function onRequest(ctx) {
     if (percorso[0] === "admin") return admin(ctx, percorso.slice(1));
     if (req.method === "GET" && percorso[0] === "pubblico") return pubblico(env);
     if (req.method === "GET" && percorso[0] === "img") return immagine(env, percorso[1]);
+    if (req.method === "GET" && percorso[0] === "archivio") return await archivioNotizie(ctx, url);
     if (req.method === "GET" && percorso[0] === "radio") return radio(env);
     if (req.method === "GET" && percorso[0] === "audio") return audio(env, req, percorso[1]);
     if (req.method === "POST" && percorso[0] === "visita") return visita(ctx);
