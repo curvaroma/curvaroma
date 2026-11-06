@@ -204,6 +204,14 @@ async function adminValido(req, env) {
   if (!m || +m[1] < Date.now()) return false;
   return (await firma(env, m[1])) === m[2];
 }
+// Applica le modifiche di una bozza senza toccare gli altri campi. Le liste vengono sostituite.
+function unisci(base, modifiche) {
+  for (const [k, v] of Object.entries(modifiche)) {
+    if (k === "__proto__" || k === "constructor") continue;
+    if (v && typeof v === "object" && !Array.isArray(v)) unisci(base[k] ||= {}, v);
+    else base[k] = v;
+  }
+}
 async function admin(ctx, p) {
   const { request: req, env } = ctx;
   if (!env.ADMIN_PASSWORD) return errore("Imposta la variabile ADMIN_PASSWORD su Cloudflare", 503);
@@ -246,6 +254,43 @@ async function admin(ctx, p) {
     const c = JSON.parse(testo);
     if (!c.partita?.id || !c.prossima?.id || !Array.isArray(c.classifica)) return errore("Contenuti non validi");
     await env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('contenuti',?) ON CONFLICT DO UPDATE SET valore=excluded.valore, aggiornato=CURRENT_TIMESTAMP").bind(testo).run();
+    return json({ ok: true });
+  }
+  if (p[0] === "bozze") {
+    const riga = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='bozze'").first("valore");
+    const bozze = riga ? JSON.parse(riga) : [];
+    if (req.method === "GET") return json({ bozze });
+    const b = bozze.find(x => x.id === p[1]);
+    if (req.method !== "POST" || !b) return errore("Bozza non trovata", 404);
+    if (b.stato === "pubblicata") return errore("Bozza già pubblicata", 409);
+    if (p[2] === "attesa") {
+      b.stato = "da-rivedere";
+      await env.DB.prepare("UPDATE impostazioni SET valore=?, aggiornato=CURRENT_TIMESTAMP WHERE chiave='bozze'").bind(JSON.stringify(bozze)).run();
+      return json({ ok: true });
+    }
+    if (p[2] !== "pubblica") return errore("Percorso non trovato", 404);
+    const scritture = [];
+    if (b.sito?.modifiche || b.sito?.articolo) {
+      const v = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'").first("valore");
+      const c = v ? JSON.parse(v) : null;
+      if (!c) return errore("Contenuti non trovati");
+      unisci(c, b.sito.modifiche || {});
+      if (b.sito.articolo) {
+        c.analisi ||= [];
+        if (c.analisi.some(a => a.id === b.sito.articolo.id)) return errore("Esiste già un contenuto con questo indirizzo", 409);
+        c.analisi.unshift({ ...b.sito.articolo, stato: "pubblicato" });
+      }
+      if (!c.partita?.id || !c.prossima?.id || !Array.isArray(c.classifica)) return errore("Contenuti non validi");
+      scritture.push(env.DB.prepare("UPDATE impostazioni SET valore=?, aggiornato=CURRENT_TIMESTAMP WHERE chiave='contenuti'").bind(JSON.stringify(c)));
+    }
+    const r = b.sito?.risultato;
+    if (r) {
+      if (!idPartita(r.partita) || ![r.casa, r.ospiti].every(n => Number.isInteger(n) && n >= 0 && n <= 30)) return errore("Risultato non valido");
+      scritture.push(env.DB.prepare("INSERT INTO risultati (partita, nome, casa, ospiti) VALUES (?,?,?,?) ON CONFLICT(partita) DO UPDATE SET nome=excluded.nome, casa=excluded.casa, ospiti=excluded.ospiti").bind(r.partita, String(r.nome || r.partita).slice(0, 60), r.casa, r.ospiti));
+    }
+    b.stato = "pubblicata"; b.pubblicata = new Date().toISOString();
+    scritture.push(env.DB.prepare("UPDATE impostazioni SET valore=?, aggiornato=CURRENT_TIMESTAMP WHERE chiave='bozze'").bind(JSON.stringify(bozze)));
+    await env.DB.batch(scritture);
     return json({ ok: true });
   }
   if (p[0] === "tifosi") {

@@ -60,6 +60,8 @@ button.pericolo{background:none;color:#C0392B;border:1px solid #C0392B}
 .tabella th,.tabella td{text-align:left;padding:8px 6px;border-top:1px solid var(--linea);vertical-align:top}
 .scorri{overflow-x:auto}
 .post-griglia{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,320px);gap:16px;align-items:start}
+.bozza-img{width:100%;height:auto;border-radius:8px;display:block}
+.a-capo{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
 .post-griglia canvas{width:100%;height:auto;border-radius:8px;display:block}
 @media (max-width:720px){.post-griglia{grid-template-columns:minmax(0,1fr)}}
 </style>
@@ -81,12 +83,12 @@ const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
 const api = async (u, o = {}) => { const r = await fetch("/api/admin/" + u, o); const d = await r.json().catch(() => ({})); if (r.status === 401 && u !== "login") { entra(false); throw new Error("Accesso richiesto"); } if (!r.ok) throw new Error(d.errore || "Errore"); return d; };
 const post = (u, d, m = "POST") => api(u, { method: m, headers: { "content-type": "application/json" }, body: JSON.stringify(d) });
-const SCHEDE = [["traffico","Traffico"],["contenuti","Contenuti"],["post","Post Instagram"],["seo","SEO"],["partita","Partita e pagelle"],["vigilia","Vigilia"],["tifosi","Classifica tifosi"],["classifica","Classifica Serie A"],["annunci","Annunci Amazon"],["immagini","Immagini"],["biglietti","Biglietti"]];
+const SCHEDE = [["bozze","Bozze"],["traffico","Traffico"],["contenuti","Contenuti"],["post","Post Instagram"],["seo","SEO"],["partita","Partita e pagelle"],["vigilia","Vigilia"],["tifosi","Classifica tifosi"],["classifica","Classifica Serie A"],["annunci","Annunci Amazon"],["immagini","Immagini"],["biglietti","Biglietti"]];
 const TIPI = { partita: "Analisi partita", stagione: "Analisi di stagione", focus: "Focus giocatore", extra: "Approfondimento" };
 const conta = t => (String(t || "").match(/\S+/g) || []).length;
 const oggi = () => new Date().toISOString().slice(0, 10);
-let C = null, ora = "traffico", sporco = false, aperto = null;
-const segna = () => { if (["post", "seo", "tifosi"].includes(ora)) return; sporco = true; $("#barra-salva").hidden = false; $("#e-salva").textContent = "Modifiche da pubblicare"; };
+let C = null, ora = "bozze", sporco = false, aperto = null;
+const segna = () => { if (["bozze", "post", "seo", "tifosi"].includes(ora)) return; sporco = true; $("#barra-salva").hidden = false; $("#e-salva").textContent = "Modifiche da pubblicare"; };
 function campo(et, val, su, tipo = "text") {
   const l = el("label", "", et), i = el(tipo === "area" ? "textarea" : "input");
   if (tipo !== "area") i.type = tipo;
@@ -117,7 +119,38 @@ function tastoFile(testo, suFile) {
   const i = el("input"); i.type = "file"; i.accept = "image/*"; i.hidden = true; i.onchange = async () => { if (i.files[0]) { l.firstChild.textContent = "Caricamento…"; try { await suFile(i.files[0]); } catch (e) { alert(e.message); } l.firstChild.textContent = testo; } }; l.append(i); return l;
 }
 
+const STATI_BOZZA = { bozza: ["Da controllare", ""], "da-rivedere": ["Resta in bozza", "no"], pubblicata: ["Pubblicata", "ok"] };
 const PAGINE = {
+  async bozze(v) {
+    const { bozze } = await api("bozze");
+    if (!bozze.length) { const c = el("div", "card"); c.append(el("h2", "", "Bozze"), el("p", "nota", "Nessuna bozza da controllare.")); v.append(c); return; }
+    for (const b of [...bozze].reverse()) {
+      const c = el("div", "card"), t = el("div", "voce"), [nomeStato, cl] = STATI_BOZZA[b.stato] || STATI_BOZZA.bozza, griglia = el("div", "post-griglia"), f = el("div"), es = el("span", "esito");
+      f.style.cssText = "display:grid;gap:12px;min-width:0";
+      const sez = (tit, testo) => { if (testo) f.append(el("h3", "", tit), el("p", "a-capo", testo)); };
+      t.append(el("h2", "", b.titolo || b.id), el("span", "segno " + cl, nomeStato)); c.append(t);
+      sez("Didascalia Instagram", b.didascalia);
+      sez("Sul sito", b.sito?.descrizione);
+      if (b.sito?.articolo) { const a = b.sito.articolo; sez("Articolo: " + a.titolo, a.testo.replace(/^## /gm, "")); f.append(el("p", "nota", `${conta(a.testo)} parole`)); }
+      if (b.note?.length) { const u = el("ul"); u.style.cssText = "margin:0;padding-left:20px;display:grid;gap:4px"; for (const n of b.note) u.append(el("li", "", n)); f.append(el("h3", "", "Note di Claude"), u); }
+      if (b.fonti?.length) { const u = el("div", "riga"); for (const [n, url] of b.fonti) if (/^https:\/\//.test(url)) { const a = el("a", "", n); a.href = url; a.target = "_blank"; a.rel = "noopener"; u.append(a); } f.append(el("h3", "", "Fonti"), u); }
+      griglia.append(f);
+      if (b.immagine && /^(https:\/\/|\/)/.test(b.immagine)) { const i = el("img", "bozza-img"); i.src = b.immagine; i.alt = "Grafica del post"; griglia.append(i); }
+      c.append(griglia);
+      const az = el("div", "riga"), azione = (etichetta, classe, percorso) => { const x = el("button", classe, etichetta); x.onclick = async () => {
+        if (sporco) { es.textContent = "Salva prima le modifiche aperte nel pannello"; return; }
+        if (percorso === "pubblica" && !window.confirm("Pubblicare questa bozza sul sito?")) return;
+        try { await post(`bozze/${encodeURIComponent(b.id)}/${percorso}`, {}); C = (await api("contenuti")).contenuti; apri("bozze"); } catch (e) { es.textContent = e.message; }
+      }; return x; };
+      if (b.stato !== "pubblicata") az.append(azione(b.sito?.descrizione ? "Pubblica sul sito" : "Segna come pubblicata", "az", "pubblica"));
+      if (b.stato === "bozza") az.append(azione("Resta in bozza", "az sec", "attesa"));
+      if (b.immagine) { const sc = el("button", "az sec", "Scarica JPG"); sc.onclick = async () => { try { const u = URL.createObjectURL(await (await fetch(b.immagine)).blob()), a = el("a"); a.href = u; a.download = `curvaroma-${b.id}.jpg`; a.click(); URL.revokeObjectURL(u); } catch { es.textContent = "Scaricamento non riuscito"; } }; az.append(sc); }
+      if (b.didascalia) { const co = el("button", "az sec", "Copia didascalia"); co.onclick = async () => { try { await navigator.clipboard.writeText(b.didascalia); es.textContent = "Didascalia copiata"; } catch { es.textContent = "Copia non riuscita"; } }; az.append(co); }
+      az.append(es); c.append(az);
+      if (b.stato === "da-rivedere") c.append(el("p", "nota", "Torna da Claude nella sessione del giorno per sistemarla."));
+      v.append(c);
+    }
+  },
   async traffico(v) {
     const d = await api("riepilogo");
     const gg = [...new Set(d.visite.map(x => x.giorno))], tot = g => d.visite.filter(x => x.giorno === g).reduce((a, b) => a + b.n, 0);
