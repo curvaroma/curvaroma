@@ -2,5 +2,5 @@
   "titolo": ["Miglior attacco", "peggior difesa"],
   "testo": "Roma 28 gol fatti, Sassuolo 26 subiti. Sabato ore 20:45, all'Olimpico.",
   "foto": "img/curva.jpg",
-  "alto": 50
+  "giocatori": ["img/giocatori/da-confermare-1-scontorno.png", "img/giocatori/mora-scontorno.png", "img/giocatori/da-confermare-2-scontorno.png"]
 }
