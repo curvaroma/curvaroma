@@ -135,7 +135,7 @@ async function immagine(env, id) {
 async function visita(ctx) {
   const { request: req, env } = ctx;
   const c = await req.json().catch(() => ({}));
-  const sezione = ["casa", "pagella", "vigilia", "analisi", "biglietti", "storia"].includes(c.sezione) ? c.sezione : "altro";
+  const sezione = ["casa", "pagella", "vigilia", "analisi", "biglietti", "giocatori", "storia"].includes(c.sezione) ? c.sezione : "altro";
   const dispositivo = c.mobile ? "mobile" : "computer", g = giorno();
   const impronta = (await sha(`${g}|${req.headers.get("cf-connecting-ip")}|${req.headers.get("user-agent")}`)).slice(0, 24);
   ctx.waitUntil(env.DB.batch([

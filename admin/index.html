@@ -274,7 +274,7 @@ const PAGINE = {
   async seo(v) {
     const { seo, predefiniti } = await api("seo");
     seo.pagine ||= {}; seo.parole ||= ["as roma", "associazione sportiva roma", "romanista", "romanisti", "roma", "forza roma", "curva sud", "curva roma", "tifosi roma", "tifoso roma", "tifoseria roma"];
-    const NOMI = { "/": "Casa", "/pagelle": "Pagelle", "/vigilia": "Vigilia", "/analisi": "Analisi", "/biglietti": "Biglietti", "/tifosi-roma": "Tifosi della Roma" };
+    const NOMI = { "/": "Casa", "/pagelle": "Pagelle", "/vigilia": "Vigilia", "/analisi": "Analisi", "/biglietti": "Biglietti", "/giocatori": "Giocatori", "/tifosi-roma": "Tifosi della Roma" };
     const titoloDi = u => seo.pagine[u]?.titolo || predefiniti[u][0], descDi = u => seo.pagine[u]?.descrizione || predefiniti[u][1];
     const pubblicati = C.analisi.filter(a => a.stato !== "bozza");
     const es = el("span", "esito"), sv = el("button", "az", "Salva SEO");

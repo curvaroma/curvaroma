@@ -1,3 +1,4 @@
+import { GIOCATORI } from "./_rosa.js";
 // Titoli, descrizioni e contenuti leggibili da Google per ogni pagina.
 const BASE = "https://curvaroma.it";
 export const PAGINE = {
@@ -6,9 +7,10 @@ export const PAGINE = {
   "/vigilia": ["Vigilia della Roma: formazione e pronostico | Curva Roma", "La prossima partita della Roma: scegli la formazione dei tifosi e indovina il risultato."],
   "/analisi": ["Analisi AS Roma: tattica e dati | Curva Roma", "Analisi tattiche e dati sulle partite e sui giocatori dell'AS Roma, scritte per i tifosi romanisti."],
   "/biglietti": ["Annunci biglietti Roma tra tifosi | Curva Roma", "Bacheca di annunci tra tifosi della Roma. Biglietti e cambio intestatario solo sui canali ufficiali."],
+  "/giocatori": ["Giocatori della Roma: la rosa e i voti dei tifosi | Curva Roma", "Tutti i giocatori della Roma 2026/27: numeri di maglia, ruoli e media voto dei tifosi romanisti, partita dopo partita."],
   "/tifosi-roma": ["Tifosi della Roma: la casa dei romanisti | Curva Roma", "Curva Roma è il sito indipendente della tifoseria della Roma: notizie, pagelle, analisi e partecipazione per tutti i romanisti. Forza Roma!"]
 };
-const VISTE = { "/": "casa", "/pagelle": "pagella", "/vigilia": "vigilia", "/analisi": "analisi", "/biglietti": "biglietti", "/tifosi-roma": "tifosi" };
+const VISTE = { "/": "casa", "/pagelle": "pagella", "/vigilia": "vigilia", "/analisi": "analisi", "/biglietti": "biglietti", "/giocatori": "giocatori", "/tifosi-roma": "tifosi" };
 const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const oggi = () => new Date(Date.now() + 36e5).toISOString().slice(0, 10);
@@ -22,21 +24,38 @@ export const elencoPagelle = (valore, partita) => {
   const lista = valore ? JSON.parse(valore) : [];
   return partita?.id && !lista.some(x => x.id === partita.id) ? [{ ...partita, slug: slugPartita(partita) }, ...lista] : lista;
 };
-const MIN_VOTANTI = 3; // Sotto questa soglia la pagina resta fuori da Google: sarebbe troppo povera.
+const perVoto = Object.fromEntries(GIOCATORI.map(g => [g.voti, g]));
 const voto = n => n.toFixed(1).replace(".", ",").replace(",0", "");
 const nomePartita = p => `${p.casa}-${p.ospiti} ${p.golCasa}-${p.golOspiti}`;
 const rigaPagella = p => `<a class="voce-pagelle" href="/pagelle/${esc(p.slug)}"><b>${esc(nomePartita(p))}</b><span class="nota">${esc(p.data)}, ${esc(p.competizione)}</span></a>`;
-function schedaPagella(p, voti, schede, corrente) {
+function schedaPagella(p, voti, corrente) {
   const ruoli = Object.fromEntries((p.titolari || []).map(([n, r]) => [n, r]));
-  const gol = (p.gol || []).map(([m, s]) => `${esc(m)}' ${esc(s === "casa" ? p.casa : p.ospiti)}`).join(", ");
-  let frase = schede === 1 ? "Ha votato 1 tifoso." : schede ? `Hanno votato ${schede} tifosi.` : "Ancora nessun voto.";
-  if (schede >= MIN_VOTANTI && voti.length > 1) {
+  const gol = (p.gol || []).map(([m, q]) => `${esc(m)}' ${esc(q === "casa" ? p.casa : p.ospiti)}`).join(", ");
+  let frase = "I voti dei tifosi arrivano qui, giocatore per giocatore.";
+  if (voti.length > 1) {
     const a = voti[0], b = voti[voti.length - 1];
-    frase += ` Per i romanisti il migliore è ${a.giocatore} con ${voto(a.m)}, il peggiore ${b.giocatore} con ${voto(b.m)}.`;
+    frase = `Per i romanisti il migliore è ${a.giocatore} con ${voto(a.m)}, il peggiore ${b.giocatore} con ${voto(b.m)}.`;
   }
+  const nome = v => perVoto[v.giocatore] ? `<a href="/giocatori/${perVoto[v.giocatore].slug}">${esc(v.giocatore)}</a>` : esc(v.giocatore);
   return `<h1 class="striscione">Pagelle ${esc(nomePartita(p))}</h1><p class="nota">${esc(p.competizione)}, ${esc(p.data)}${gol ? `. Gol: ${gol}` : ""}</p><p>${esc(frase)}</p>`
-    + (voti.length ? `<ol class="voti-partita">${voti.map(v => `<li><span>${esc(v.giocatore)}${ruoli[v.giocatore] ? ` <small>${esc(ruoli[v.giocatore])}</small>` : ""}</span><b>${voto(v.m)}</b></li>`).join("")}</ol>` : "")
+    + (voti.length ? `<ol class="voti-partita">${voti.map(v => `<li><span>${nome(v)}${ruoli[v.giocatore] ? ` <small>${esc(ruoli[v.giocatore])}</small>` : ""}</span><b>${voto(v.m)}</b></li>`).join("")}</ol>` : "")
     + (corrente ? `<a class="bottone" href="/pagelle">Vota le pagelle</a>` : "");
+}
+const REPARTI = [["Portiere", "Portieri"], ["Difensore", "Difensori"], ["Centrocampista", "Centrocampisti"], ["Attaccante", "Attaccanti"]];
+function elencoGiocatori(medie) {
+  const m = Object.fromEntries(medie.map(x => [x.giocatore, x.m]));
+  const card = g => `<a class="card-giocatore" href="/giocatori/${g.slug}"><img src="/img/giocatori/mini/${g.slug}.webp" alt="${esc(g.nome)}" loading="lazy" width="150" height="180"><b>${esc(g.nome)}</b><span class="nota">Numero ${g.numero}${m[g.voti] != null ? `, media ${voto(m[g.voti])}` : ""}</span></a>`;
+  return `<h1 class="striscione">I giocatori della Roma</h1><p>La rosa 2026/27 con la media voto dei tifosi romanisti.</p>`
+    + REPARTI.map(([r, t]) => `<h2 class="striscione">${t}</h2><div class="griglia-giocatori">${GIOCATORI.filter(g => g.ruolo === r).map(card).join("")}</div>`).join("");
+}
+function schedaGiocatore(g, righe, pagelle) {
+  const voci = righe.map(r => ({ ...r, p: pagelle.find(x => x.id === r.partita) })).filter(r => r.p);
+  const media = voci.length ? voci.reduce((a, b) => a + b.m, 0) / voci.length : null;
+  const presentazione = `${g.nome} è ${g.ruolo === "Attaccante" ? "un attaccante" : g.ruolo === "Difensore" ? "un difensore" : g.ruolo === "Portiere" ? "un portiere" : "un centrocampista"} della Roma, numero ${g.numero}${g.nazione ? `, nazionalità: ${g.nazione}` : ""}.`;
+  return `<div class="testa-giocatore"><img src="/img/giocatori/mini/${g.slug}.webp" alt="${esc(g.nome)}" width="210" height="250"><div><h1 class="striscione">${esc(g.nome)}</h1><p>${esc(presentazione)}</p>${media != null ? `<p class="media-giocatore"><b>${voto(media)}</b> <span class="nota">media voto dei tifosi</span></p>` : ""}</div></div>`
+    + `<h2 class="striscione">I voti dei tifosi</h2>`
+    + (voci.length ? `<ol class="voti-partita">${voci.map(r => `<li><span><a href="/pagelle/${esc(r.p.slug)}">${esc(nomePartita(r.p))}</a> <small>${esc(r.p.data)}</small></span><b>${voto(r.m)}</b></li>`).join("")}</ol>` : `<p>I tifosi non lo hanno ancora votato in questa stagione.</p>`)
+    + `<a class="bottone" href="/pagelle">Vota le pagelle</a><p><a href="/giocatori">Tutti i giocatori della Roma</a></p>`;
 }
 async function contenuti(ctx) {
   let c = null, seo = {}, pagelle = null;
@@ -65,17 +84,17 @@ export async function onRequest(ctx) {
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/admin") || url.pathname.startsWith("/img/") || !["GET", "HEAD"].includes(req.method)) return ctx.next();
   if (percorso === "/sitemap.xml") {
     const c = await contenuti(ctx);
-    const votanti = Object.fromEntries((await ctx.env.DB.prepare("SELECT partita, COUNT(DISTINCT tifoso_id) n FROM voti GROUP BY partita").all()).results.map(r => [r.partita, r.n]));
-    const voci = [...Object.keys(PAGINE), ...(c.analisi || []).map(a => "/analisi/" + a.id), ...c.pagelle.filter(p => votanti[p.id] >= MIN_VOTANTI).map(p => "/pagelle/" + p.slug)];
+    const voci = [...Object.keys(PAGINE), ...(c.analisi || []).map(a => "/analisi/" + a.id), ...c.pagelle.map(p => "/pagelle/" + p.slug), ...GIOCATORI.map(g => "/giocatori/" + g.slug)];
     const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${voci.map(v => { const d = (c.analisi || []).find(a => "/analisi/" + a.id === v)?.data; return `<url><loc>${BASE}${v}</loc>${d ? `<lastmod>${esc(d)}</lastmod>` : ""}</url>`; }).join("\n")}\n</urlset>\n`;
     return new Response(xml, { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
   }
   const dettaglio = percorso.match(/^\/analisi\/([\w-]+)$/);
   const scheda = percorso.match(/^\/pagelle\/([\w-]+)$/);
-  if (!PAGINE[percorso] && !dettaglio && !scheda) return ctx.next();
+  const unGiocatore = percorso.match(/^\/giocatori\/([\w-]+)$/);
+  if (!PAGINE[percorso] && !dettaglio && !scheda && !unGiocatore) return ctx.next();
   const c = await contenuti(ctx);
-  let [titolo, descrizione] = PAGINE[dettaglio ? "/analisi" : scheda ? "/pagelle" : percorso] || [];
-  const scelta = !dettaglio && !scheda && c.seo.pagine?.[percorso];
+  let [titolo, descrizione] = PAGINE[dettaglio ? "/analisi" : scheda ? "/pagelle" : unGiocatore ? "/giocatori" : percorso] || [];
+  const scelta = !dettaglio && !scheda && !unGiocatore && c.seo.pagine?.[percorso];
   if (scelta?.titolo) titolo = scelta.titolo;
   if (scelta?.descrizione) descrizione = scelta.descrizione;
   const dati = [{ "@context": "https://schema.org", "@type": "WebSite", name: "Curva Roma", alternateName: "curvaroma.it", url: BASE + "/", inLanguage: "it" }];
@@ -89,19 +108,25 @@ export async function onRequest(ctx) {
   if (percorso === "/vigilia" && c.prossima?.inizio) dati.push({ "@context": "https://schema.org", "@type": "SportsEvent", name: `${c.prossima.casa}-${c.prossima.ospiti}`, startDate: c.prossima.inizio, sport: "Calcio", homeTeam: { "@type": "SportsTeam", name: c.prossima.casa }, awayTeam: { "@type": "SportsTeam", name: c.prossima.ospiti } });
   const partita = scheda && c.pagelle.find(p => p.slug === scheda[1]);
   if (scheda && !partita) return new Response("Pagina non trovata", { status: 404 });
-  let htmlScheda = "", testa = "";
+  let htmlScheda = "";
   if (partita) {
-    const [v, n] = await ctx.env.DB.batch([
-      ctx.env.DB.prepare("SELECT giocatore, AVG(voto) m FROM voti WHERE partita=? GROUP BY giocatore ORDER BY m DESC").bind(partita.id),
-      ctx.env.DB.prepare("SELECT COUNT(DISTINCT tifoso_id) n FROM voti WHERE partita=?").bind(partita.id)
-    ]);
-    const schede = n.results[0].n;
+    const v = await ctx.env.DB.prepare("SELECT giocatore, AVG(voto) m FROM voti WHERE partita=? GROUP BY giocatore ORDER BY m DESC").bind(partita.id).all();
     titolo = `Pagelle ${nomePartita(partita)}: voti dei tifosi | Curva Roma`;
     descrizione = `Le pagelle di ${partita.casa}-${partita.ospiti} del ${partita.data}, ${partita.competizione}: i voti dei tifosi della Roma, giocatore per giocatore.`;
-    htmlScheda = schedaPagella(partita, v.results, schede, partita.id === c.partita?.id);
+    htmlScheda = schedaPagella(partita, v.results, partita.id === c.partita?.id);
     const giorno = partita.slug.slice(-10);
     dati.push({ "@context": "https://schema.org", "@type": "Article", headline: `Pagelle ${nomePartita(partita)}`, description: descrizione, image: BASE + "/img/anteprima.jpg", inLanguage: "it", datePublished: giorno, mainEntityOfPage: BASE + percorso, author: { "@type": "Organization", name: "Curva Roma", url: BASE + "/" }, publisher: { "@type": "Organization", name: "Curva Roma", logo: { "@type": "ImageObject", url: BASE + "/img/icona-512.png" } } });
-    if (schede < MIN_VOTANTI) testa = '<meta name="robots" content="noindex,follow">';
+  }
+  const giocatore = unGiocatore && GIOCATORI.find(g => g.slug === unGiocatore[1]);
+  if (unGiocatore && !giocatore) return new Response("Pagina non trovata", { status: 404 });
+  let htmlGiocatori = "";
+  if (percorso === "/giocatori") htmlGiocatori = elencoGiocatori((await ctx.env.DB.prepare("SELECT giocatore, AVG(voto) m FROM voti GROUP BY giocatore").all()).results);
+  if (giocatore) {
+    const r = await ctx.env.DB.prepare("SELECT partita, AVG(voto) m FROM voti WHERE giocatore=? GROUP BY partita").bind(giocatore.voti).all();
+    htmlGiocatori = schedaGiocatore(giocatore, r.results, c.pagelle);
+    titolo = `${giocatore.nome}: voti dei tifosi della Roma | Curva Roma`;
+    descrizione = `${giocatore.nome}, ${giocatore.ruolo.toLowerCase()} della Roma, numero ${giocatore.numero}: la media voto dei tifosi romanisti e tutte le sue pagelle, partita per partita.`;
+    dati.push({ "@context": "https://schema.org", "@type": "Person", name: giocatore.nome, url: BASE + percorso, image: `${BASE}/img/giocatori/mini/${giocatore.slug}.webp`, jobTitle: "Calciatore", memberOf: { "@type": "SportsTeam", name: "AS Roma" } });
   }
   const canonico = BASE + (percorso === "/" ? "/" : percorso);
   const risposta = await ctx.env.ASSETS.fetch(new URL("/", url));
@@ -109,7 +134,7 @@ export async function onRequest(ctx) {
   const articoli = articolo
     ? `<article class="articolo"><h1>${esc(articolo.titolo)}</h1><p class="nota">${esc(articolo.occhiello)}</p>${paragrafi(articolo)}</article>`
     : (c.analisi || []).map(a => `<article class="articolo"><h2><a href="/analisi/${esc(a.id)}">${esc(a.titolo)}</a></h2><p class="nota">${esc(a.occhiello)}</p><p>${esc(a.riassunto)}</p></article>`).join("");
-  const attiva = dettaglio ? "analisi" : scheda ? "pagella" : VISTE[percorso];
+  const attiva = dettaglio ? "analisi" : scheda ? "pagella" : unGiocatore ? "giocatori" : VISTE[percorso];
   let rw = new HTMLRewriter()
     .on("title", { element: e => e.setInnerContent(titolo) })
     .on('meta[name="description"]', { element: e => e.setAttribute("content", descrizione) })
@@ -117,11 +142,12 @@ export async function onRequest(ctx) {
     .on('meta[property="og:description"]', { element: e => e.setAttribute("content", descrizione) })
     .on('meta[property="og:url"]', { element: e => e.setAttribute("content", canonico) })
     .on('link[rel="canonical"]', { element: e => e.setAttribute("href", canonico) })
-    .on("head", { element: e => e.append(testa + dati.map(ldJson).join(""), { html: true }) })
+    .on("head", { element: e => e.append(dati.map(ldJson).join(""), { html: true }) })
     .on("body", { element: e => e.setAttribute("data-vista", attiva) })
     .on(".eroe h1", { element: e => { if (attiva !== "casa") e.tagName = "h2"; } })
     .on(".vista", { element: e => { if (e.getAttribute("id") === "v-" + attiva) e.removeAttribute("hidden"); else e.setAttribute("hidden", ""); } })
     .on("#analisi-tutte", { element: e => e.setInnerContent(articoli, { html: true }) });
+  if (htmlGiocatori) rw = rw.on("#giocatori-box", { element: e => e.setInnerContent(htmlGiocatori, { html: true }) });
   if (attiva === "pagella") rw = rw.on("#pagelle-archivio", { element: e => e.setInnerContent(c.pagelle.map(rigaPagella).join(""), { html: true }) });
   if (partita) rw = rw
     .on("body", { element: e => e.setAttribute("data-partita", "") })

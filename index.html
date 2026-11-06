@@ -182,6 +182,13 @@ body[data-partita] #v-pagella>:not(#pagella-partita,#sezione-archivio){display:n
 .voti-partita small{color:var(--muto);font-size:.8rem}
 .voti-partita b{font:800 1.5rem/1 var(--display);color:var(--accento)}
 .voce-pagelle{display:grid;gap:2px;background:var(--superficie);border:1px solid var(--linea);border-radius:10px;padding:10px 14px;color:inherit;text-decoration:none}
+#giocatori-box{display:grid;gap:14px;padding-top:28px}
+.griglia-giocatori{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.card-giocatore{display:grid;gap:4px;justify-items:center;text-align:center;background:var(--superficie);border:1px solid var(--linea);border-radius:10px;padding:10px;color:inherit;text-decoration:none}
+.card-giocatore img{width:100%;max-width:150px;height:180px;object-fit:contain;object-position:bottom}
+.testa-giocatore{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr);gap:14px;align-items:end}
+.testa-giocatore img{width:100%;height:auto}
+.media-giocatore b{font:800 2.6rem/1 var(--display);color:var(--accento)}
 .articolo{display:grid;gap:12px;background:var(--superficie);border:1px solid var(--linea);border-radius:14px;padding:18px 16px}
 .articolo h2{font-size:2.1rem}
 .titolo-analisi{view-transition-name:analisi;width:fit-content}
@@ -453,7 +460,6 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
     <section class="fascia su-banda">
       <div class="in">
         <div class="fila"><h2 class="striscione" tabindex="-1">Le pagelle</h2></div>
-        <p class="nota"><span class="conteggio n-votanti">0</span> <span class="testo-votanti">tifosi hanno votato</span></p>
         <div class="tabellino" data-tabellino></div>
         <div class="lista pag-dx">
           <div class="lista" id="migliori-casa"></div>
@@ -519,7 +525,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
     </section>
     <div class="in" data-annuncio></div>
     <section class="sezione in">
-      <div class="fila"><h2 class="striscione">Il voto dei tifosi</h2><span class="conteggio n-votanti" style="color:var(--accento)">0</span></div>
+      <div class="fila"><h2 class="striscione">Il voto dei tifosi</h2></div>
       <div id="risultati" class="lista"></div>
       <p class="nota">Il confronto con i numeri esce con l'analisi.</p>
     </section>
@@ -528,6 +534,10 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
       <h2 class="striscione">Tutte le pagelle</h2>
       <div class="lista" id="pagelle-archivio"></div>
     </section>
+  </div>
+
+  <div class="vista" id="v-giocatori" hidden>
+    <section class="sezione in" id="giocatori-box"></section>
   </div>
 
   <div class="vista" id="v-vigilia" hidden>
@@ -561,7 +571,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
     </section>
     <div class="in" data-annuncio></div>
     <section class="sezione in">
-      <div class="fila"><h2 class="striscione">L'XI dei tifosi</h2><span class="conteggio" id="formazioni" style="color:var(--accento)">0</span></div>
+      <div class="fila"><h2 class="striscione">L'XI dei tifosi</h2></div>
       <div id="xi-tifosi" class="lista"></div>
     </section>
     <div class="in" data-annuncio></div>
@@ -638,7 +648,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
 </div>
 
 <footer class="piede"><div class="in">
-  <nav aria-label="Link utili"><a href="/">Notizie AS Roma</a><a href="/pagelle">Pagelle dei tifosi</a><a href="/analisi">Analisi</a><a href="/tifosi-roma">Tifosi della Roma</a></nav>
+  <nav aria-label="Link utili"><a href="/">Notizie AS Roma</a><a href="/pagelle">Pagelle dei tifosi</a><a href="/giocatori">Giocatori della Roma</a><a href="/analisi">Analisi</a><a href="/tifosi-roma">Tifosi della Roma</a></nav>
   <img class="logo-piede su-chiaro" src="/img/logo.webp" alt="Curva Roma" width="480" height="179" loading="lazy"><img class="logo-piede su-scuro" src="/img/logo-chiaro.webp" alt="Curva Roma" width="480" height="179" loading="lazy">
   <p>Sito di tifosi non ufficiale. Curva Roma non è collegato ad AS Roma.</p>
   <p>In qualità di Affiliato Amazon, ricevo un guadagno dagli acquisti idonei.</p>
@@ -1033,13 +1043,11 @@ function passa(dir) {
   a.finished.then(vai, vai);
 }
 function risultati() {
-  tutti(".n-votanti").forEach(n => n.textContent = quanteSchede());
-  tutti(".testo-votanti").forEach(n => n.textContent = quanteSchede() === 1 ? "tifoso ha votato" : "tifosi hanno votato");
   const casa = $("#migliori-casa"); casa.textContent = "";
   if (inviatoVoti && quanteSchede()) { casa.append(el("p", "", "I migliori per i tifosi")); medie().slice(0, 3).forEach(x => casa.append(barra(x))); }
-  else casa.append(el("p", "", quanteSchede() ? "Dai i tuoi voti e scopri i migliori secondo i tifosi." : "Dai i tuoi voti per primo."));
+  else casa.append(el("p", "", quanteSchede() ? "Dai i tuoi voti e scopri i migliori secondo i tifosi." : "Dai i tuoi voti."));
   const box = $("#risultati"); box.textContent = "";
-  if (!quanteSchede()) { box.append(el("p", "vuoto-box", "Nessun voto ancora. Vota per primo e apri la classifica.")); return; }
+  if (!quanteSchede()) { box.append(el("p", "vuoto-box", "Vota e scopri la classifica dei tifosi.")); return; }
   if (!inviatoVoti) { box.append(el("p", "vuoto-box", "Invia i tuoi voti per vedere la media dei tifosi.")); return; }
   medie().forEach(x => box.append(barra(x)));
 }
@@ -1140,11 +1148,11 @@ async function condividiPagella(b) {
   b.disabled = false; b.textContent = testo;
 }
 function esitoPronostico() {
-  if (riepilogo) { const q = riepilogo.pronostico; if (q) tutti(".esito-pron").forEach(n => n.textContent = `Il risultato più scelto è ${q.casa}-${q.ospiti}, con ${q.n === 1 ? "1 tifoso" : q.n + " tifosi"}.`); return; }
+  if (riepilogo) { const q = riepilogo.pronostico; if (q) tutti(".esito-pron").forEach(n => n.textContent = `Il risultato più scelto è ${q.casa}-${q.ospiti}.`); return; }
   const conti = {};
   for (const r of righe) { const q = r.pronostico?.[PROSSIMA]; if (q) { const k = `${+q.casa}-${+q.ospiti}`; conti[k] = (conti[k] || 0) + 1; } }
   const top = Object.entries(conti).sort((a, b) => b[1] - a[1])[0];
-  if (top) tutti(".esito-pron").forEach(n => n.textContent = `Il risultato più scelto è ${top[0]}, con ${top[1] === 1 ? "1 tifoso" : top[1] + " tifosi"}.`);
+  if (top) tutti(".esito-pron").forEach(n => n.textContent = `Il risultato più scelto è ${top[0]}.`);
 }
 
 /* Formazione */
@@ -1185,7 +1193,6 @@ function xiTifosi() {
   const liste = riepilogo ? [] : righe.map(r => r.formazione?.[PROSSIMA]).filter(Array.isArray);
   const totale = riepilogo ? riepilogo.formazioni.n : liste.length;
   const voti = n => riepilogo ? (riepilogo.formazioni.conti[n] || 0) : liste.filter(l => l.includes(n)).length;
-  $("#formazioni").textContent = totale;
   const box = $("#xi-tifosi"); box.textContent = "";
   if (!totale) { box.append(el("p", "vuoto-box", "Nessuna formazione ancora. Salva la tua e diventa la prima scelta.")); return; }
   for (const g of ROSA) {
@@ -1197,7 +1204,7 @@ function xiTifosi() {
 function aggiorna() { caricaMio(mioDoc); risultati(); esitoPronostico(); xiTifosi(); }
 
 /* Navigazione con passaggio animato */
-const VISTE = ["casa", "pagella", "vigilia", "analisi", "biglietti", "tifosi"];
+const VISTE = ["casa", "pagella", "vigilia", "analisi", "biglietti", "tifosi", "giocatori"];
 const PERCORSI = { casa: "/", pagella: "/pagelle", vigilia: "/vigilia", analisi: "/analisi", biglietti: "/biglietti", tifosi: "/tifosi-roma" };
 const TITOLI = { casa: "Curva Roma: notizie AS Roma, pagelle e tifosi romanisti", pagella: "Pagelle dei tifosi della Roma | Curva Roma", vigilia: "Vigilia della Roma: formazione e pronostico | Curva Roma", analisi: "Analisi AS Roma: tattica e dati | Curva Roma", biglietti: "Annunci biglietti Roma tra tifosi | Curva Roma", tifosi: "Tifosi della Roma: la casa dei romanisti | Curva Roma" };
 let vistaOra = null;
@@ -1206,6 +1213,7 @@ const scegli = () => {
   if (VISTE.includes(h)) return h;
   if (p.startsWith("/analisi")) return "analisi";
   if (p.startsWith("/pagelle")) return "pagella";
+  if (p.startsWith("/giocatori")) return "giocatori";
   return VISTE.find(v => PERCORSI[v] === p) || "casa";
 };
 const schedaPartita = () => /^\/pagelle\/[\w-]+/.test(location.pathname);
@@ -1226,7 +1234,8 @@ function mostra(v) {
   visitaSezione.pronta = true;
   tutti(".navigazione a, .menu a").forEach(a => a.getAttribute("href") === PERCORSI[v] ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
   $("#cursore").style.setProperty("--i", VISTE.indexOf(v));
-  if (!schedaPartita()) document.title = TITOLI[v];
+  $("#cursore").style.opacity = VISTE.indexOf(v) < 5 ? 1 : 0;
+  if (TITOLI[v] && !schedaPartita()) document.title = TITOLI[v];
   document.body.toggleAttribute("data-partita", schedaPartita());
   window.scrollTo(0, 0);
   disegnaAnalisi();
