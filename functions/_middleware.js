@@ -73,11 +73,12 @@ function schedaPagella(p, voti, corrente) {
 const annoStoria = a => parseInt(a.anno, 10) || 0;
 const voceStoria = a => `<a class="voce-storia" href="/storia/${esc(a.id)}"><span class="anno-storia">${esc(a.anno)}</span><span><b>${esc(a.titolo)}</b><span class="nota">${esc(a.riassunto)}</span></span></a>`;
 const elencoStoria = l => `<div class="testa-storia"><h1>La nostra storia</h1><p>Ci sono cose che un romanista non legge: se le fa raccontare. Qui mettiamo quelle che ci hanno cambiato la vita, una alla volta, dall'inizio.</p></div><div class="linea-storia">${l.map(voceStoria).join("")}</div>`;
+const stileFoto = a => /^\/(api\/img|img)\/[\w./-]+$/.test(a.copertina || "") ? ` style="--foto:url('${a.copertina}');--posto:${Math.min(100, Math.max(0, Number(a.posizione ?? 50)))}%"` : "";
 function racconto(a, l) {
   const seguente = l[l.findIndex(x => x.id === a.id) + 1] || l[0];
   const corpo = String(a.testo || "").split(/\n\s*\n/).map(t => t.trim().startsWith("## ") ? `<h2>${esc(t.trim().slice(3))}</h2>` : `<p>${esc(t)}</p>`).join("");
   const fonti = (a.fonti || []).filter(([, u]) => /^https:\/\//.test(u)).map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener nofollow">${esc(n)}</a>`).join(" · ");
-  return `<article class="racconto"><header class="testa-storia"><span class="anno-grande">${esc(a.anno)}</span><h1>${esc(a.titolo)}</h1><p class="nota">${esc(a.occhiello)}</p></header><div class="testo-storia">${corpo}</div>`
+  return `<article class="racconto"><header class="testa-storia"${stileFoto(a)}><span class="anno-grande">${esc(a.anno)}</span><h1>${esc(a.titolo)}</h1><p class="nota">${esc(a.occhiello)}</p></header><div class="testo-storia">${corpo}</div>`
     + (seguente.id !== a.id ? `<a class="prossimo-racconto" href="/storia/${esc(seguente.id)}"><span class="nota">Il prossimo racconto</span><b>${esc(seguente.titolo)}</b></a>` : "")
     + `<p><a href="/storia">Tutta la nostra storia</a></p>${fonti ? `<p class="nota fonti-storia">Fonti: ${fonti}</p>` : ""}</article>`;
 }
@@ -167,7 +168,7 @@ export async function onRequest(ctx) {
   if (storia) {
     htmlStoria = racconto(storia, c.storia);
     titolo = storia.seoTitolo || `${storia.titolo} | Curva Roma`; descrizione = storia.seoDescrizione || storia.riassunto;
-    dati.push({ "@context": "https://schema.org", "@type": "Article", headline: storia.titolo, description: storia.riassunto, image: BASE + "/img/anteprima.jpg", inLanguage: "it", mainEntityOfPage: BASE + percorso, author: { "@type": "Organization", name: "Curva Roma", url: BASE + "/" }, publisher: { "@type": "Organization", name: "Curva Roma", logo: { "@type": "ImageObject", url: BASE + "/img/icona-512.png" } } });
+    dati.push({ "@context": "https://schema.org", "@type": "Article", headline: storia.titolo, description: storia.riassunto, image: new URL(storia.copertina || "/img/anteprima.jpg", BASE).href, inLanguage: "it", mainEntityOfPage: BASE + percorso, author: { "@type": "Organization", name: "Curva Roma", url: BASE + "/" }, publisher: { "@type": "Organization", name: "Curva Roma", logo: { "@type": "ImageObject", url: BASE + "/img/icona-512.png" } } });
   }
   const giocatore = unGiocatore && GIOCATORI.find(g => g.slug === unGiocatore[1]);
   if (unGiocatore && !giocatore) return new Response("Pagina non trovata", { status: 404 });
@@ -205,6 +206,9 @@ export async function onRequest(ctx) {
   if (partita) rw = rw
     .on("body", { element: e => e.setAttribute("data-partita", "") })
     .on("#pagella-partita", { element: e => e.setInnerContent(htmlScheda, { html: true }) });
+  if (storia) rw = rw
+    .on('meta[property="og:type"]', { element: e => e.setAttribute("content", "article") })
+    .on('meta[property="og:image"]', { element: e => e.setAttribute("content", new URL(storia.copertina || "/img/anteprima.jpg", BASE).href) });
   if (articolo) rw = rw
     .on('meta[property="og:type"]', { element: e => e.setAttribute("content", "article") })
     .on('meta[property="og:image"]', { element: e => e.setAttribute("content", new URL(articolo.copertina || "/img/anteprima.jpg", BASE).href) });

@@ -117,7 +117,7 @@ async function pubblico(env) {
   ]);
   const contenuti = c.results[0] ? JSON.parse(c.results[0].valore) : null;
   if (contenuti) contenuti.analisi = visibili(contenuti.analisi);
-  if (contenuti) contenuti.storia = (contenuti.storia || []).map(({ id, anno, titolo, riassunto }) => ({ id, anno, titolo, riassunto }));
+  if (contenuti) contenuti.storia = (contenuti.storia || []).map(({ id, anno, titolo, riassunto, copertina, posizione }) => ({ id, anno, titolo, riassunto, copertina, posizione }));
   const seo = s.results[0] ? JSON.parse(s.results[0].valore) : {};
   return json({
     contenuti,

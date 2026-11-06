@@ -85,7 +85,7 @@ const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
 const api = async (u, o = {}) => { const r = await fetch("/api/admin/" + u, o); const d = await r.json().catch(() => ({})); if (r.status === 401 && u !== "login") { entra(false); throw new Error("Accesso richiesto"); } if (!r.ok) throw new Error(d.errore || d.error?.message || "Errore"); return d; };
 const post = (u, d, m = "POST") => api(u, { method: m, headers: { "content-type": "application/json" }, body: JSON.stringify(d) });
-const SCHEDE = [["bozze","Bozze"],["traffico","Traffico"],["contenuti","Contenuti"],["post","Post Instagram"],["seo","SEO"],["partita","Partita e pagelle"],["vigilia","Vigilia"],["tifosi","Classifica tifosi"],["classifica","Classifica Serie A"],["annunci","Annunci Amazon"],["immagini","Immagini"],["biglietti","Biglietti"],["radio","Radio"],["sicurezza","Sicurezza"]];
+const SCHEDE = [["bozze","Bozze"],["traffico","Traffico"],["contenuti","Contenuti"],["storia","Storia"],["post","Post Instagram"],["seo","SEO"],["partita","Partita e pagelle"],["vigilia","Vigilia"],["tifosi","Classifica tifosi"],["classifica","Classifica Serie A"],["annunci","Annunci Amazon"],["immagini","Immagini"],["biglietti","Biglietti"],["radio","Radio"],["sicurezza","Sicurezza"]];
 const TIPI = { partita: "Analisi partita", stagione: "Analisi di stagione", focus: "Focus giocatore", extra: "Approfondimento" };
 const conta = t => (String(t || "").match(/\S+/g) || []).length;
 const oggi = () => new Date().toISOString().slice(0, 10);
@@ -220,6 +220,18 @@ const PAGINE = {
     }
     if (!voci.length) es.textContent = "Nessuna voce italiana trovata.";
   },
+  storia(v) {
+    const c = el("div", "card"); c.append(el("h2", "", "Foto dei racconti"), el("p", "nota", "La foto va dietro il titolo del racconto. Dopo le modifiche premi Salva sul sito in basso. Lo sfondo generale si cambia nella scheda Immagini."));
+    for (const a of C.storia || []) {
+      const r = el("div", "prod"), i = el("img"), f = el("div"); i.alt = ""; i.src = a.copertina || "/img/stadio.jpg"; i.style.objectFit = "cover"; i.style.objectPosition = `center ${a.posizione ?? 50}%`; f.style.cssText = "display:grid;gap:8px;min-width:0";
+      const b = el("div", "riga"), via = el("button", "az sec", "Rimetti sfondo generale");
+      via.onclick = () => { delete a.copertina; delete a.posizione; segna(); apri("storia"); };
+      b.append(tastoFile("Cambia foto", async file => { a.copertina = await carica(file); i.src = a.copertina; segna(); }), via);
+      f.append(el("b", "", `${a.anno}: ${a.titolo}`), campo("Posizione foto (0 alto, 100 basso)", a.posizione ?? 50, x => { a.posizione = Math.min(100, Math.max(0, +x || 0)); i.style.objectPosition = `center ${a.posizione}%`; }, "number"), b);
+      r.append(i, f); c.append(r);
+    }
+    v.append(c);
+  },
   async sicurezza(v) {
     const s = await api("sicurezza"), c = el("div", "card"), es = el("p", "esito"), campoCodice = () => { const l = el("label", "", "Codice a 6 cifre dell'app"), i = el("input"); i.inputMode = "numeric"; i.maxLength = 6; i.autocomplete = "one-time-code"; l.append(i); return [l, i]; };
     c.append(el("h2", "", "Verifica a due fattori"));
@@ -280,7 +292,7 @@ const PAGINE = {
     const { scelte, immagini } = await api("aspetto");
     const c = el("div", "card"); c.append(el("h2", "", "Immagini del sito"), el("p", "nota", "Usa foto tue o con licenza."));
     const g = el("div", "griglia");
-    for (const [k, t, base] of [["testata", "Foto della home e della testata", "/img/tifosi.jpg"], ["pagelle", "Sfondo Pagelle", "/img/curva.jpg"], ["vigilia", "Sfondo Vigilia", "/img/stadio.jpg"]]) {
+    for (const [k, t, base] of [["testata", "Foto della home e della testata", "/img/tifosi.jpg"], ["pagelle", "Sfondo Pagelle", "/img/curva.jpg"], ["vigilia", "Sfondo Vigilia", "/img/stadio.jpg"], ["storia", "Sfondo Storia, se il racconto non ha una foto", "/img/stadio.jpg"], ["radio", "Sfondo Radio", "/img/stadio.jpg"]]) {
       const b = el("div", ""), i = el("img"); b.style.cssText = "display:grid;gap:8px"; i.src = scelte[k] || base; i.alt = ""; i.style.cssText = "width:100%;height:120px;object-fit:cover;border-radius:8px";
       b.append(el("b", "", t), i, tastoFile("Cambia immagine", async f => { const u = await carica(f); scelte[k] = u; await post("aspetto", scelte); i.src = u; }));
       if (scelte[k]) { const x = el("button", "az sec", "Rimetti originale"); x.onclick = async () => { delete scelte[k]; await post("aspetto", scelte); apri("immagini"); }; b.append(x); }
