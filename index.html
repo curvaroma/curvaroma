@@ -191,7 +191,7 @@ body[data-partita] #v-pagella>:not(#pagella-partita,#sezione-archivio){display:n
 @media (prefers-reduced-motion:no-preference){.onair .punto{animation:lampeggia 1.6s ease-in-out infinite}}
 @keyframes lampeggia{50%{opacity:.25}}
 @media (min-width:900px){.onair{right:20px;min-height:38px;padding:0 12px;font-size:1rem}}
-@media (min-width:900px) and (max-width:1240px){body .testata .in{grid-template-columns:auto auto auto;justify-content:center;gap:14px;padding-right:128px;padding-left:12px}body .menu{gap:14px}body .menu a{font-size:1.1rem}body .menu a[data-radio]{display:none}}
+@media (min-width:900px) and (max-width:1240px){body .testata .in{grid-template-columns:auto auto auto;justify-content:center;gap:14px;padding-right:128px;padding-left:12px}body .menu{gap:14px}body .menu a{font-size:1.1rem}}
 @media (min-width:900px) and (max-width:990px){body .menu{gap:9px}body .menu a{font-size:1rem}body .marchio img{width:84px}}
 @media (max-width:420px){.marchio{translate:-26px 0}}
 #radio-box{display:grid;gap:22px;padding-block:32px 20px}
@@ -476,7 +476,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
     <span class="scritta">Curva</span>
     <img src="/img/logo-chiaro.webp" alt="" width="480" height="179">
   </a>
-  <nav class="menu destra" aria-label="Altre sezioni"><a href="/radio" data-radio hidden>Radio</a><a href="/storia" data-storia hidden>Storia</a><a href="/analisi">Analisi</a><a href="/biglietti">Biglietti</a></nav>
+  <nav class="menu destra" aria-label="Altre sezioni"><a href="/storia" data-storia hidden>Storia</a><a href="/analisi">Analisi</a><a href="/biglietti">Biglietti</a></nav>
   <button class="onair" id="onair" type="button" data-radio hidden aria-label="Ascolta Radio Curva"><span class="punto"></span><span>ON AIR</span><svg viewBox="0 0 24 24" aria-hidden="true"><path id="onair-ic" d="M8 5v14l11-7z"/></svg></button>
 </div>
 <img class="foto-testata" id="foto-testata" src="/img/tifosi.webp" srcset="/img/tifosi-800.webp 800w,/img/tifosi.webp 1600w" sizes="100vw" width="1600" height="1065" fetchpriority="high" alt="Curva Sud dei tifosi della Roma allo Stadio Olimpico piena di bandiere giallorosse"></header>
