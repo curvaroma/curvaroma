@@ -85,12 +85,12 @@ const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
 const api = async (u, o = {}) => { const r = await fetch("/api/admin/" + u, o); const d = await r.json().catch(() => ({})); if (r.status === 401 && u !== "login") { entra(false); throw new Error("Accesso richiesto"); } if (!r.ok) throw new Error(d.errore || "Errore"); return d; };
 const post = (u, d, m = "POST") => api(u, { method: m, headers: { "content-type": "application/json" }, body: JSON.stringify(d) });
-const SCHEDE = [["bozze","Bozze"],["traffico","Traffico"],["contenuti","Contenuti"],["post","Post Instagram"],["seo","SEO"],["partita","Partita e pagelle"],["vigilia","Vigilia"],["tifosi","Classifica tifosi"],["classifica","Classifica Serie A"],["annunci","Annunci Amazon"],["immagini","Immagini"],["biglietti","Biglietti"],["sicurezza","Sicurezza"]];
+const SCHEDE = [["bozze","Bozze"],["traffico","Traffico"],["contenuti","Contenuti"],["post","Post Instagram"],["seo","SEO"],["partita","Partita e pagelle"],["vigilia","Vigilia"],["tifosi","Classifica tifosi"],["classifica","Classifica Serie A"],["annunci","Annunci Amazon"],["immagini","Immagini"],["biglietti","Biglietti"],["radio","Radio"],["sicurezza","Sicurezza"]];
 const TIPI = { partita: "Analisi partita", stagione: "Analisi di stagione", focus: "Focus giocatore", extra: "Approfondimento" };
 const conta = t => (String(t || "").match(/\S+/g) || []).length;
 const oggi = () => new Date().toISOString().slice(0, 10);
 let C = null, ora = "bozze", sporco = false, aperto = null;
-const segna = () => { if (["bozze", "post", "seo", "tifosi", "sicurezza"].includes(ora)) return; sporco = true; $("#barra-salva").hidden = false; $("#e-salva").textContent = "Modifiche da pubblicare"; };
+const segna = () => { if (["bozze", "post", "seo", "tifosi", "sicurezza", "radio"].includes(ora)) return; sporco = true; $("#barra-salva").hidden = false; $("#e-salva").textContent = "Modifiche da pubblicare"; };
 function campo(et, val, su, tipo = "text") {
   const l = el("label", "", et), i = el(tipo === "area" ? "textarea" : "input");
   if (tipo !== "area") i.type = tipo;
@@ -165,6 +165,32 @@ const PAGINE = {
     barre("Pagine viste al giorno", gg.map(x => [x.slice(5), tot(x)]));
     barre("Sezioni più viste", d.sezioni.map(x => [x.sezione, x.n]));
     barre("Clic sugli annunci, 14 giorni", d.clic.map(x => [x.nome, x.n]));
+  },
+  async radio(v) {
+    const c = el("div", "card"), es = el("p", "esito"), lista = el("div"), storie = C.storia || [];
+    c.append(el("h2", "", "Prova le voci"), el("p", "nota", "Ogni prova legge l'inizio del racconto scelto. Scegli la voce che ti sembra più vera e dimmi il nome."));
+    const l = el("label", "", "Racconto"), sel = el("select");
+    storie.forEach((a, i) => { const o = el("option", "", `${a.anno}: ${a.titolo}`); o.value = i; sel.append(o); });
+    l.append(sel); lista.style.cssText = "display:grid;gap:8px"; c.append(l, es, lista); v.append(c);
+    const { voci } = await api("radio/voci");
+    const ordine = n => /Chirp3-HD/.test(n) ? 0 : /Chirp-HD/.test(n) ? 1 : /Neural2/.test(n) ? 2 : 3;
+    voci.sort((a, b) => ordine(a.nome) - ordine(b.nome) || a.nome.localeCompare(b.nome));
+    for (const x of voci) {
+      const r = el("div", "voce"), b = el("button", "az sec", "Ascolta"), au = el("audio");
+      au.controls = true; au.hidden = true; const inf = el("div"); inf.append(el("b", "", x.nome.replace("it-IT-", "")), el("span", "nota", x.genere === "FEMALE" ? "Femminile" : x.genere === "MALE" ? "Maschile" : ""));
+      b.onclick = async () => {
+        b.disabled = true; b.textContent = "Attendi…"; es.textContent = "";
+        try {
+          const testo = String(storie[sel.value]?.testo || "Forza Roma").replace(/^## .*$/gm, "").replace(/\s+/g, " ").trim().slice(0, 900).replace(/[^.!?]*$/, "");
+          const q = await fetch("/api/admin/radio/prova", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ voce: x.nome, testo }) });
+          if (!q.ok) throw new Error((await q.json().catch(() => ({}))).errore || "Errore");
+          au.src = URL.createObjectURL(await q.blob()); au.hidden = false; au.play();
+        } catch (e) { es.textContent = e.message; }
+        b.disabled = false; b.textContent = "Ascolta";
+      };
+      r.append(inf, b, au); lista.append(r);
+    }
+    if (!voci.length) es.textContent = "Nessuna voce italiana trovata.";
   },
   async sicurezza(v) {
     const s = await api("sicurezza"), c = el("div", "card"), es = el("p", "esito"), campoCodice = () => { const l = el("label", "", "Codice a 6 cifre dell'app"), i = el("input"); i.inputMode = "numeric"; i.maxLength = 6; i.autocomplete = "one-time-code"; l.append(i); return [l, i]; };

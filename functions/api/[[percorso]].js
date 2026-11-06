@@ -282,6 +282,24 @@ async function admin(ctx, p) {
   }
   if (!(await adminValido(req, env))) return errore("Accesso richiesto", 401);
   if (p[0] === "esci") return json({ ok: true }, 200, { "set-cookie": `${ADMIN_COOKIE}=; Path=/api/admin; Max-Age=0; HttpOnly; Secure; SameSite=Strict` });
+  if (p[0] === "radio") {
+    if (!env.GOOGLE_TTS_KEY) return errore("Manca GOOGLE_TTS_KEY su Cloudflare", 503);
+    const url = u => `https://texttospeech.googleapis.com/v1/${u}${u.includes("?") ? "&" : "?"}key=${encodeURIComponent(env.GOOGLE_TTS_KEY)}`;
+    const leggi = async r => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error?.message || "Errore di Google"); return d; };
+    try {
+      if (p[1] === "voci") {
+        const d = await leggi(await fetch(url("voices?languageCode=it-IT")));
+        return json({ voci: (d.voices || []).map(v => ({ nome: v.name, genere: v.ssmlGender })).filter(v => /Chirp3-HD|Chirp-HD|Neural2|Wavenet/.test(v.nome)) });
+      }
+      if (p[1] === "prova" && req.method === "POST") {
+        const { voce, testo } = await req.json();
+        if (!/^it-IT-[\w-]+$/.test(voce || "") || typeof testo !== "string" || !testo.trim() || testo.length > 1000) return errore("Richiesta non valida");
+        const d = await leggi(await fetch(url("text:synthesize"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ input: { text: testo }, voice: { languageCode: "it-IT", name: voce }, audioConfig: { audioEncoding: "MP3" } }) }));
+        return new Response(Uint8Array.from(atob(d.audioContent), c => c.charCodeAt(0)), { headers: { "content-type": "audio/mpeg", "cache-control": "no-store" } });
+      }
+    } catch (e) { return errore(e.message, 502); }
+    return errore("Percorso non trovato", 404);
+  }
   if (p[0] === "sicurezza") {
     const d = await leggi2fa(env);
     if (req.method === "GET") return json({ attiva: !!d?.attiva, recupero: d?.recupero?.length || 0 });
