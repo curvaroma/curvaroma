@@ -70,6 +70,7 @@ button.pericolo{background:none;color:#C0392B;border:1px solid #C0392B}
 <div class="login" id="login"><form class="card" id="form-login">
   <img src="/img/logo.png" alt="Curva Roma" style="width:150px;margin:auto">
   <label>Password<input id="pw" type="password" autocomplete="current-password"></label>
+  <label id="l-codice" hidden>Codice dell'app, oppure codice di recupero<input id="codice" inputmode="text" autocomplete="one-time-code"></label>
   <button class="az" type="submit">Entra</button><p class="esito" id="e-login"></p>
 </form></div>
 <div id="app" hidden>
@@ -78,17 +79,18 @@ button.pericolo{background:none;color:#C0392B;border:1px solid #C0392B}
 <main id="vista"></main>
 <div class="salva" id="barra-salva" hidden><span class="esito" id="e-salva">Modifiche da pubblicare</span><button class="az" id="pubblica">Salva sul sito</button></div>
 </div>
+<script src="/admin/qr.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
 const api = async (u, o = {}) => { const r = await fetch("/api/admin/" + u, o); const d = await r.json().catch(() => ({})); if (r.status === 401 && u !== "login") { entra(false); throw new Error("Accesso richiesto"); } if (!r.ok) throw new Error(d.errore || "Errore"); return d; };
 const post = (u, d, m = "POST") => api(u, { method: m, headers: { "content-type": "application/json" }, body: JSON.stringify(d) });
-const SCHEDE = [["bozze","Bozze"],["traffico","Traffico"],["contenuti","Contenuti"],["post","Post Instagram"],["seo","SEO"],["partita","Partita e pagelle"],["vigilia","Vigilia"],["tifosi","Classifica tifosi"],["classifica","Classifica Serie A"],["annunci","Annunci Amazon"],["immagini","Immagini"],["biglietti","Biglietti"]];
+const SCHEDE = [["bozze","Bozze"],["traffico","Traffico"],["contenuti","Contenuti"],["post","Post Instagram"],["seo","SEO"],["partita","Partita e pagelle"],["vigilia","Vigilia"],["tifosi","Classifica tifosi"],["classifica","Classifica Serie A"],["annunci","Annunci Amazon"],["immagini","Immagini"],["biglietti","Biglietti"],["sicurezza","Sicurezza"]];
 const TIPI = { partita: "Analisi partita", stagione: "Analisi di stagione", focus: "Focus giocatore", extra: "Approfondimento" };
 const conta = t => (String(t || "").match(/\S+/g) || []).length;
 const oggi = () => new Date().toISOString().slice(0, 10);
 let C = null, ora = "bozze", sporco = false, aperto = null;
-const segna = () => { if (["bozze", "post", "seo", "tifosi"].includes(ora)) return; sporco = true; $("#barra-salva").hidden = false; $("#e-salva").textContent = "Modifiche da pubblicare"; };
+const segna = () => { if (["bozze", "post", "seo", "tifosi", "sicurezza"].includes(ora)) return; sporco = true; $("#barra-salva").hidden = false; $("#e-salva").textContent = "Modifiche da pubblicare"; };
 function campo(et, val, su, tipo = "text") {
   const l = el("label", "", et), i = el(tipo === "area" ? "textarea" : "input");
   if (tipo !== "area") i.type = tipo;
@@ -164,6 +166,33 @@ const PAGINE = {
     barre("Sezioni più viste", d.sezioni.map(x => [x.sezione, x.n]));
     barre("Clic sugli annunci, 14 giorni", d.clic.map(x => [x.nome, x.n]));
   },
+  async sicurezza(v) {
+    const s = await api("sicurezza"), c = el("div", "card"), es = el("p", "esito"), campoCodice = () => { const l = el("label", "", "Codice a 6 cifre dell'app"), i = el("input"); i.inputMode = "numeric"; i.maxLength = 6; i.autocomplete = "one-time-code"; l.append(i); return [l, i]; };
+    c.append(el("h2", "", "Verifica a due fattori"));
+    if (s.attiva) {
+      const [l, i] = campoCodice(), x = el("button", "az pericolo", "Disattiva");
+      c.append(el("p", "", "Attiva. Per entrare servono password e codice dell'app."), el("p", "nota", `Codici di recupero rimasti: ${s.recupero}`), l, x, es);
+      x.onclick = async () => { if (!window.confirm("Disattivare la verifica a due fattori?")) return; try { await post("sicurezza/disattiva", { codice: i.value }); apri("sicurezza"); } catch (e) { es.textContent = e.message; } };
+    } else {
+      const av = el("button", "az", "Attiva");
+      c.append(el("p", "", "Serve un'app di autenticazione sul telefono, per esempio Google Authenticator, Microsoft Authenticator o 1Password."), av, es);
+      av.onclick = async () => {
+        try {
+          const d = await post("sicurezza/avvia", {}), q = qrcode(0, "M"), [l, i] = campoCodice(), ok = el("button", "az", "Conferma"), box = el("div");
+          q.addData(d.url); q.make(); box.innerHTML = q.createSvgTag({ cellSize: 5, margin: 3, scalable: true }); box.style.cssText = "background:#fff;padding:8px;border-radius:8px;width:240px;max-width:100%";
+          av.remove(); c.insertBefore(el("p", "", "1. Inquadra il codice con l'app. Se non puoi, inserisci a mano questa chiave:"), es); c.insertBefore(box, es); c.insertBefore(el("code", "", d.segreto), es); c.insertBefore(el("p", "", "2. Scrivi qui il codice che compare nell'app."), es); c.insertBefore(l, es); c.insertBefore(ok, es);
+          ok.onclick = async () => {
+            try {
+              const r = await post("sicurezza/conferma", { codice: i.value });
+              c.textContent = ""; c.append(el("h2", "", "Attivata"), el("p", "", "Salva subito questi codici di recupero in un posto sicuro. Ognuno vale una volta sola e li vedi solo adesso: servono se perdi il telefono."));
+              const lista = el("pre", "", r.recupero.join("\n")); lista.style.cssText = "font-size:1.1rem;margin:0"; c.append(lista);
+            } catch (e) { es.textContent = e.message; }
+          };
+        } catch (e) { es.textContent = e.message; }
+      };
+    }
+    v.append(c);
+  },
   async annunci(v) {
     const { prodotti } = await api("prodotti");
     const c = el("div", "card"); c.append(el("h2", "", "Annunci Amazon"), el("p", "nota", "Sul sito vanno solo gli annunci con la foto. Per aggiungerla usa Carica foto oppure incollala con Ctrl+V."));
@@ -176,7 +205,7 @@ const PAGINE = {
       g.append(noSeg("Nome", p.nome, x => p.nome = x), noSeg("Link Amazon", p.link, x => p.link = x), noSeg("Link immagine", p.foto, x => { p.foto = x; mostra(); }), noSeg("Ordine", p.ordine, x => p.ordine = x, "number"));
       const b = el("div", "riga"), att = el("label", "riga", "Attivo"), ch = el("input"); ch.type = "checkbox"; ch.checked = !!p.attivo; ch.onchange = () => p.attivo = ch.checked ? 1 : 0; att.prepend(ch);
       const sv = el("button", "az", "Salva"), es = el("span", "esito");
-      const salva = async () => { try { await post("prodotti", p); es.textContent = "Salvato"; $("#barra-salva").hidden = !sporco || !C; } catch (e) { es.textContent = e.message; } };
+      const salva = async () => { try { const r = await post("prodotti", p); if (r.id) p.id = r.id; es.textContent = "Salvato"; $("#barra-salva").hidden = !sporco || !C; } catch (e) { es.textContent = e.message; } };
       sv.onclick = salva;
       const up = tastoFile("Carica foto", async file => { p.foto = await carica(file, 800); mostra(); await salva(); });
       const del = el("button", "az pericolo", "Elimina"); del.onclick = async () => { if (window.confirm("Eliminare " + p.nome + "?")) { await api("prodotti/" + encodeURIComponent(p.id), { method: "DELETE" }); r.remove(); } };
@@ -426,7 +455,11 @@ async function entra(dentro) {
 }
 $("#form-login").addEventListener("submit", async e => {
   e.preventDefault(); $("#e-login").textContent = "";
-  try { await post("login", { password: $("#pw").value }); $("#pw").value = ""; entra(true); } catch (x) { $("#e-login").textContent = x.message; }
+  try {
+    const r = await post("login", { password: $("#pw").value, codice: $("#codice").value });
+    if (r.serveCodice) { $("#l-codice").hidden = false; $("#codice").focus(); $("#e-login").textContent = "Scrivi il codice"; return; }
+    $("#pw").value = ""; $("#codice").value = ""; $("#l-codice").hidden = true; entra(true);
+  } catch (x) { $("#e-login").textContent = x.message; $("#codice").value = ""; }
 });
 $("#pubblica").onclick = async () => { const blocco = controllaContenuti(); if (blocco) { $("#e-salva").textContent = blocco; return; } try { await post("contenuti", C); sporco = false; $("#e-salva").textContent = "Salvato"; setTimeout(() => { if (!sporco) $("#barra-salva").hidden = true; }, 1500); } catch (e) { $("#e-salva").textContent = e.message; } };
 $("#esci").onclick = async () => { await api("esci", { method: "POST" }); entra(false); };

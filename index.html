@@ -821,8 +821,10 @@ function contenuti() {
 }
 // A ogni pagina gli annunci cambiano ordine e posizione.
 function disegnaAnnunci() {
-  const conFoto = PRODOTTI.filter(p => p.foto);
-  for (let i = conFoto.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [conFoto[i], conFoto[j]] = [conFoto[j], conFoto[i]]; }
+  const tutti_ = PRODOTTI.filter(p => p.foto);
+  for (let i = tutti_.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [tutti_[i], tutti_[j]] = [tutti_[j], tutti_[i]]; }
+  // Mai due volte lo stesso prodotto, né due annunci con lo stesso link, foto o nome nella stessa pagina.
+  const visti = new Set(), conFoto = tutti_.filter(p => { const k = [p.link, p.foto, p.nome.trim().toLowerCase()]; if (k.some(x => visti.has(x))) return false; k.forEach(x => visti.add(x)); return true; });
   let prima = []; try { prima = JSON.parse(localStorage.getItem("cr_annunci")) || []; } catch {}
   // Conta solo gli spazi visibili in questa pagina: ognuno ha un prodotto diverso, quelli in più restano vuoti.
   const slots = [...tutti("[data-annuncio]")], ora = [];

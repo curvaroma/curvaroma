@@ -202,11 +202,33 @@ async function firma(env, testo) {
   const b = await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(testo));
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
 }
+const SETTIMANA = 7 * 864e5;
 async function adminValido(req, env) {
   const m = (req.headers.get("cookie") || "").match(new RegExp(`(?:^|; )${ADMIN_COOKIE}=(\\d+)\\.([a-f0-9]{64})`));
-  if (!m || +m[1] < Date.now()) return false;
-  return (await firma(env, m[1])) === m[2];
+  if (!m || +m[1] < Date.now() || (await firma(env, m[1])) !== m[2]) return false;
+  const d = await leggi2fa(env);
+  return !d?.dal || +m[1] - SETTIMANA >= d.dal; // Le sessioni aperte prima di attivare i due fattori non valgono più.
 }
+const cookieAdmin = async env => { const scade = String(Date.now() + SETTIMANA); return { "set-cookie": `${ADMIN_COOKIE}=${scade}.${await firma(env, scade)}; Path=/api/admin; Max-Age=604800; HttpOnly; Secure; SameSite=Strict` }; };
+
+/* Verifica a due fattori: codice a 6 cifre dell'app di autenticazione, standard TOTP. */
+const B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+function base32(b) { let v = 0, n = 0, o = ""; for (const x of b) { v = (v << 8) | x; n += 8; while (n >= 5) { o += B32[(v >>> (n - 5)) & 31]; n -= 5; } v &= (1 << n) - 1; } return o; }
+function daBase32(t) { let v = 0, n = 0; const o = []; for (const c of t) { v = (v << 5) | B32.indexOf(c); n += 5; if (n >= 8) { o.push((v >>> (n - 8)) & 255); n -= 8; } v &= (1 << n) - 1; } return new Uint8Array(o); }
+async function totp(segreto, passo) {
+  const k = await crypto.subtle.importKey("raw", daBase32(segreto), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+  const c = new DataView(new ArrayBuffer(8)); c.setUint32(4, passo);
+  const h = new Uint8Array(await crypto.subtle.sign("HMAC", k, c.buffer)), i = h[19] & 15;
+  return String((new DataView(h.buffer).getUint32(i) & 0x7fffffff) % 1e6).padStart(6, "0");
+}
+// Accetta anche il codice di 30 secondi prima o dopo, ma mai due volte lo stesso.
+async function controllaCodice(d, codice) {
+  const ora = Math.floor(Date.now() / 3e4);
+  for (const p of [ora - 1, ora, ora + 1]) if (p > (d.ultimo || 0) && await totp(d.segreto, p) === codice) return p;
+  return 0;
+}
+const leggi2fa = async env => { const v = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='admin_2fa'").first("valore"); return v ? JSON.parse(v) : null; };
+const scrivi2fa = (env, d) => env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('admin_2fa',?) ON CONFLICT DO UPDATE SET valore=excluded.valore, aggiornato=CURRENT_TIMESTAMP").bind(JSON.stringify(d)).run();
 // Applica le modifiche di una bozza senza toccare gli altri campi. Le liste vengono sostituite.
 function unisci(base, modifiche) {
   for (const [k, v] of Object.entries(modifiche)) {
@@ -236,17 +258,53 @@ async function admin(ctx, p) {
     const ip = (await sha("login|" + req.headers.get("cf-connecting-ip"))).slice(0, 24), ora = Date.now();
     const t = await env.DB.prepare("SELECT n, scade FROM tentativi WHERE impronta=?").bind(ip).first();
     if (t && t.scade > ora && t.n >= 5) return errore("Troppi tentativi. Riprova tra 15 minuti.", 429);
-    const { password } = await req.json().catch(() => ({}));
-    if (typeof password !== "string" || password !== env.ADMIN_PASSWORD) {
+    const { password, codice } = await req.json().catch(() => ({}));
+    const sbagliato = async testo => {
       await env.DB.prepare("INSERT INTO tentativi (impronta, n, scade) VALUES (?,1,?) ON CONFLICT DO UPDATE SET n=CASE WHEN scade>? THEN n+1 ELSE 1 END, scade=?").bind(ip, ora + 9e5, ora, ora + 9e5).run();
-      return errore("Password errata", 401);
+      return errore(testo, 401);
+    };
+    if (typeof password !== "string" || password !== env.ADMIN_PASSWORD) return sbagliato("Password errata");
+    const d = await leggi2fa(env);
+    if (d?.attiva) {
+      const c = String(codice || "").trim().toLowerCase();
+      if (!c) return json({ serveCodice: true });
+      const passo = /^\d{6}$/.test(c) ? await controllaCodice(d, c) : 0;
+      if (passo) d.ultimo = passo;
+      else {
+        const h = await sha("recupero|" + c), i = (d.recupero || []).indexOf(h);
+        if (i < 0) return sbagliato("Codice errato");
+        d.recupero.splice(i, 1);
+      }
+      await scrivi2fa(env, d);
     }
     await env.DB.prepare("DELETE FROM tentativi WHERE impronta=?").bind(ip).run();
-    const scade = String(ora + 7 * 864e5);
-    return json({ ok: true }, 200, { "set-cookie": `${ADMIN_COOKIE}=${scade}.${await firma(env, scade)}; Path=/api/admin; Max-Age=604800; HttpOnly; Secure; SameSite=Strict` });
+    return json({ ok: true }, 200, await cookieAdmin(env));
   }
   if (!(await adminValido(req, env))) return errore("Accesso richiesto", 401);
   if (p[0] === "esci") return json({ ok: true }, 200, { "set-cookie": `${ADMIN_COOKIE}=; Path=/api/admin; Max-Age=0; HttpOnly; Secure; SameSite=Strict` });
+  if (p[0] === "sicurezza") {
+    const d = await leggi2fa(env);
+    if (req.method === "GET") return json({ attiva: !!d?.attiva, recupero: d?.recupero?.length || 0 });
+    const { codice } = await req.json().catch(() => ({}));
+    if (p[1] === "avvia") {
+      if (d?.attiva) return errore("Già attiva");
+      const segreto = base32(crypto.getRandomValues(new Uint8Array(20)));
+      await scrivi2fa(env, { segreto, attiva: false });
+      return json({ segreto, url: `otpauth://totp/Curva%20Roma:admin?secret=${segreto}&issuer=Curva%20Roma&digits=6&period=30` });
+    }
+    if (!d) return errore("Prima avvia l'attivazione");
+    const passo = await controllaCodice(d, String(codice || "").trim());
+    if (!passo) return errore("Codice errato", 400);
+    if (p[1] === "disattiva") {
+      await env.DB.prepare("DELETE FROM impostazioni WHERE chiave='admin_2fa'").run();
+      return json({ ok: true });
+    }
+    if (p[1] === "conferma") {
+      const recupero = [...Array(8)].map(() => [...crypto.getRandomValues(new Uint8Array(4))].map(x => x.toString(16).padStart(2, "0")).join("").replace(/^(.{4})/, "$1-"));
+      await scrivi2fa(env, { segreto: d.segreto, attiva: true, ultimo: passo, dal: Date.now(), recupero: await Promise.all(recupero.map(c => sha("recupero|" + c))) });
+      return json({ recupero }, 200, await cookieAdmin(env));
+    }
+  }
   if (p[0] === "riepilogo") {
     const [v, u, s, c, a, pr, vt] = await env.DB.batch([
       env.DB.prepare("SELECT giorno, dispositivo, SUM(n) n FROM visite WHERE giorno >= date('now','-14 day') GROUP BY giorno, dispositivo ORDER BY giorno"),
@@ -391,9 +449,13 @@ async function admin(ctx, p) {
     if (!/^https:\/\//.test(c.link || "") || !c.nome) return errore("Nome e link sono obbligatori");
     const foto = c.foto && /^(https:\/\/|\/api\/img\/)/.test(c.foto) ? c.foto : null;
     const asin = (c.link.match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/) || [])[1] || null;
+    // Stesso link, stesso prodotto: si aggiorna quello esistente invece di crearne un doppione.
+    const giaCi = await env.DB.prepare("SELECT id FROM prodotti WHERE link=?").bind(c.link).first("id");
+    if (giaCi && c.id && giaCi !== c.id) return errore("Questo link c'è già in un altro annuncio");
+    const idProdotto = c.id || giaCi || crypto.randomUUID();
     await env.DB.prepare("INSERT INTO prodotti (id, nome, link, foto, tipo, attivo, ordine, asin) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET nome=excluded.nome, link=excluded.link, foto=excluded.foto, tipo=excluded.tipo, attivo=excluded.attivo, ordine=excluded.ordine, asin=excluded.asin")
-      .bind(c.id || crypto.randomUUID(), String(c.nome).slice(0, 80), c.link, foto, c.tipo || "maglia", c.attivo ? 1 : 0, Number(c.ordine) || 0, asin).run();
-    return json({ ok: true });
+      .bind(idProdotto, String(c.nome).slice(0, 80), c.link, foto, c.tipo || "maglia", c.attivo ? 1 : 0, Number(c.ordine) || 0, asin).run();
+    return json({ ok: true, id: idProdotto });
   }
   if (p[0] === "annunci") {
     if (req.method === "GET") return json({ annunci: (await env.DB.prepare("SELECT id, tipo, partita, settore, quanti, prezzo, contatto, creato FROM annunci ORDER BY creato DESC LIMIT 300").all()).results });
