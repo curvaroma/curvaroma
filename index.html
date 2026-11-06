@@ -183,6 +183,17 @@ body[data-partita] #v-pagella>:not(#pagella-partita,#sezione-archivio){display:n
 .voti-partita b{font:800 1.5rem/1 var(--display);color:var(--accento)}
 .voce-pagelle{display:grid;gap:2px;background:var(--superficie);border:1px solid var(--linea);border-radius:10px;padding:10px 14px;color:inherit;text-decoration:none}
 #radio-box .testa-storia{--foto:var(--img-radio,var(--img-storia,url(/img/stadio.jpg)))}
+.onair{position:absolute;right:max(10px,env(safe-area-inset-right,0px));top:50%;translate:0 -50%;z-index:2;display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 9px;border:1px solid rgba(255,255,255,.55);border-radius:999px;background:rgba(20,6,10,.72);color:#fff;font:800 .86rem/1 var(--display);letter-spacing:.04em;cursor:pointer;white-space:nowrap}
+.onair[hidden]{display:none}
+.onair svg{width:16px;height:16px;fill:var(--giallo)}
+.onair .punto{width:8px;height:8px;border-radius:50%;background:#ff3b30}
+.onair.acceso{border-color:var(--giallo);background:#8E1F2F}
+@media (prefers-reduced-motion:no-preference){.onair .punto{animation:lampeggia 1.6s ease-in-out infinite}}
+@keyframes lampeggia{50%{opacity:.25}}
+@media (min-width:900px){.onair{right:20px;min-height:38px;padding:0 12px;font-size:1rem}}
+@media (min-width:900px) and (max-width:1240px){.testata .in{grid-template-columns:auto auto auto;justify-content:center;gap:14px;padding-right:128px;padding-left:12px}.menu{gap:14px}.menu a{font-size:1.1rem}.menu a[data-radio]{display:none}}
+@media (min-width:900px) and (max-width:990px){.menu{gap:9px}.menu a{font-size:1rem}.marchio img{width:84px}}
+@media (max-width:420px){.marchio{translate:-26px 0}}
 #radio-box{display:grid;gap:22px;padding-block:32px 20px}
 .radio-ora{display:grid;gap:12px;padding:18px;border:1px solid var(--giallo);border-radius:12px}
 .radio-ora b{font:400 1.5rem/1.25 Georgia,"Times New Roman",serif}
@@ -466,6 +477,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
     <img src="/img/logo-chiaro.webp" alt="" width="480" height="179">
   </a>
   <nav class="menu destra" aria-label="Altre sezioni"><a href="/radio" data-radio hidden>Radio</a><a href="/storia" data-storia hidden>Storia</a><a href="/analisi">Analisi</a><a href="/biglietti">Biglietti</a></nav>
+  <button class="onair" id="onair" type="button" data-radio hidden aria-label="Ascolta Radio Curva"><span class="punto"></span><span>ON AIR</span><svg viewBox="0 0 24 24" aria-hidden="true"><path id="onair-ic" d="M8 5v14l11-7z"/></svg></button>
 </div>
 <img class="foto-testata" id="foto-testata" src="/img/tifosi.webp" srcset="/img/tifosi-800.webp 800w,/img/tifosi.webp 1600w" sizes="100vw" width="1600" height="1065" fetchpriority="high" alt="Curva Sud dei tifosi della Roma allo Stadio Olimpico piena di bandiere giallorosse"></header>
 
@@ -890,10 +902,23 @@ function mandaInOnda() {
   const { i, off } = puntoRadio(), x = RADIO.brani[i];
   branoOra = x.id; lettoreRadio.src = `/api/audio/${x.id}?v=${x.v}`;
   lettoreRadio.addEventListener("loadedmetadata", () => { lettoreRadio.currentTime = off; }, { once: true });
-  lettoreRadio.play().catch(() => { inOnda = false; $("#radio-play").textContent = "Ascolta"; });
+  lettoreRadio.play().catch(() => { inOnda = false; statoOnAir(); });
   if ("mediaSession" in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: x.titolo, artist: "Radio Curva" });
 }
 lettoreRadio.addEventListener("ended", () => { if (inOnda) mandaInOnda(); });
+const ascolto = evento => { try { navigator.sendBeacon("/api/ascolto", new Blob([JSON.stringify({ evento, brano: branoOra })], { type: "application/json" })); } catch {} };
+setInterval(() => { if (inOnda && !lettoreRadio.paused && !document.hidden) ascolto("battito"); }, 30000);
+function statoOnAir() {
+  $("#radio-play").textContent = inOnda ? "Ferma" : "Ascolta";
+  $("#onair").classList.toggle("acceso", inOnda);
+  $("#onair").setAttribute("aria-label", inOnda ? "Ferma Radio Curva" : "Ascolta Radio Curva");
+  $("#onair-ic").setAttribute("d", inOnda ? "M7 5h4v14H7zM13 5h4v14h-4z" : "M8 5v14l11-7z");
+}
+function accendi() {
+  if (!RADIO?.brani.length) return;
+  inOnda = !inOnda; statoOnAir();
+  if (inOnda) { mandaInOnda(); ascolto("avvio"); } else lettoreRadio.pause();
+}
 async function caricaRadio() {
   try {
     const d = await (await fetch("/api/radio")).json();
@@ -901,11 +926,8 @@ async function caricaRadio() {
     disegnaRadio();
   } catch {}
 }
-$("#radio-play").onclick = () => {
-  if (!RADIO?.brani.length) return;
-  inOnda = !inOnda; $("#radio-play").textContent = inOnda ? "Ferma" : "Ascolta";
-  if (inOnda) mandaInOnda(); else lettoreRadio.pause();
-};
+$("#radio-play").onclick = accendi;
+$("#onair").onclick = accendi;
 setInterval(() => { if (document.body.dataset.vista === "radio") disegnaRadio(); }, 5000);
 
 function disegnaNotizie(tutte) {
@@ -1404,7 +1426,7 @@ function applica(p) {
     cs.append(a);
   }
   if (p.radio) { const a = el("a"); a.href = "/radio"; a.append(el("i", "", "Radio Curva"), el("b", "", "La nostra storia, sempre in onda"), el("span", "", "Ascolta ora")); cs.hidden = false; cs.append(a); }
-  if (location.pathname.startsWith("/radio")) caricaRadio();
+  if (p.radio) caricaRadio();
   const arch = $("#pagelle-archivio"); arch.textContent = "";
   for (const x of p.pagelle || []) {
     const a = el("a", "voce-pagelle"); a.href = "/pagelle/" + x.slug;

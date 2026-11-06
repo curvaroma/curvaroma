@@ -169,6 +169,18 @@ async function visita(ctx) {
   ]));
   return new Response(null, { status: 204 });
 }
+async function ascolto(ctx) {
+  const { request: req, env } = ctx, c = await req.json().catch(() => ({}));
+  if (!["avvio", "battito"].includes(c.evento) || !/^[\w-]{1,60}$/.test(c.brano || "")) return new Response(null, { status: 204 });
+  const g = giorno(), impronta = (await sha(`radio|${g}|${req.headers.get("cf-connecting-ip")}|${req.headers.get("user-agent")}`)).slice(0, 24);
+  ctx.waitUntil(env.DB.batch([
+    env.DB.prepare("INSERT INTO ascolti (giorno, brano, avvii, secondi) VALUES (?,?,?,?) ON CONFLICT DO UPDATE SET avvii=avvii+excluded.avvii, secondi=secondi+excluded.secondi").bind(g, c.brano, c.evento === "avvio" ? 1 : 0, c.evento === "battito" ? 30 : 0),
+    env.DB.prepare("INSERT OR IGNORE INTO ascoltatori (giorno, impronta) VALUES (?,?)").bind(g, impronta),
+    env.DB.prepare("INSERT INTO in_ascolto (impronta, visto) VALUES (?,?) ON CONFLICT DO UPDATE SET visto=excluded.visto").bind(impronta, Date.now()),
+    env.DB.prepare("DELETE FROM in_ascolto WHERE visto < ?").bind(Date.now() - 36e5)
+  ]));
+  return new Response(null, { status: 204 });
+}
 async function clic(ctx) {
   const c = await ctx.request.json().catch(() => ({}));
   if (typeof c.prodotto !== "string" || c.prodotto.length > 60) return new Response(null, { status: 204 });
@@ -306,15 +318,21 @@ async function admin(ctx, p) {
   if (!(await adminValido(req, env))) return errore("Accesso richiesto", 401);
   if (p[0] === "esci") return json({ ok: true }, 200, { "set-cookie": `${ADMIN_COOKIE}=; Path=/api/admin; Max-Age=0; HttpOnly; Secure; SameSite=Strict` });
   if (p[0] === "radio") {
-    if (!env.GOOGLE_TTS_KEY) return errore("Manca GOOGLE_TTS_KEY su Cloudflare", 503);
     if (p[1] === "stato") { const v = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='radio'").first("valore"); return json({ brani: v ? JSON.parse(v) : [] }); }
+    if (p[1] === "ascolti") {
+      const [ora, oggi, unici, giorni, brani] = await env.DB.batch([
+        env.DB.prepare("SELECT COUNT(*) n FROM in_ascolto WHERE visto > ?").bind(Date.now() - 9e4),
+        env.DB.prepare("SELECT COALESCE(SUM(avvii),0) avvii, COALESCE(SUM(secondi),0) secondi FROM ascolti WHERE giorno=?").bind(giorno()),
+        env.DB.prepare("SELECT giorno, COUNT(*) n FROM ascoltatori WHERE giorno >= date('now','-14 day') GROUP BY giorno ORDER BY giorno"),
+        env.DB.prepare("SELECT giorno, SUM(secondi) secondi, SUM(avvii) avvii FROM ascolti WHERE giorno >= date('now','-14 day') GROUP BY giorno ORDER BY giorno"),
+        env.DB.prepare("SELECT brano, SUM(secondi) secondi, SUM(avvii) avvii FROM ascolti WHERE giorno >= date('now','-14 day') GROUP BY brano ORDER BY secondi DESC LIMIT 15")
+      ]);
+      return json({ ora: ora.results[0].n, oggi: oggi.results[0], ascoltatori: unici.results, giorni: giorni.results, brani: brani.results });
+    }
+    if (!env.GOOGLE_TTS_KEY) return errore("Manca GOOGLE_TTS_KEY su Cloudflare", 503);
     const url = u => `https://texttospeech.googleapis.com/v1/${u}${u.includes("?") ? "&" : "?"}key=${encodeURIComponent(env.GOOGLE_TTS_KEY)}`;
     const leggi = async r => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error?.message || "Errore di Google"); return d; };
     try {
-      if (p[1] === "voci") {
-        const d = await leggi(await fetch(url("voices?languageCode=it-IT")));
-        return json({ voci: (d.voices || []).map(v => ({ nome: v.name, genere: v.ssmlGender })).filter(v => /Chirp3-HD|Chirp-HD|Neural2|Wavenet/.test(v.nome)) });
-      }
       // Passa la risposta di Google senza elaborarla: la decodifica la fa il browser.
       if (p[1] === "sintesi" && req.method === "POST") {
         const { voce, testo } = await req.json();
@@ -331,12 +349,6 @@ async function admin(ctx, p) {
         const l = (v ? JSON.parse(v) : []).filter(x => x.id !== id); l.push({ id, durata, v: Date.now() });
         await env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('radio',?) ON CONFLICT DO UPDATE SET valore=excluded.valore, aggiornato=CURRENT_TIMESTAMP").bind(JSON.stringify(l)).run();
         return json({ ok: true });
-      }
-      if (p[1] === "prova" && req.method === "POST") {
-        const { voce, testo } = await req.json();
-        if (!/^it-IT-[\w-]+$/.test(voce || "") || typeof testo !== "string" || !testo.trim() || testo.length > 1000) return errore("Richiesta non valida");
-        const d = await leggi(await fetch(url("text:synthesize"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ input: { text: testo }, voice: { languageCode: "it-IT", name: voce }, audioConfig: { audioEncoding: "MP3" } }) }));
-        return new Response(Uint8Array.from(atob(d.audioContent), c => c.charCodeAt(0)), { headers: { "content-type": "audio/mpeg", "cache-control": "no-store" } });
       }
     } catch (e) { return errore(e.message, 502); }
     return errore("Percorso non trovato", 404);
@@ -537,6 +549,7 @@ export async function onRequest(ctx) {
     if (req.method === "GET" && percorso[0] === "audio") return audio(env, req, percorso[1]);
     if (req.method === "POST" && percorso[0] === "visita") return visita(ctx);
     if (req.method === "POST" && percorso[0] === "clic") return clic(ctx);
+    if (req.method === "POST" && percorso[0] === "ascolto") return ascolto(ctx);
     let id = leggiCookie(req);
     if (req.method === "GET" && percorso[0] === "stato") {
       const p = url.searchParams.get("partita"), q = url.searchParams.get("prossima");
