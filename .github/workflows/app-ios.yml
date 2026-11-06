@@ -44,6 +44,7 @@ jobs:
           security unlock-keychain -p "$PW" "$KC"
           echo "$IOS_CERTIFICATE_BASE64" | base64 -d > $RUNNER_TEMP/c.p12
           security import $RUNNER_TEMP/c.p12 -k "$KC" -P "$IOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security find-certificate -a -p "$KC" | openssl x509 -noout -subject -enddate | sed 's/^/Certificato: /'
           security list-keychain -d user -s "$KC" $(security list-keychains -d user | sed 's/"//g')
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$PW" "$KC"
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
