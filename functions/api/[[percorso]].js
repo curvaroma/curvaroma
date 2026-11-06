@@ -116,6 +116,7 @@ async function pubblico(env) {
   ]);
   const contenuti = c.results[0] ? JSON.parse(c.results[0].valore) : null;
   if (contenuti) contenuti.analisi = visibili(contenuti.analisi);
+  if (contenuti) contenuti.storia = (contenuti.storia || []).map(({ id, anno, titolo, riassunto }) => ({ id, anno, titolo, riassunto }));
   const seo = s.results[0] ? JSON.parse(s.results[0].valore) : {};
   return json({
     contenuti,
@@ -135,7 +136,7 @@ async function immagine(env, id) {
 async function visita(ctx) {
   const { request: req, env } = ctx;
   const c = await req.json().catch(() => ({}));
-  const sezione = ["casa", "pagella", "vigilia", "analisi", "biglietti", "giocatori", "storia"].includes(c.sezione) ? c.sezione : "altro";
+  const sezione = ["casa", "pagella", "vigilia", "analisi", "biglietti", "giocatori", "storia", "racconti"].includes(c.sezione) ? c.sezione : "altro";
   const dispositivo = c.mobile ? "mobile" : "computer", g = giorno();
   const impronta = (await sha(`${g}|${req.headers.get("cf-connecting-ip")}|${req.headers.get("user-agent")}`)).slice(0, 24);
   ctx.waitUntil(env.DB.batch([
@@ -288,7 +289,7 @@ async function admin(ctx, p) {
     }
     if (p[2] !== "pubblica") return errore("Percorso non trovato", 404);
     const scritture = [];
-    if (b.sito?.modifiche || b.sito?.articolo) {
+    if (b.sito?.modifiche || b.sito?.articolo || b.sito?.storiaUrl) {
       const v = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'").first("valore");
       const c = v ? JSON.parse(v) : null;
       if (!c) return errore("Contenuti non trovati");
@@ -298,6 +299,14 @@ async function admin(ctx, p) {
         c.analisi ||= [];
         if (c.analisi.some(a => a.id === b.sito.articolo.id)) return errore("Esiste già un contenuto con questo indirizzo", 409);
         c.analisi.unshift({ ...b.sito.articolo, stato: "pubblicato" });
+      }
+      if (b.sito.storiaUrl) {
+        if (!b.sito.storiaUrl.startsWith("https://raw.githubusercontent.com/curvaroma/curvaroma/")) return errore("Indirizzo non valido");
+        const r = await fetch(b.sito.storiaUrl);
+        if (!r.ok) return errore("Articoli non trovati");
+        const nuovi = await r.json();
+        c.storia ||= [];
+        for (const a of nuovi) if (/^[\w-]+$/.test(a.id) && !c.storia.some(x => x.id === a.id)) c.storia.push(a);
       }
       if (!c.partita?.id || !c.prossima?.id || !Array.isArray(c.classifica)) return errore("Contenuti non validi");
       scritture.push(env.DB.prepare("UPDATE impostazioni SET valore=?, aggiornato=CURRENT_TIMESTAMP WHERE chiave='contenuti'").bind(JSON.stringify(c)), await archivioPagelle(env, prima, c.partita));

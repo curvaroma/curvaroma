@@ -35,9 +35,10 @@ export const PAGINE = {
   "/analisi": ["Analisi AS Roma: tattica e dati | Curva Roma", "Analisi tattiche e dati sulle partite e sui giocatori dell'AS Roma, scritte per i tifosi romanisti."],
   "/biglietti": ["Annunci biglietti Roma tra tifosi | Curva Roma", "Bacheca di annunci tra tifosi della Roma. Biglietti e cambio intestatario solo sui canali ufficiali."],
   "/giocatori": ["Giocatori della Roma: la rosa e i voti dei tifosi | Curva Roma", "Tutti i giocatori della Roma 2026/27: numeri di maglia, ruoli e media voto dei tifosi romanisti, partita dopo partita."],
+  "/storia": ["Storia della Roma: partite, Curva Sud e ricordi | Curva Roma", "La storia della Roma raccontata dai tifosi: Campo Testaccio, la Curva Sud, gli scudetti, le notti europee e i capitani che non dimentichiamo."],
   "/tifosi-roma": ["Tifosi della Roma: la casa dei romanisti | Curva Roma", "Curva Roma è il sito indipendente della tifoseria della Roma: notizie, pagelle, analisi e partecipazione per tutti i romanisti. Forza Roma!"]
 };
-const VISTE = { "/": "casa", "/pagelle": "pagella", "/vigilia": "vigilia", "/analisi": "analisi", "/biglietti": "biglietti", "/giocatori": "giocatori", "/tifosi-roma": "tifosi" };
+const VISTE = { "/": "casa", "/pagelle": "pagella", "/vigilia": "vigilia", "/analisi": "analisi", "/biglietti": "biglietti", "/giocatori": "giocatori", "/storia": "storia", "/tifosi-roma": "tifosi" };
 const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const oggi = () => new Date(Date.now() + 36e5).toISOString().slice(0, 10);
@@ -67,6 +68,17 @@ function schedaPagella(p, voti, corrente) {
   return `<h1 class="striscione">Pagelle ${esc(nomePartita(p))}</h1><p class="nota">${esc(p.competizione)}, ${esc(p.data)}${gol ? `. Gol: ${gol}` : ""}</p><p>${esc(frase)}</p>`
     + (voti.length ? `<ol class="voti-partita">${voti.map(v => `<li><span>${nome(v)}${ruoli[v.giocatore] ? ` <small>${esc(ruoli[v.giocatore])}</small>` : ""}</span><b>${voto(v.m)}</b></li>`).join("")}</ol>` : "")
     + (corrente ? `<a class="bottone" href="/pagelle">Vota le pagelle</a>` : "");
+}
+const annoStoria = a => parseInt(a.anno, 10) || 0;
+const voceStoria = a => `<a class="voce-storia" href="/storia/${esc(a.id)}"><span class="anno-storia">${esc(a.anno)}</span><span><b>${esc(a.titolo)}</b><span class="nota">${esc(a.riassunto)}</span></span></a>`;
+const elencoStoria = l => `<div class="testa-storia"><h1>La nostra storia</h1><p>Ci sono cose che un romanista non legge: se le fa raccontare. Qui mettiamo quelle che ci hanno cambiato la vita, una alla volta, dall'inizio.</p></div><div class="linea-storia">${l.map(voceStoria).join("")}</div>`;
+function racconto(a, l) {
+  const seguente = l[l.findIndex(x => x.id === a.id) + 1] || l[0];
+  const corpo = String(a.testo || "").split(/\n\s*\n/).map(t => t.trim().startsWith("## ") ? `<h2>${esc(t.trim().slice(3))}</h2>` : `<p>${esc(t)}</p>`).join("");
+  const fonti = (a.fonti || []).filter(([, u]) => /^https:\/\//.test(u)).map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener nofollow">${esc(n)}</a>`).join(" · ");
+  return `<article class="racconto"><header class="testa-storia"><span class="anno-grande">${esc(a.anno)}</span><h1>${esc(a.titolo)}</h1><p class="nota">${esc(a.occhiello)}</p></header><div class="testo-storia">${corpo}</div>`
+    + (seguente.id !== a.id ? `<a class="prossimo-racconto" href="/storia/${esc(seguente.id)}"><span class="nota">Il prossimo racconto</span><b>${esc(seguente.titolo)}</b></a>` : "")
+    + `<p><a href="/storia">Tutta la nostra storia</a></p>${fonti ? `<p class="nota fonti-storia">Fonti: ${fonti}</p>` : ""}</article>`;
 }
 const REPARTI = [["Portiere", "Portieri"], ["Difensore", "Difensori"], ["Centrocampista", "Centrocampisti"], ["Attaccante", "Attaccanti"]];
 function elencoGiocatori(medie) {
@@ -98,6 +110,7 @@ async function contenuti(ctx) {
   } catch {}
   c ||= await (await ctx.env.ASSETS.fetch(new URL("/contenuti.json", ctx.request.url))).json();
   c.analisi = (c.analisi || []).filter(a => a.stato !== "bozza" && (!a.data || a.data <= oggi()));
+  c.storia = (c.storia || []).filter(a => a.stato !== "bozza").sort((a, b) => annoStoria(a) - annoStoria(b));
   c.seo = seo;
   c.pagelle = elencoPagelle(pagelle, c.partita);
   return c;
@@ -111,17 +124,18 @@ export async function onRequest(ctx) {
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/admin") || url.pathname.startsWith("/img/") || !["GET", "HEAD"].includes(req.method)) return ctx.next();
   if (percorso === "/sitemap.xml") {
     const c = await contenuti(ctx);
-    const voci = [...Object.keys(PAGINE), ...(c.analisi || []).map(a => "/analisi/" + a.id), ...c.pagelle.map(p => "/pagelle/" + p.slug), ...GIOCATORI.map(g => "/giocatori/" + g.slug)];
+    const voci = [...Object.keys(PAGINE).filter(u => u !== "/storia" || c.storia.length), ...c.storia.map(a => "/storia/" + a.id), ...(c.analisi || []).map(a => "/analisi/" + a.id), ...c.pagelle.map(p => "/pagelle/" + p.slug), ...GIOCATORI.map(g => "/giocatori/" + g.slug)];
     const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${voci.map(v => { const d = (c.analisi || []).find(a => "/analisi/" + a.id === v)?.data; return `<url><loc>${BASE}${v}</loc>${d ? `<lastmod>${esc(d)}</lastmod>` : ""}</url>`; }).join("\n")}\n</urlset>\n`;
     return new Response(xml, { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
   }
   const dettaglio = percorso.match(/^\/analisi\/([\w-]+)$/);
   const scheda = percorso.match(/^\/pagelle\/([\w-]+)$/);
   const unGiocatore = percorso.match(/^\/giocatori\/([\w-]+)$/);
-  if (!PAGINE[percorso] && !dettaglio && !scheda && !unGiocatore) return ctx.next();
+  const unRacconto = percorso.match(/^\/storia\/([\w-]+)$/);
+  if (!PAGINE[percorso] && !dettaglio && !scheda && !unGiocatore && !unRacconto) return ctx.next();
   const c = await contenuti(ctx);
-  let [titolo, descrizione] = PAGINE[dettaglio ? "/analisi" : scheda ? "/pagelle" : unGiocatore ? "/giocatori" : percorso] || [];
-  const scelta = !dettaglio && !scheda && !unGiocatore && c.seo.pagine?.[percorso];
+  let [titolo, descrizione] = PAGINE[dettaglio ? "/analisi" : scheda ? "/pagelle" : unGiocatore ? "/giocatori" : unRacconto ? "/storia" : percorso] || [];
+  const scelta = !dettaglio && !scheda && !unGiocatore && !unRacconto && c.seo.pagine?.[percorso];
   if (scelta?.titolo) titolo = scelta.titolo;
   if (scelta?.descrizione) descrizione = scelta.descrizione;
   const dati = [{ "@context": "https://schema.org", "@type": "WebSite", name: "Curva Roma", alternateName: "curvaroma.it", url: BASE + "/", inLanguage: "it" }];
@@ -144,6 +158,14 @@ export async function onRequest(ctx) {
     const giorno = partita.slug.slice(-10);
     dati.push({ "@context": "https://schema.org", "@type": "Article", headline: `Pagelle ${nomePartita(partita)}`, description: descrizione, image: BASE + "/img/anteprima.jpg", inLanguage: "it", datePublished: giorno, mainEntityOfPage: BASE + percorso, author: { "@type": "Organization", name: "Curva Roma", url: BASE + "/" }, publisher: { "@type": "Organization", name: "Curva Roma", logo: { "@type": "ImageObject", url: BASE + "/img/icona-512.png" } } });
   }
+  const storia = unRacconto && c.storia.find(a => a.id === unRacconto[1]);
+  if (unRacconto && !storia) return new Response("Pagina non trovata", { status: 404 });
+  let htmlStoria = percorso === "/storia" ? elencoStoria(c.storia) : "";
+  if (storia) {
+    htmlStoria = racconto(storia, c.storia);
+    titolo = storia.seoTitolo || `${storia.titolo} | Curva Roma`; descrizione = storia.seoDescrizione || storia.riassunto;
+    dati.push({ "@context": "https://schema.org", "@type": "Article", headline: storia.titolo, description: storia.riassunto, image: BASE + "/img/anteprima.jpg", inLanguage: "it", mainEntityOfPage: BASE + percorso, author: { "@type": "Organization", name: "Curva Roma", url: BASE + "/" }, publisher: { "@type": "Organization", name: "Curva Roma", logo: { "@type": "ImageObject", url: BASE + "/img/icona-512.png" } } });
+  }
   const giocatore = unGiocatore && GIOCATORI.find(g => g.slug === unGiocatore[1]);
   if (unGiocatore && !giocatore) return new Response("Pagina non trovata", { status: 404 });
   let htmlGiocatori = "";
@@ -161,7 +183,7 @@ export async function onRequest(ctx) {
   const articoli = articolo
     ? `<article class="articolo"><h1>${esc(articolo.titolo)}</h1><p class="nota">${esc(articolo.occhiello)}</p>${paragrafi(articolo)}</article>`
     : (c.analisi || []).map(a => `<article class="articolo"><h2><a href="/analisi/${esc(a.id)}">${esc(a.titolo)}</a></h2><p class="nota">${esc(a.occhiello)}</p><p>${esc(a.riassunto)}</p></article>`).join("");
-  const attiva = dettaglio ? "analisi" : scheda ? "pagella" : unGiocatore ? "giocatori" : VISTE[percorso];
+  const attiva = dettaglio ? "analisi" : scheda ? "pagella" : unGiocatore ? "giocatori" : unRacconto ? "storia" : VISTE[percorso];
   let rw = new HTMLRewriter()
     .on("title", { element: e => e.setInnerContent(titolo) })
     .on('meta[name="description"]', { element: e => e.setAttribute("content", descrizione) })
@@ -174,6 +196,7 @@ export async function onRequest(ctx) {
     .on(".eroe h1", { element: e => { if (attiva !== "casa") e.tagName = "h2"; } })
     .on(".vista", { element: e => { if (e.getAttribute("id") === "v-" + attiva) e.removeAttribute("hidden"); else e.setAttribute("hidden", ""); } })
     .on("#analisi-tutte", { element: e => e.setInnerContent(articoli, { html: true }) });
+  if (htmlStoria) rw = rw.on("#storia-box", { element: e => e.setInnerContent(htmlStoria, { html: true }) });
   if (htmlGiocatori) rw = rw.on("#giocatori-box", { element: e => e.setInnerContent(htmlGiocatori, { html: true }) });
   if (attiva === "pagella") rw = rw.on("#pagelle-archivio", { element: e => e.setInnerContent(c.pagelle.map(rigaPagella).join(""), { html: true }) });
   if (partita) rw = rw
@@ -182,7 +205,7 @@ export async function onRequest(ctx) {
   if (articolo) rw = rw
     .on('meta[property="og:type"]', { element: e => e.setAttribute("content", "article") })
     .on('meta[property="og:image"]', { element: e => e.setAttribute("content", new URL(articolo.copertina || "/img/anteprima.jpg", BASE).href) });
-  for (const v of Object.values(VISTE)) if (v !== attiva || dettaglio || scheda) rw = rw.on(`#v-${v} h1`, { element: e => { e.tagName = "h2"; } });
+  for (const v of Object.values(VISTE)) if (v !== attiva || dettaglio || scheda || v === "storia") rw = rw.on(`#v-${v} h1`, { element: e => { e.tagName = "h2"; } });
   const out = rw.transform(risposta);
   const h = new Headers(out.headers);
   h.set("content-type", "text/html; charset=utf-8");

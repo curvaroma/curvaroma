@@ -182,6 +182,30 @@ body[data-partita] #v-pagella>:not(#pagella-partita,#sezione-archivio){display:n
 .voti-partita small{color:var(--muto);font-size:.8rem}
 .voti-partita b{font:800 1.5rem/1 var(--display);color:var(--accento)}
 .voce-pagelle{display:grid;gap:2px;background:var(--superficie);border:1px solid var(--linea);border-radius:10px;padding:10px 14px;color:inherit;text-decoration:none}
+#storia-box{display:grid;gap:30px;padding-block:32px 20px}
+.testa-storia{display:grid;gap:10px;padding:28px 20px;border-radius:12px;background:linear-gradient(rgba(36,18,10,.74),rgba(20,8,8,.93)),url(/img/stadio.jpg) center/cover;color:#F4E6CF;background-blend-mode:normal}
+.testa-storia h1{font:400 clamp(2.2rem,8vw,3.6rem)/1.08 Georgia,"Times New Roman",serif;text-wrap:balance}
+.testa-storia p{margin:0;font:italic 1.12rem/1.55 Georgia,"Times New Roman",serif;max-width:60ch}
+.testa-storia .nota{color:#D9C3A0}
+.anno-grande{font:400 clamp(3.4rem,14vw,6rem)/1 Georgia,"Times New Roman",serif;color:var(--giallo)}
+.linea-storia{display:grid;gap:0;border-left:2px solid var(--giallo);margin-left:8px}
+.voce-storia{display:grid;gap:4px;padding:16px 0 16px 20px;position:relative;color:inherit;text-decoration:none}
+.voce-storia::before{content:"";position:absolute;left:-7px;top:24px;width:12px;height:12px;border-radius:50%;background:var(--giallo)}
+.voce-storia span{display:grid;gap:4px}
+.voce-storia b{font:400 1.32rem/1.25 Georgia,"Times New Roman",serif}
+.anno-storia{font:800 1.5rem/1 var(--display);color:var(--giallo)}
+.racconto{display:grid;gap:24px;max-width:68ch;margin:auto}
+.testo-storia{display:grid;gap:18px;font:400 1.14rem/1.72 Georgia,"Times New Roman",serif}
+.testo-storia p{margin:0}
+.testo-storia>p:first-child::first-letter{float:left;font-size:4.2em;line-height:.82;padding:6px 10px 0 0;color:var(--giallo)}
+.testo-storia h2{font:italic 400 1.6rem/1.25 Georgia,"Times New Roman",serif;color:var(--giallo);margin-top:12px}
+.prossimo-racconto{display:grid;gap:4px;padding:16px;border-top:1px solid var(--giallo);border-bottom:1px solid var(--giallo);color:inherit;text-decoration:none}
+.prossimo-racconto b{font:400 1.3rem/1.3 Georgia,"Times New Roman",serif}
+.fonti-storia{font-size:.82rem;overflow-wrap:anywhere}
+.sez-storia a{display:grid;gap:8px;padding:30px 20px;border-radius:12px;color:#F4E6CF;text-decoration:none;background:linear-gradient(rgba(36,18,10,.74),rgba(20,8,8,.93)),url(/img/stadio.jpg) center/cover}
+.sez-storia b{font:400 1.7rem/1.2 Georgia,"Times New Roman",serif}
+.sez-storia i{font:italic 1rem/1.5 Georgia,"Times New Roman",serif}
+.sez-storia span{color:var(--giallo);font-weight:600}
 #giocatori-box{display:grid;gap:14px;padding-top:28px}
 .griglia-giocatori{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .card-giocatore{display:grid;gap:4px;justify-items:center;text-align:center;background:var(--superficie);border:1px solid var(--linea);border-radius:10px;padding:10px;color:inherit;text-decoration:none}
@@ -432,7 +456,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
     <img src="/img/logo-chiaro.webp" alt="" width="480" height="179">
     <span class="scritta">Curva Roma</span>
   </a>
-  <nav class="menu destra" aria-label="Altre sezioni"><a href="/analisi">Analisi</a><a href="/biglietti">Biglietti</a></nav>
+  <nav class="menu destra" aria-label="Altre sezioni"><a href="/storia" data-storia hidden>Storia</a><a href="/analisi">Analisi</a><a href="/biglietti">Biglietti</a></nav>
 </div>
 <img class="foto-testata" id="foto-testata" src="/img/tifosi.webp" srcset="/img/tifosi-800.webp 800w,/img/tifosi.webp 1600w" sizes="100vw" width="1600" height="1065" fetchpriority="high" alt="Curva Sud dei tifosi della Roma allo Stadio Olimpico piena di bandiere giallorosse"></header>
 
@@ -510,6 +534,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
       <table class="classifica"><tbody id="classifica"></tbody></table>
     </section>
 
+    <section class="in sez-storia" id="casa-storia" hidden></section>
     <section class="in apertura"><h2>Curva Roma, il sito dei tifosi della Roma</h2><p>Notizie sull'AS Roma, pagelle dei tifosi, vigilia delle partite e analisi. Qui ogni romanista vota e discute, e la tifoseria segue la squadra ogni giorno. <a href="/tifosi-roma">Chi siamo</a>. Forza Roma!</p></section>
   </div>
 
@@ -534,6 +559,10 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
       <h2 class="striscione">Tutte le pagelle</h2>
       <div class="lista" id="pagelle-archivio"></div>
     </section>
+  </div>
+
+  <div class="vista" id="v-storia" hidden>
+    <section class="in" id="storia-box"></section>
   </div>
 
   <div class="vista" id="v-giocatori" hidden>
@@ -648,7 +677,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
 </div>
 
 <footer class="piede"><div class="in">
-  <nav aria-label="Link utili"><a href="/">Notizie AS Roma</a><a href="/pagelle">Pagelle dei tifosi</a><a href="/giocatori">Giocatori della Roma</a><a href="/analisi">Analisi</a><a href="/tifosi-roma">Tifosi della Roma</a></nav>
+  <nav aria-label="Link utili"><a href="/">Notizie AS Roma</a><a href="/pagelle">Pagelle dei tifosi</a><a href="/giocatori">Giocatori della Roma</a><a href="/storia" data-storia hidden>Storia della Roma</a><a href="/analisi">Analisi</a><a href="/tifosi-roma">Tifosi della Roma</a></nav>
   <img class="logo-piede su-chiaro" src="/img/logo.webp" alt="Curva Roma" width="480" height="179" loading="lazy"><img class="logo-piede su-scuro" src="/img/logo-chiaro.webp" alt="Curva Roma" width="480" height="179" loading="lazy">
   <p>Sito di tifosi non ufficiale. Curva Roma non è collegato ad AS Roma.</p>
   <p>In qualità di Affiliato Amazon, ricevo un guadagno dagli acquisti idonei.</p>
@@ -795,12 +824,15 @@ function disegnaAnnunci() {
   const conFoto = PRODOTTI.filter(p => p.foto);
   for (let i = conFoto.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [conFoto[i], conFoto[j]] = [conFoto[j], conFoto[i]]; }
   let prima = []; try { prima = JSON.parse(localStorage.getItem("cr_annunci")) || []; } catch {}
-  const slots = tutti("[data-annuncio]"), ora = [];
-  for (let k = 1; k < conFoto.length && conFoto.some((x, i) => x.id === prima[i]); k++) conFoto.push(conFoto.shift());
-  slots.forEach((slot, i) => {
-    slot.textContent = "";
-    if (!conFoto.length) return;
-    const p = conFoto[i % conFoto.length]; ora.push(p.id);
+  // Conta solo gli spazi visibili in questa pagina: ognuno ha un prodotto diverso, quelli in più restano vuoti.
+  const slots = [...tutti("[data-annuncio]")], ora = [];
+  slots.forEach(s => { s.textContent = " "; });
+  const visibili = slots.filter(s => s.getClientRects().length);
+  slots.forEach(s => { s.textContent = ""; });
+  const n = Math.min(visibili.length, conFoto.length);
+  for (let k = 1; k < conFoto.length && conFoto.slice(0, n).some((x, i) => x.id === prima[i]); k++) conFoto.push(conFoto.shift());
+  visibili.slice(0, n).forEach((slot, i) => {
+    const p = conFoto[i]; ora.push(p.id);
     const a = el("a", "pubblicita"); a.href = p.link; a.target = "_blank"; a.rel = "noopener sponsored";
     a.addEventListener("click", () => navigator.sendBeacon("/api/clic", new Blob([JSON.stringify({ prodotto: p.id })], { type: "application/json" })));
     const v = el("div", "vetrina"), img = el("img"); img.src = p.foto; img.alt = p.nome; img.loading = "lazy"; img.referrerPolicy = "no-referrer"; v.append(img);
@@ -809,6 +841,7 @@ function disegnaAnnunci() {
   });
   try { localStorage.setItem("cr_annunci", JSON.stringify(ora)); } catch {}
 }
+matchMedia("(min-width:1180px)").addEventListener("change", disegnaAnnunci);
 function disegnaNotizie(tutte) {
   const lista = tutte;
   const box = $("#carosello"); box.textContent = "";
@@ -1213,7 +1246,7 @@ function xiTifosi() {
 function aggiorna() { caricaMio(mioDoc); risultati(); esitoPronostico(); xiTifosi(); }
 
 /* Navigazione con passaggio animato */
-const VISTE = ["casa", "pagella", "vigilia", "analisi", "biglietti", "tifosi", "giocatori"];
+const VISTE = ["casa", "pagella", "vigilia", "analisi", "biglietti", "tifosi", "giocatori", "storia"];
 const PERCORSI = { casa: "/", pagella: "/pagelle", vigilia: "/vigilia", analisi: "/analisi", biglietti: "/biglietti", tifosi: "/tifosi-roma" };
 const TITOLI = { casa: "Curva Roma: notizie AS Roma, pagelle e tifosi romanisti", pagella: "Pagelle dei tifosi della Roma | Curva Roma", vigilia: "Vigilia della Roma: formazione e pronostico | Curva Roma", analisi: "Analisi AS Roma: tattica e dati | Curva Roma", biglietti: "Annunci biglietti Roma tra tifosi | Curva Roma", tifosi: "Tifosi della Roma: la casa dei romanisti | Curva Roma" };
 let vistaOra = null;
@@ -1223,6 +1256,7 @@ const scegli = () => {
   if (p.startsWith("/analisi")) return "analisi";
   if (p.startsWith("/pagelle")) return "pagella";
   if (p.startsWith("/giocatori")) return "giocatori";
+  if (p.startsWith("/storia")) return "storia";
   return VISTE.find(v => PERCORSI[v] === p) || "casa";
 };
 const schedaPartita = () => /^\/pagelle\/[\w-]+/.test(location.pathname);
@@ -1291,6 +1325,14 @@ function visitaSezione(v) {
 }
 function applica(p) {
   C = p.contenuti; PRODOTTI = p.prodotti || [];
+  const racconti = C?.storia || [];
+  tutti("[data-storia]").forEach(a => { a.hidden = !racconti.length; });
+  const cs = $("#casa-storia"); cs.hidden = !racconti.length; cs.textContent = "";
+  if (racconti.length) {
+    const x = racconti[Math.floor(Math.random() * racconti.length)], a = el("a"); a.href = "/storia/" + x.id;
+    a.append(el("i", "", `La nostra storia, ${x.anno}`), el("b", "", x.titolo), el("span", "", "Leggi il racconto"));
+    cs.append(a);
+  }
   const arch = $("#pagelle-archivio"); arch.textContent = "";
   for (const x of p.pagelle || []) {
     const a = el("a", "voce-pagelle"); a.href = "/pagelle/" + x.slug;

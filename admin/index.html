@@ -132,6 +132,7 @@ const PAGINE = {
       sez("Didascalia Instagram", b.didascalia);
       sez("Sul sito", b.sito?.descrizione);
       if (b.sito?.articolo) { const a = b.sito.articolo; sez("Articolo: " + a.titolo, a.testo.replace(/^## /gm, "")); f.append(el("p", "nota", `${conta(a.testo)} parole`)); }
+      if (b.sito?.storiaUrl) { const box = el("div"); box.style.cssText = "display:grid;gap:8px;min-width:0"; f.append(box); fetch(b.sito.storiaUrl).then(r => r.json()).then(l => { for (const a of l) { const d = el("details"), t = el("summary", "", `${a.anno}: ${a.titolo} (${conta(a.testo)} parole)`); d.append(t, el("p", "a-capo", a.testo.replace(/^## /gm, ""))); box.append(d); } }).catch(() => box.append(el("p", "esito", "Articoli non caricati"))); }
       if (b.note?.length) { const u = el("ul"); u.style.cssText = "margin:0;padding-left:20px;display:grid;gap:4px"; for (const n of b.note) u.append(el("li", "", n)); f.append(el("h3", "", "Note di Claude"), u); }
       if (b.fonti?.length) { const u = el("div", "riga"); for (const [n, url] of b.fonti) if (/^https:\/\//.test(url)) { const a = el("a", "", n); a.href = url; a.target = "_blank"; a.rel = "noopener"; u.append(a); } f.append(el("h3", "", "Fonti"), u); }
       griglia.append(f);
@@ -408,7 +409,6 @@ async function disegnaPost(tela, d) {
   for (const x of righe2.slice(0, 3)) { y += 44; g.fillText(x, 60, y); }
   g.fillStyle = "#F0BC42"; g.font = "54px TitoliPost"; const ls = g.measureText("curvaroma.it").width; g.fillRect(60, 1226, ls + 48, 80);
   g.fillStyle = "#2B0A15"; g.fillText("curvaroma.it", 84, 1285);
-  g.fillStyle = "#FFF6F0"; g.font = "26px TestoPost"; g.textAlign = "right"; g.fillText("Sito di tifosi non ufficiale", 1020, 1275);
 }
 async function apri(s) {
   ora = s;

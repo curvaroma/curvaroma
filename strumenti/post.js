@@ -41,7 +41,7 @@ p{margin:0;font-size:37px;line-height:1.22;font-weight:600}
 <div class="alto"><img src="${immagine("img/logo-chiaro.png")}" alt=""><div class="nome">Curva Roma</div></div>
 ${dati.giocatori.map((f, i) => `<img class="g g${i}" src="${immagine(f)}" alt="">`).sort((a, b) => a.includes("g g1") - b.includes("g g1")).join("")}
 <div class="pann"><h1>${righe.map(esc).join("<br>")}</h1><p>${esc(dati.testo)}</p>
-<div class="piede"><div class="sito">curvaroma.it</div><div class="nota">Sito di tifosi non ufficiale</div></div></div></html>` : null;
+<div class="piede"><div class="sito">curvaroma.it</div></div></div></html>` : null;
 
 const html = tridente || `<!doctype html><html lang="it"><meta charset="utf-8"><style>
 @font-face{font-family:T;font-weight:900;src:url(${font("fonts/titoli-900.woff2")})}
@@ -61,7 +61,7 @@ p{margin:0;font-size:39px;line-height:1.25;font-weight:600}
 </style><div class="alto"><img src="${immagine("img/logo-chiaro.png")}" alt=""><div class="nome">Curva Roma</div></div>
 <img class="foto" src="${immagine(dati.foto || "img/tifosi.jpg")}" alt="">
 <div class="pann"><h1>${righe.map(esc).join("<br>")}</h1><p>${esc(dati.testo)}</p>
-<div class="piede"><div class="sito">curvaroma.it</div><div class="nota">Sito di tifosi non ufficiale</div></div></div></html>`;
+<div class="piede"><div class="sito">curvaroma.it</div></div></div></html>`;
 
 (async () => {
   const b = await chromium.launch();
