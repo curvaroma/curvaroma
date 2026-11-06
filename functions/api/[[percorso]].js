@@ -306,7 +306,11 @@ async function admin(ctx, p) {
         if (!r.ok) return errore("Articoli non trovati");
         const nuovi = await r.json();
         c.storia ||= [];
-        for (const a of nuovi) if (/^[\w-]+$/.test(a.id) && !c.storia.some(x => x.id === a.id)) c.storia.push(a);
+        for (const a of nuovi) {
+          if (!/^[\w-]+$/.test(a.id)) continue;
+          const i = c.storia.findIndex(x => x.id === a.id);
+          if (i >= 0) c.storia[i] = a; else c.storia.push(a);
+        }
       }
       if (!c.partita?.id || !c.prossima?.id || !Array.isArray(c.classifica)) return errore("Contenuti non validi");
       scritture.push(env.DB.prepare("UPDATE impostazioni SET valore=?, aggiornato=CURRENT_TIMESTAMP WHERE chiave='contenuti'").bind(JSON.stringify(c)), await archivioPagelle(env, prima, c.partita));
