@@ -18,7 +18,10 @@ const errore = (messaggio, stato = 400) => json({ errore: messaggio }, stato);
 const idPartita = s => typeof s === "string" && /^[a-z0-9-]{3,40}$/.test(s);
 const nome = s => typeof s === "string" && s.length >= 2 && s.length <= 30 && /^[\p{L} .'-]+$/u.test(s);
 
+// L'app non usa cookie: invia il proprio id nell'intestazione x-tifoso.
 function leggiCookie(req) {
+  const t = req.headers.get("x-tifoso");
+  if (/^[a-f0-9-]{36}$/.test(t || "")) return t;
   const m = (req.headers.get("cookie") || "").match(new RegExp(`(?:^|; )${COOKIE}=([a-f0-9-]{36})`));
   return m ? m[1] : null;
 }
@@ -557,7 +560,18 @@ async function admin(ctx, p) {
   return errore("Percorso non trovato", 404);
 }
 
+const ORIGINI_APP = ["capacitor://localhost", "https://localhost", "http://localhost"];
 export async function onRequest(ctx) {
+  const origine = ctx.request.headers.get("origin"), app = ORIGINI_APP.includes(origine);
+  const cors = app ? { "access-control-allow-origin": origine, "access-control-allow-headers": "content-type, x-tifoso", "access-control-allow-methods": "GET, POST, DELETE, OPTIONS", vary: "origin" } : {};
+  if (ctx.request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+  const r = await servi(ctx, app);
+  if (!app) return r;
+  const out = new Response(r.body, r);
+  for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
+  return out;
+}
+async function servi(ctx, app) {
   const { request: req, env } = ctx;
   const url = new URL(req.url);
   const percorso = url.pathname.replace(/^\/api\//, "").split("/");
@@ -582,7 +596,7 @@ export async function onRequest(ctx) {
     if (req.method === "GET" && percorso[0] === "classifica") return json(await classifica(env, id));
     if (req.method !== "POST" && req.method !== "DELETE") return errore("Metodo non consentito", 405);
     const origine = req.headers.get("origin");
-    if (origine && new URL(origine).host !== url.host) return errore("Origine non valida", 403);
+    if (!app && origine && new URL(origine).host !== url.host) return errore("Origine non valida", 403);
     const nuovo = !id;
     if (nuovo) id = crypto.randomUUID();
     const fine = (dati, s = 200) => json(dati, s, nuovo ? scriviCookie(id) : {});

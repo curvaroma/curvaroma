@@ -1,0 +1,88 @@
+name: App iOS
+on:
+  workflow_dispatch: {}
+jobs:
+  ios:
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: app
+    env:
+      HA_FIRMA: ${{ secrets.IOS_CERTIFICATE_BASE64 != '' && secrets.CURVAROMA_IOS_PROVISIONING_PROFILE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx cap sync ios
+      - name: Installa CocoaPods
+        working-directory: app/ios/App
+        run: pod install
+      - name: Prova di compilazione senza firma
+        if: env.HA_FIRMA != 'true'
+        working-directory: app/ios/App
+        run: |
+          echo "::warning::Certificato o profilo assenti: compilo solo per il simulatore, nulla viene caricato."
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -sdk iphonesimulator CODE_SIGNING_ALLOWED=NO build
+      - name: Importa certificato e profilo
+        if: env.HA_FIRMA == 'true'
+        env:
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          PROFILO: ${{ secrets.CURVAROMA_IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          KC=$RUNNER_TEMP/firma.keychain-db; PW=$(openssl rand -base64 12)
+          security create-keychain -p "$PW" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$PW" "$KC"
+          echo "$IOS_CERTIFICATE_BASE64" | base64 -d > $RUNNER_TEMP/c.p12
+          security import $RUNNER_TEMP/c.p12 -k "$KC" -P "$IOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security list-keychain -d user -s "$KC" $(security list-keychains -d user | sed 's/"//g')
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$PW" "$KC"
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          F=~/Library/MobileDevice/Provisioning\ Profiles/curvaroma.mobileprovision
+          echo "$PROFILO" | base64 -d > "$F"
+          security cms -D -i "$F" > $RUNNER_TEMP/p.plist
+          echo "PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' $RUNNER_TEMP/p.plist)" >> $GITHUB_ENV
+      - name: Firma nel progetto Xcode
+        if: env.HA_FIRMA == 'true'
+        working-directory: app/ios/App
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          P=App.xcodeproj/project.pbxproj
+          sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*;/CURRENT_PROJECT_VERSION = ${{ github.run_number }};/g" $P
+          sed -i '' "s/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual; DEVELOPMENT_TEAM = $APPLE_TEAM_ID; PROVISIONING_PROFILE_SPECIFIER = \"$PROFILE_UUID\"; \"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"Apple Distribution\";/g" $P
+      - name: Archivia
+        if: env.HA_FIRMA == 'true'
+        working-directory: app/ios/App
+        run: xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination generic/platform=iOS -archivePath $RUNNER_TEMP/App.xcarchive archive
+      - name: Esporta l'ipa
+        if: env.HA_FIRMA == 'true'
+        working-directory: app/ios/App
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          cat > ExportOptions.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>signingCertificate</key><string>Apple Distribution</string>
+            <key>provisioningProfiles</key><dict><key>it.curvaroma.app</key><string>$PROFILE_UUID</string></dict>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive -archivePath $RUNNER_TEMP/App.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath $RUNNER_TEMP/export
+      - name: Carica su App Store Connect
+        if: env.HA_FIRMA == 'true'
+        env:
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          CHIAVE: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$CHIAVE" | base64 -d > ~/.appstoreconnect/private_keys/AuthKey_$KEY_ID.p8
+          xcrun altool --upload-app -f "$(find $RUNNER_TEMP/export -name '*.ipa' | head -n 1)" -t ios --apiKey "$KEY_ID" --apiIssuer "$ISSUER"
