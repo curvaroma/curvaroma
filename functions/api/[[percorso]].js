@@ -1,4 +1,4 @@
-import { PAGINE, slugPartita, elencoPagelle } from "../_middleware.js";
+import { PAGINE, slugPartita, elencoPagelle, GIOCATORI } from "../_middleware.js";
 // API di Curva Roma. Binding richiesto nel progetto Pages: D1 con nome DB.
 const COOKIE = "cr_tifoso";
 const ANNO = 60 * 60 * 24 * 365;
@@ -580,6 +580,40 @@ const SS_SQUADRE = { roma: "as-roma", milan: "ac-milan", inter: "inter-milan", "
 const ssSlug = n => SS_SQUADRE[String(n).toLowerCase().trim()] || String(n).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 // "Mario Hermoso" diventa "Hermoso", "Marten de Roon" diventa "de Roon".
 const corto = n => { const p = String(n || "").trim().split(/\s+/); return p.length > 1 ? p.slice(1).join(" ") : p[0] || ""; };
+// Pagelle automatiche (deciso da Andrea il 7 novembre): al fischio finale la partita giocata diventa quella da votare,
+// con titolari ed entrati presi da SportScore. La Vigilia della gara dopo resta alla bozza del mattino.
+const piano = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z ]/g, " ").split(/\s+/).filter(Boolean);
+const RUOLI_SS = { G: "Portiere", D: "Difensore", M: "Centrocampista", F: "Attaccante" };
+function nostroGiocatore(nome, posizione) {
+  const t = piano(nome);
+  const g = GIOCATORI.find(x => piano(x.nome).every(p => t.includes(p)));
+  return g ? [g.voti, g.ruolo] : [corto(nome), RUOLI_SS[posizione] || "Centrocampista"];
+}
+async function apriPagelle(ctx, contenuti, q, m, nomeDi) {
+  const { env } = ctx, giorno = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date(q.inizio));
+  const id = `${String(q.id).replace(/-\d{4}-\d{2}-\d{2}$/, "")}-g-${giorno}`;
+  if (contenuti.partita?.id === id) return "già aperte";
+  const lato = nomeDi(m.home) === "Roma" ? "home" : nomeDi(m.away) === "Roma" ? "away" : null, l = m.lineups || {};
+  const xi = lato ? l[lato + "_xi"] || [] : [];
+  if (xi.length < 11) return "formazioni mancanti";
+  const titolari = xi.map(x => nostroGiocatore(x.name, x.position));
+  for (const x of m.incidents || []) if (x.is_sub && x.side === lato && x.player_in) {
+    const g = nostroGiocatore(x.player_in, (l[lato + "_subs"] || []).find(y => y.name === x.player_in)?.position);
+    if (!titolari.some(([n]) => n === g[0])) titolari.push(g);
+  }
+  const casa = nomeDi(m.home), ospiti = nomeDi(m.away), golCasa = Number(m.home_score) || 0, golOspiti = Number(m.away_score) || 0;
+  const partita = {
+    id, competizione: q.competizione, casa, ospiti, golCasa, golOspiti, titolari,
+    data: new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", day: "numeric", month: "long" }).format(new Date(q.inizio)),
+    gol: (m.incidents || []).filter(x => x.is_goal).map(x => [Number(x.time) || 0, x.side === "home" ? "casa" : "ospiti"])
+  };
+  await env.DB.batch([
+    env.DB.prepare("UPDATE impostazioni SET valore=json_set(valore,'$.partita',json(?)), aggiornato=CURRENT_TIMESTAMP WHERE chiave='contenuti' AND json_extract(valore,'$.partita.id') IS NOT ?").bind(JSON.stringify(partita), id),
+    await archivioPagelle(env, contenuti.partita, partita),
+    env.DB.prepare("INSERT INTO risultati (partita, nome, casa, ospiti) VALUES (?,?,?,?) ON CONFLICT(partita) DO UPDATE SET nome=excluded.nome, casa=excluded.casa, ospiti=excluded.ospiti").bind(q.id, `${casa}-${ospiti}`, golCasa, golOspiti)
+  ]);
+  return "aperte";
+}
 async function live(ctx) {
   const { env } = ctx;
   const chiave = new Request(new URL("/api/live", ctx.request.url));
@@ -591,7 +625,7 @@ async function live(ctx) {
     return r;
   };
   const v = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'").first("valore");
-  const q = v ? JSON.parse(v).prossima : null, inizio = Date.parse(q?.inizio || "");
+  const contenuti = v ? JSON.parse(v) : null, q = contenuti?.prossima, inizio = Date.parse(q?.inizio || "");
   const ora = Date.now();
   if (!q || !inizio || ora < inizio - 30 * 60e3 || ora > inizio + 3 * 3600e3) return rispondi({ attiva: false }, 60);
   const chiama = async slug => {
@@ -617,8 +651,10 @@ async function live(ctx) {
       const tipo = x.is_goal ? (/own/i.test(tp) ? "autogol" : /pen/i.test(tp) ? "rigore" : "gol") : x.is_card ? (/red|second/i.test(tp) ? "rosso" : "giallo") : null;
       return tipo && { tipo, minuto: x.time != null ? `${x.time}'` : "", squadra: x.side === "home" ? "casa" : "ospiti", giocatore: corto(x.player) };
     }).filter(Boolean);
+    let pagelle = null;
+    if (fase === "finita") pagelle = await apriPagelle(ctx, contenuti, q, m, nomeDi).catch(e => "errore: " + String(e?.message || e).slice(0, 80));
     return rispondi({
-      attiva: true, fase, fonte: "SportScore",
+      attiva: true, fase, fonte: "SportScore", pagelle,
       minuto: fase === "in corso" ? (m.live_minute != null ? `${m.live_minute}'` : testo) : fase === "intervallo" ? "Intervallo" : fase === "finita" ? "Finale" : "",
       competizione: q.competizione, inizio: q.inizio,
       casa: { nome: nomeDi(m.home), gol: Number(m.home_score) || 0 },

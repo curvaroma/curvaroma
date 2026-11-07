@@ -2,7 +2,7 @@
 const BASE = "https://curvaroma.it";
 // Rosa 2026/27. Numeri, ruoli e nazionalità verificati su due fonti (DAZN, ESPN, Starting11).
 // "voti" è il nome con cui il giocatore compare nelle pagelle.
-const GIOCATORI = [
+export const GIOCATORI = [
   ["vasquez", "Devis Vásquez", "Vasquez", 32, "Portiere", "Colombia"],
   ["svilar", "Mile Svilar", "Svilar", 99, "Portiere", "Serbia"],
   ["gollini", "Pierluigi Gollini", "Gollini", 95, "Portiere", "Italia"],
