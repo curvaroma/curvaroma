@@ -99,23 +99,25 @@ async function notizie(ctx) {
   const lista = [];
   for (let i = 0; i < PER_TESTATA; i++) for (const g of gruppi.values()) if (g[i]) lista.push(g[i]);
   const fonti = Object.fromEntries(FEED.map(([t], i) => [t, risposte[i].status === "fulfilled" ? risposte[i].value.length : "errore"]));
-  const risposta = new Response(JSON.stringify({ notizie: lista, fonti }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=600" } });
+  const risposta = new Response(JSON.stringify({ notizie: lista, fonti }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=300" } });
   if (lista.length) ctx.waitUntil(caches.default.put(chiave, risposta.clone()));
+  if (ctx.env.DB) ctx.waitUntil(salvaArchivio(ctx.env, tutte).catch(() => {}));
   return risposta;
 }
 
 // Archivio per l'app: le notizie restano nel database, così scorrendo si torna indietro nel tempo.
-const FONTI_APP = ["Corriere dello Sport", "Gazzetta dello Sport", "RomaNews"];
+// L'app usa le stesse fonti del sito. L'archivio si riempie anche quando il sito scarica i feed, così resta sempre aggiornato.
+const FONTI_APP = FEED.map(([t]) => t);
+const salvaArchivio = (env, tutte) => { const l = tutte.filter(n => n.data); return l.length ? env.DB.batch(l.map(n => env.DB.prepare("INSERT OR IGNORE INTO notizie (url, testata, titolo, foto, pubblicata) VALUES (?,?,?,?,?)").bind(n.url, n.t, n.titolo, n.foto, new Date(n.data).toISOString()))) : null; };
 async function aggiornaArchivio(env) {
   const ora = Date.now(), ultimo = Number(await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='notizie_agg'").first("valore")) || 0;
-  if (ora - ultimo < 6e5) return;
+  if (ora - ultimo < 3e5) return;
   await env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('notizie_agg',?) ON CONFLICT DO UPDATE SET valore=excluded.valore").bind(String(ora)).run();
   const esiti = await Promise.allSettled(FEED.filter(([t]) => FONTI_APP.includes(t)).map(async ([t, u]) => {
     const r = await fetch(u, { headers: { "user-agent": "CurvaRoma/1.0 (+https://curvaroma.it)" } });
     return r.ok ? leggiFeed(t, await r.text()) : [];
   }));
-  const nuove = esiti.flatMap(e => e.status === "fulfilled" ? e.value : []).filter(n => n.data);
-  if (nuove.length) await env.DB.batch(nuove.map(n => env.DB.prepare("INSERT OR IGNORE INTO notizie (url, testata, titolo, foto, pubblicata) VALUES (?,?,?,?,?)").bind(n.url, n.t, n.titolo, n.foto, new Date(n.data).toISOString())));
+  await salvaArchivio(env, esiti.flatMap(e => e.status === "fulfilled" ? e.value : []));
 }
 async function archivioNotizie(ctx, url) {
   const { env } = ctx, prima = url.searchParams.get("prima"), n = Math.min(50, Math.max(1, Number(url.searchParams.get("limite")) || 30));
@@ -596,7 +598,8 @@ async function apriPagelle(ctx, contenuti, q, m, nomeDi) {
   const lato = nomeDi(m.home) === "Roma" ? "home" : nomeDi(m.away) === "Roma" ? "away" : null, l = m.lineups || {};
   const xi = lato ? l[lato + "_xi"] || [] : [];
   if (xi.length < 11) return "formazioni mancanti";
-  const titolari = xi.map(x => nostroGiocatore(x.name, x.position));
+  const ORDINE = ["Portiere", "Difensore", "Centrocampista", "Attaccante"];
+  const titolari = xi.map(x => nostroGiocatore(x.name, x.position)).sort((a, b) => ORDINE.indexOf(a[1]) - ORDINE.indexOf(b[1]));
   for (const x of m.incidents || []) if (x.is_sub && x.side === lato && x.player_in) {
     const g = nostroGiocatore(x.player_in, (l[lato + "_subs"] || []).find(y => y.name === x.player_in)?.position);
     if (!titolari.some(([n]) => n === g[0])) titolari.push(g);
