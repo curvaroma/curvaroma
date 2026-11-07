@@ -1,6 +1,6 @@
-# Stile dei racconti di storia di Curva Roma
+# Stile dei racconti di storia di Roma+
 
-Sezione Storia di curvaroma.it, sito NON ufficiale di tifosi della Roma. È la sezione più romantica ed emotiva del sito.
+Sezione Storia di roma-plus.it, sito NON ufficiale di tifosi della Roma. È la sezione più romantica ed emotiva del sito.
 
 TONO: molto romantico e giornalistico insieme. Pensa alle grandi firme del giornalismo sportivo italiano: un inviato che ama questa squadra e sa scrivere. Attacco che prende alla gola con una scena o un dettaglio vero, poi il racconto con date, nomi e luoghi precisi, poi una chiusa che resta addosso. Terza persona o "noi romanisti". Basta col "te lo racconto", "siediti", "tieniti a mente" e col tono da padre a figlio.
 Periodi vari: anche lunghi quando serve, secchi quando colpiscono. Niente retorica vuota, niente clickbait. Evita "non è solo X, è Y", elenchi e trattini lunghi.

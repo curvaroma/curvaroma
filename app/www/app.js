@@ -1,5 +1,5 @@
-// App Curva Roma: stesse API del sito, stessi dati.
-const API = "https://curvaroma.it";
+// App Roma+: stesse API del sito, stessi dati.
+const API = "https://roma-plus.it";
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
 const vista = $("#vista");

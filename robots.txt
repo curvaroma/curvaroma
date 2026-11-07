@@ -1,4 +1,4 @@
 User-agent: *
 Disallow: /admin
 Disallow: /strumenti
-Sitemap: https://curvaroma.it/sitemap.xml
+Sitemap: https://roma-plus.it/sitemap.xml

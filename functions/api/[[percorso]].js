@@ -83,7 +83,7 @@ async function notizie(ctx) {
   const inCache = await caches.default.match(chiave);
   if (inCache) return inCache;
   const risposte = await Promise.allSettled(FEED.map(async ([t, u]) => {
-    const r = await fetch(u, { headers: { "user-agent": "CurvaRoma/1.0 (+https://curvaroma.it)" } });
+    const r = await fetch(u, { headers: { "user-agent": "RomaPlus/1.0 (+https://roma-plus.it)" } });
     return r.ok ? leggiFeed(t, await r.text()) : [];
   }));
   const tutte = risposte.flatMap(r => r.status === "fulfilled" ? r.value : []).sort((a, b) => b.data - a.data);
@@ -109,7 +109,7 @@ async function aggiornaArchivio(env) {
   if (ora - ultimo < 6e5) return;
   await env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('notizie_agg',?) ON CONFLICT DO UPDATE SET valore=excluded.valore").bind(String(ora)).run();
   const esiti = await Promise.allSettled(FEED.filter(([t]) => FONTI_APP.includes(t)).map(async ([t, u]) => {
-    const r = await fetch(u, { headers: { "user-agent": "CurvaRoma/1.0 (+https://curvaroma.it)" } });
+    const r = await fetch(u, { headers: { "user-agent": "RomaPlus/1.0 (+https://roma-plus.it)" } });
     return r.ok ? leggiFeed(t, await r.text()) : [];
   }));
   const nuove = esiti.flatMap(e => e.status === "fulfilled" ? e.value : []).filter(n => n.data);
@@ -216,7 +216,7 @@ async function clic(ctx) {
 /* Classifica dei pronostici: 5 punti al risultato esatto, 2 al segno giusto. */
 const PUNTI = `CASE WHEN p.casa=r.casa AND p.ospiti=r.ospiti THEN 5
   WHEN (p.casa>p.ospiti)-(p.casa<p.ospiti)=(r.casa>r.ospiti)-(r.casa<r.ospiti) THEN 2 ELSE 0 END`;
-const VIETATI = ["admin", "curvaroma", "asroma", "ufficiale", "moderator", "stronz", "cazz", "merd", "vaffa", "coglion", "puttan", "troia", "negro", "frocio", "ebreo", "mussolini", "hitler", "duce", "nazi"];
+const VIETATI = ["admin", "curvaroma", "romaplus", "roma-plus", "asroma", "ufficiale", "moderator", "stronz", "cazz", "merd", "vaffa", "coglion", "puttan", "troia", "negro", "frocio", "ebreo", "mussolini", "hitler", "duce", "nazi"];
 async function classifica(env, id) {
   const [l, u, io] = await env.DB.batch([
     env.DB.prepare(`SELECT t.tifoso_id, t.nickname nome, SUM(${PUNTI}) punti, SUM(p.casa=r.casa AND p.ospiti=r.ospiti) esatti, COUNT(*) giocate

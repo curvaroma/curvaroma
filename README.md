@@ -1,6 +1,6 @@
-# Curva Roma
+# Roma+
 
-Sito di tifosi della Roma non ufficiale: curvaroma.it.
+Sito di tifosi della Roma non ufficiale: roma-plus.it (prima curvaroma.it).
 
 - `index.html` e `img/`: il sito.
 - `functions/api/`: API per voti, pronostici, formazioni, annunci e notizie.

@@ -1,5 +1,5 @@
 // Titoli, descrizioni e contenuti leggibili da Google per ogni pagina.
-const BASE = "https://curvaroma.it";
+const BASE = "https://roma-plus.it";
 // Rosa 2026/27. Numeri, ruoli e nazionalità verificati su due fonti (DAZN, ESPN, Starting11).
 // "voti" è il nome con cui il giocatore compare nelle pagelle.
 const GIOCATORI = [
@@ -29,15 +29,15 @@ const GIOCATORI = [
   ["castro", "Santiago Castro", "Castro", 9, "Attaccante", "Argentina"]
 ].map(([slug, nome, voti, numero, ruolo, nazione]) => ({ slug, nome, voti, numero, ruolo, nazione }));
 export const PAGINE = {
-  "/": ["Curva Roma: notizie AS Roma, pagelle e tifosi romanisti", "Curva Roma è il sito dei tifosi della Roma: notizie sull'AS Roma, pagelle dei tifosi, vigilia delle partite, analisi e annunci. Sito non ufficiale. Forza Roma!"],
-  "/pagelle": ["Pagelle dei tifosi della Roma | Curva Roma", "Vota i giocatori dell'AS Roma dopo ogni partita e confronta il tuo voto con quello degli altri romanisti."],
-  "/vigilia": ["Vigilia della Roma: formazione e pronostico | Curva Roma", "La prossima partita della Roma: scegli la formazione dei tifosi e indovina il risultato."],
-  "/analisi": ["Analisi AS Roma: tattica e dati | Curva Roma", "Analisi tattiche e dati sulle partite e sui giocatori dell'AS Roma, scritte per i tifosi romanisti."],
-  "/biglietti": ["Annunci biglietti Roma tra tifosi | Curva Roma", "Bacheca di annunci tra tifosi della Roma. Biglietti e cambio intestatario solo sui canali ufficiali."],
-  "/giocatori": ["Giocatori della Roma: la rosa e i voti dei tifosi | Curva Roma", "Tutti i giocatori della Roma 2026/27: numeri di maglia, ruoli e media voto dei tifosi romanisti, partita dopo partita."],
-  "/radio": ["Radio Curva: la storia della Roma in onda | Curva Roma", "Radio Curva trasmette i racconti della storia della Roma: scudetti, notti europee, capitani e Curva Sud. Una radio di tifosi, sempre in onda."],
-  "/storia": ["Storia della Roma: partite, Curva Sud e ricordi | Curva Roma", "La storia della Roma raccontata dai tifosi: Campo Testaccio, la Curva Sud, gli scudetti, le notti europee e i capitani che non dimentichiamo."],
-  "/tifosi-roma": ["Tifosi della Roma: la casa dei romanisti | Curva Roma", "Curva Roma è il sito indipendente della tifoseria della Roma: notizie, pagelle, analisi e partecipazione per tutti i romanisti. Forza Roma!"]
+  "/": ["Roma+: notizie AS Roma, pagelle e tifosi romanisti", "Roma+ è il sito dei tifosi della Roma: notizie sull'AS Roma, pagelle dei tifosi, vigilia delle partite, analisi e annunci. Sito non ufficiale. Forza Roma!"],
+  "/pagelle": ["Pagelle dei tifosi della Roma | Roma+", "Vota i giocatori dell'AS Roma dopo ogni partita e confronta il tuo voto con quello degli altri romanisti."],
+  "/vigilia": ["Vigilia della Roma: formazione e pronostico | Roma+", "La prossima partita della Roma: scegli la formazione dei tifosi e indovina il risultato."],
+  "/analisi": ["Analisi AS Roma: tattica e dati | Roma+", "Analisi tattiche e dati sulle partite e sui giocatori dell'AS Roma, scritte per i tifosi romanisti."],
+  "/biglietti": ["Annunci biglietti Roma tra tifosi | Roma+", "Bacheca di annunci tra tifosi della Roma. Biglietti e cambio intestatario solo sui canali ufficiali."],
+  "/giocatori": ["Giocatori della Roma: la rosa e i voti dei tifosi | Roma+", "Tutti i giocatori della Roma 2026/27: numeri di maglia, ruoli e media voto dei tifosi romanisti, partita dopo partita."],
+  "/radio": ["Radio Curva: la storia della Roma in onda | Roma+", "Radio Curva trasmette i racconti della storia della Roma: scudetti, notti europee, capitani e Curva Sud. Una radio di tifosi, sempre in onda."],
+  "/storia": ["Storia della Roma: partite, Curva Sud e ricordi | Roma+", "La storia della Roma raccontata dai tifosi: Campo Testaccio, la Curva Sud, gli scudetti, le notti europee e i capitani che non dimentichiamo."],
+  "/tifosi-roma": ["Tifosi della Roma: la casa dei romanisti | Roma+", "Roma+ è il sito indipendente della tifoseria della Roma: notizie, pagelle, analisi e partecipazione per tutti i romanisti. Forza Roma!"]
 };
 const VISTE = { "/": "casa", "/pagelle": "pagella", "/vigilia": "vigilia", "/analisi": "analisi", "/biglietti": "biglietti", "/giocatori": "giocatori", "/storia": "storia", "/radio": "radio", "/tifosi-roma": "tifosi" };
 const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -142,13 +142,13 @@ export async function onRequest(ctx) {
   const scelta = !dettaglio && !scheda && !unGiocatore && !unRacconto && c.seo.pagine?.[percorso];
   if (scelta?.titolo) titolo = scelta.titolo;
   if (scelta?.descrizione) descrizione = scelta.descrizione;
-  const dati = [{ "@context": "https://schema.org", "@type": "WebSite", name: "Curva Roma", alternateName: "curvaroma.it", url: BASE + "/", inLanguage: "it" }];
-  if (percorso === "/") dati.push({ "@context": "https://schema.org", "@type": "Organization", name: "Curva Roma", url: BASE + "/", logo: BASE + "/img/icona-512.png" });
+  const dati = [{ "@context": "https://schema.org", "@type": "WebSite", name: "Roma+", alternateName: ["roma-plus.it", "Roma Plus", "Curva Roma"], url: BASE + "/", inLanguage: "it" }];
+  if (percorso === "/") dati.push({ "@context": "https://schema.org", "@type": "Organization", name: "Roma+", url: BASE + "/", logo: BASE + "/img/icona-512.png" });
   const articolo = dettaglio && (c.analisi || []).find(a => a.id === dettaglio[1]);
   if (dettaglio && !articolo) return new Response("Pagina non trovata", { status: 404 });
   if (articolo) {
-    titolo = articolo.seoTitolo || `${articolo.titolo} | Curva Roma`; descrizione = articolo.seoDescrizione || articolo.riassunto || descrizione;
-    dati.push({ "@context": "https://schema.org", "@type": "Article", headline: articolo.titolo, description: articolo.riassunto, image: new URL(articolo.copertina || "/img/anteprima.jpg", BASE).href, inLanguage: "it", mainEntityOfPage: BASE + percorso, author: { "@type": "Organization", name: "Curva Roma", url: BASE + "/" }, ...(articolo.data ? { datePublished: articolo.data, dateModified: articolo.data } : {}), publisher: { "@type": "Organization", name: "Curva Roma", logo: { "@type": "ImageObject", url: BASE + "/img/icona-512.png" } } });
+    titolo = articolo.seoTitolo || `${articolo.titolo} | Roma+`; descrizione = articolo.seoDescrizione || articolo.riassunto || descrizione;
+    dati.push({ "@context": "https://schema.org", "@type": "Article", headline: articolo.titolo, description: articolo.riassunto, image: new URL(articolo.copertina || "/img/anteprima.jpg", BASE).href, inLanguage: "it", mainEntityOfPage: BASE + percorso, author: { "@type": "Organization", name: "Roma+", url: BASE + "/" }, ...(articolo.data ? { datePublished: articolo.data, dateModified: articolo.data } : {}), publisher: { "@type": "Organization", name: "Roma+", logo: { "@type": "ImageObject", url: BASE + "/img/icona-512.png" } } });
   }
   if (percorso === "/vigilia" && c.prossima?.inizio) dati.push({ "@context": "https://schema.org", "@type": "SportsEvent", name: `${c.prossima.casa}-${c.prossima.ospiti}`, startDate: c.prossima.inizio, sport: "Calcio", homeTeam: { "@type": "SportsTeam", name: c.prossima.casa }, awayTeam: { "@type": "SportsTeam", name: c.prossima.ospiti } });
   const partita = scheda && c.pagelle.find(p => p.slug === scheda[1]);
@@ -156,19 +156,19 @@ export async function onRequest(ctx) {
   let htmlScheda = "";
   if (partita) {
     const v = await ctx.env.DB.prepare("SELECT giocatore, AVG(voto) m FROM voti WHERE partita=? GROUP BY giocatore ORDER BY m DESC").bind(partita.id).all();
-    titolo = `Pagelle ${nomePartita(partita)}: voti dei tifosi | Curva Roma`;
+    titolo = `Pagelle ${nomePartita(partita)}: voti dei tifosi | Roma+`;
     descrizione = `Le pagelle di ${partita.casa}-${partita.ospiti} del ${partita.data}, ${partita.competizione}: i voti dei tifosi della Roma, giocatore per giocatore.`;
     htmlScheda = schedaPagella(partita, v.results, partita.id === c.partita?.id);
     const giorno = partita.slug.slice(-10);
-    dati.push({ "@context": "https://schema.org", "@type": "Article", headline: `Pagelle ${nomePartita(partita)}`, description: descrizione, image: BASE + "/img/anteprima.jpg", inLanguage: "it", datePublished: giorno, mainEntityOfPage: BASE + percorso, author: { "@type": "Organization", name: "Curva Roma", url: BASE + "/" }, publisher: { "@type": "Organization", name: "Curva Roma", logo: { "@type": "ImageObject", url: BASE + "/img/icona-512.png" } } });
+    dati.push({ "@context": "https://schema.org", "@type": "Article", headline: `Pagelle ${nomePartita(partita)}`, description: descrizione, image: BASE + "/img/anteprima.jpg", inLanguage: "it", datePublished: giorno, mainEntityOfPage: BASE + percorso, author: { "@type": "Organization", name: "Roma+", url: BASE + "/" }, publisher: { "@type": "Organization", name: "Roma+", logo: { "@type": "ImageObject", url: BASE + "/img/icona-512.png" } } });
   }
   const storia = unRacconto && c.storia.find(a => a.id === unRacconto[1]);
   if (unRacconto && !storia) return new Response("Pagina non trovata", { status: 404 });
   let htmlStoria = percorso === "/storia" ? elencoStoria(c.storia) : "";
   if (storia) {
     htmlStoria = racconto(storia, c.storia);
-    titolo = storia.seoTitolo || `${storia.titolo} | Curva Roma`; descrizione = storia.seoDescrizione || storia.riassunto;
-    dati.push({ "@context": "https://schema.org", "@type": "Article", headline: storia.titolo, description: storia.riassunto, image: new URL(storia.copertina || "/img/anteprima.jpg", BASE).href, inLanguage: "it", mainEntityOfPage: BASE + percorso, author: { "@type": "Organization", name: "Curva Roma", url: BASE + "/" }, publisher: { "@type": "Organization", name: "Curva Roma", logo: { "@type": "ImageObject", url: BASE + "/img/icona-512.png" } } });
+    titolo = storia.seoTitolo || `${storia.titolo} | Roma+`; descrizione = storia.seoDescrizione || storia.riassunto;
+    dati.push({ "@context": "https://schema.org", "@type": "Article", headline: storia.titolo, description: storia.riassunto, image: new URL(storia.copertina || "/img/anteprima.jpg", BASE).href, inLanguage: "it", mainEntityOfPage: BASE + percorso, author: { "@type": "Organization", name: "Roma+", url: BASE + "/" }, publisher: { "@type": "Organization", name: "Roma+", logo: { "@type": "ImageObject", url: BASE + "/img/icona-512.png" } } });
   }
   const giocatore = unGiocatore && GIOCATORI.find(g => g.slug === unGiocatore[1]);
   if (unGiocatore && !giocatore) return new Response("Pagina non trovata", { status: 404 });
@@ -177,7 +177,7 @@ export async function onRequest(ctx) {
   if (giocatore) {
     const r = await ctx.env.DB.prepare("SELECT partita, AVG(voto) m FROM voti WHERE giocatore=? GROUP BY partita").bind(giocatore.voti).all();
     htmlGiocatori = schedaGiocatore(giocatore, r.results, c.pagelle);
-    titolo = `${giocatore.nome}: voti dei tifosi della Roma | Curva Roma`;
+    titolo = `${giocatore.nome}: voti dei tifosi della Roma | Roma+`;
     descrizione = `${giocatore.nome}, ${giocatore.ruolo.toLowerCase()} della Roma, numero ${giocatore.numero}: la media voto dei tifosi romanisti e tutte le sue pagelle, partita per partita.`;
     dati.push({ "@context": "https://schema.org", "@type": "Person", name: giocatore.nome, url: BASE + percorso, image: `${BASE}/img/giocatori/mini/${giocatore.slug}.webp`, jobTitle: "Calciatore", memberOf: { "@type": "SportsTeam", name: "AS Roma" } });
   }

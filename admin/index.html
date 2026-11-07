@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>Pannello Curva Roma</title>
+<title>Pannello Roma+</title>
 <link rel="icon" href="/img/favicon.png" type="image/png">
 <style>
 :root{--rosso:#8E1F2F;--scuro:#5F0E24;--giallo:#F0BC42;--fondo:#F6F1F2;--carta:#fff;--testo:#2B0A15;--muto:#6F5560;--linea:#E6D6DA}
@@ -68,7 +68,7 @@ button.pericolo{background:none;color:#C0392B;border:1px solid #C0392B}
 </head>
 <body>
 <div class="login" id="login"><form class="card" id="form-login">
-  <img src="/img/logo.png" alt="Curva Roma" style="width:150px;margin:auto">
+  <img src="/img/logo.png" alt="Roma+" style="width:150px;margin:auto">
   <label>Password<input id="pw" type="password" autocomplete="current-password"></label>
   <label id="l-codice" hidden>Codice dell'app, oppure codice di recupero<input id="codice" inputmode="text" autocomplete="one-time-code"></label>
   <button class="az" type="submit">Entra</button><p class="esito" id="e-login"></p>
@@ -147,7 +147,7 @@ const PAGINE = {
       }; return x; };
       if (b.stato !== "pubblicata") az.append(azione(b.sito?.descrizione ? "Pubblica sul sito" : "Segna come pubblicata", "az", "pubblica"));
       if (b.stato === "bozza") az.append(azione("Resta in bozza", "az sec", "attesa"));
-      if (b.immagine) { const sc = el("button", "az sec", "Scarica JPG"); sc.onclick = async () => { try { const u = URL.createObjectURL(await (await fetch(b.immagine)).blob()), a = el("a"); a.href = u; a.download = `curvaroma-${b.id}.jpg`; a.click(); URL.revokeObjectURL(u); } catch { es.textContent = "Scaricamento non riuscito"; } }; az.append(sc); }
+      if (b.immagine) { const sc = el("button", "az sec", "Scarica JPG"); sc.onclick = async () => { try { const u = URL.createObjectURL(await (await fetch(b.immagine)).blob()), a = el("a"); a.href = u; a.download = `romaplus-${b.id}.jpg`; a.click(); URL.revokeObjectURL(u); } catch { es.textContent = "Scaricamento non riuscito"; } }; az.append(sc); }
       if (b.didascalia) { const co = el("button", "az sec", "Copia didascalia"); co.onclick = async () => { try { await navigator.clipboard.writeText(b.didascalia); es.textContent = "Didascalia copiata"; } catch { es.textContent = "Copia non riuscita"; } }; az.append(co); }
       az.append(es); c.append(az);
       if (b.stato === "da-rivedere") c.append(el("p", "nota", "Torna da Claude nella sessione del giorno per sistemarla."));
@@ -344,7 +344,7 @@ const PAGINE = {
     const up = tastoFile("Carica foto", async file => { const u = await carica(file); const o = el("option", "", file.name); o.value = u; foto.append(o); foto.value = u; d.foto = u; ridisegna(); });
     f.append(campo("Titolo, una riga per ogni a capo", "", su("titolo"), "area"), campo("Frase sotto il titolo", "", su("testo")), lf, up, campo("Posizione foto (0 alto, 100 basso)", 60, x => { d.alto = Math.min(100, Math.max(0, +x || 0)); ridisegna(); }, "number"), campoSeo("Didascalia", "", x => d.didascalia = x, 1, 2200, "area"));
     const sc = el("button", "az", "Scarica JPG"), co = el("button", "az sec", "Copia didascalia"), az = el("div", "riga");
-    sc.onclick = () => { const a = el("a"); a.href = tela.toDataURL("image/jpeg", .92); a.download = `curvaroma-${oggi()}.jpg`; a.click(); };
+    sc.onclick = () => { const a = el("a"); a.href = tela.toDataURL("image/jpeg", .92); a.download = `romaplus-${oggi()}.jpg`; a.click(); };
     co.onclick = async () => { try { await navigator.clipboard.writeText(d.didascalia); es.textContent = "Didascalia copiata"; } catch { es.textContent = "Copia non riuscita"; } };
     az.append(sc, co, es); f.append(az); griglia.append(f, tela);
     c.append(el("h2", "", "Crea un post Instagram"), el("p", "nota", "Formato 1080x1350. Scarica il JPG e pubblicalo dal telefono."), griglia); v.append(c);
@@ -359,11 +359,11 @@ const PAGINE = {
     const es = el("span", "esito"), sv = el("button", "az", "Salva SEO");
     const k = el("div", "card"), voci = el("div", "riga");
     k.append(el("h2", "", "Strumenti"));
-    for (const [t, u] of [["Search Console", "https://search.google.com/search-console"], ["Sitemap", "/sitemap.xml"], ["Robots", "/robots.txt"], ["Velocità", "https://pagespeed.web.dev/analysis?url=https://curvaroma.it/"], ["Dati strutturati", "https://search.google.com/test/rich-results?url=https://curvaroma.it/"]]) { const a = el("a", "", t); a.href = u; a.target = "_blank"; a.rel = "noopener"; voci.append(a); }
+    for (const [t, u] of [["Search Console", "https://search.google.com/search-console"], ["Sitemap", "/sitemap.xml"], ["Robots", "/robots.txt"], ["Velocità", "https://pagespeed.web.dev/analysis?url=https://roma-plus.it/"], ["Dati strutturati", "https://search.google.com/test/rich-results?url=https://roma-plus.it/"]]) { const a = el("a", "", t); a.href = u; a.target = "_blank"; a.rel = "noopener"; voci.append(a); }
     k.append(voci); v.append(k);
     const p = el("div", "card"); p.append(el("h2", "", "Pagine del sito"), el("p", "nota", "Lascia vuoto per usare il testo predefinito."));
     for (const u of Object.keys(predefiniti)) {
-      const s = seo.pagine[u] ||= {}, g = schedaGoogle("curvaroma.it" + (u === "/" ? "" : u)), agg = () => { g.aggiorna(titoloDi(u), descDi(u)); disegnaParole(); };
+      const s = seo.pagine[u] ||= {}, g = schedaGoogle("roma-plus.it" + (u === "/" ? "" : u)), agg = () => { g.aggiorna(titoloDi(u), descDi(u)); disegnaParole(); };
       const b = el("div", ""); b.style.cssText = "display:grid;gap:8px;border-top:1px solid var(--linea);padding-top:12px";
       const t = campoSeo("Titolo per Google", s.titolo, x => { s.titolo = x.trim(); agg(); }, 30, 60), d = campoSeo("Descrizione per Google", s.descrizione, x => { s.descrizione = x.trim(); agg(); }, 120, 155, "area");
       t.querySelector("input").placeholder = predefiniti[u][0]; d.querySelector("textarea").placeholder = predefiniti[u][1];
@@ -387,7 +387,7 @@ const PAGINE = {
     for (const x of ["Contenuto", "Stato"]) h.append(el("th", "", x));
     t.append(h);
     for (const a of C.analisi) {
-      const titolo = a.seoTitolo || `${a.titolo} | Curva Roma`, desc = a.seoDescrizione || a.riassunto || "", pb = [];
+      const titolo = a.seoTitolo || `${a.titolo} | Roma+`, desc = a.seoDescrizione || a.riassunto || "", pb = [];
       if (titolo.length > 60) pb.push("titolo lungo"); if (desc.length < 120 || desc.length > 155) pb.push("descrizione da rivedere"); if (conta(a.testo) < 400) pb.push("meno di 400 parole"); if (!a.data) pb.push("senza data");
       const r = el("tr"), st = el("td"); pb.length ? pb.forEach(x => { st.append(el("span", "segno no", x), " "); }) : st.append(el("span", "segno ok", "Tutto ok"));
       r.append(el("td", "", a.titolo || "Senza titolo"), st); t.append(r);
@@ -440,7 +440,7 @@ function editor(a, n) {
   ii.disabled = !nuova; if (!nuova) ind.append(el("span", "conto", "Non si cambia dopo la pubblicazione"));
   g.append(lt, ls, campo("Data (AAAA-MM-GG)", a.data || "", x => a.data = x.trim(), "date"), ind);
   const i = el("img"); i.src = a.copertina || "/img/lavagna.jpg"; i.alt = ""; i.style.cssText = "width:100%;max-height:170px;object-fit:cover;border-radius:8px";
-  const gg = schedaGoogle("curvaroma.it/analisi/" + a.id), agg = () => (gg.firstChild.textContent = "curvaroma.it/analisi/" + a.id, gg).aggiorna(a.seoTitolo || `${a.titolo || "Titolo"} | Curva Roma`, a.seoDescrizione || a.riassunto || "");
+  const gg = schedaGoogle("roma-plus.it/analisi/" + a.id), agg = () => (gg.firstChild.textContent = "roma-plus.it/analisi/" + a.id, gg).aggiorna(a.seoTitolo || `${a.titolo || "Titolo"} | Roma+`, a.seoDescrizione || a.riassunto || "");
   const tit = campo("Titolo", a.titolo, x => { a.titolo = x; if (nuova && /^bozza-/.test(a.id) || nuova && a.auto) { a.auto = 1; a.id = id(x) || a.id; ii.value = a.id; } agg(); });
   const parole = el("span", "conto"), mostraParole = () => { const q = conta(a.testo); parole.textContent = `${q} parole, consigliate almeno 400`; parole.classList.toggle("no", q < 400); };
   const testo = campo("Testo. Riga vuota tra i paragrafi, ## davanti ai sottotitoli", a.testo, x => { a.testo = x; mostraParole(); }, "area"); testo.querySelector("textarea").style.minHeight = "300px"; testo.append(parole); mostraParole();
@@ -472,8 +472,7 @@ async function disegnaPost(tela, d) {
   const [logo, foto] = await Promise.all([caricaImg("/img/logo-chiaro.png"), caricaImg(d.foto)]), g = tela.getContext("2d");
   g.fillStyle = "#5F0E24"; g.fillRect(0, 0, 1080, 1350);
   g.textBaseline = "alphabetic"; g.textAlign = "left"; g.font = '96px TitoliPost';
-  const nome = "CURVA", ln = g.measureText(nome).width, x0 = (1080 - 216 - 24 - ln) / 2;
-  g.fillStyle = "#FFF6F0"; g.fillText(nome, x0, 118); g.drawImage(logo, x0 + ln + 24, 38, 216, 216 * logo.height / logo.width);
+  g.drawImage(logo, 540 - 230, 50, 460, 460 * logo.height / logo.width);
   const k = Math.max(1080 / foto.width, 590 / foto.height), sw = 1080 / k, sh = 590 / k;
   g.drawImage(foto, (foto.width - sw) / 2, (foto.height - sh) * d.alto / 100, sw, sh, 0, 158, 1080, 590);
   g.fillStyle = "#8E1F2F"; g.fillRect(0, 748, 1080, 602);
@@ -485,8 +484,8 @@ async function disegnaPost(tela, d) {
   for (const p of parole) { const t = riga ? riga + " " + p : p; if (g.measureText(t).width > 960 && riga) { righe2.push(riga); riga = p; } else riga = t; }
   if (riga) righe2.push(riga);
   for (const x of righe2.slice(0, 3)) { y += 44; g.fillText(x, 60, y); }
-  g.fillStyle = "#F0BC42"; g.font = "54px TitoliPost"; const ls = g.measureText("curvaroma.it").width; g.fillRect(60, 1226, ls + 48, 80);
-  g.fillStyle = "#2B0A15"; g.fillText("curvaroma.it", 84, 1285);
+  g.fillStyle = "#F0BC42"; g.font = "54px TitoliPost"; const ls = g.measureText("roma-plus.it").width; g.fillRect(60, 1226, ls + 48, 80);
+  g.fillStyle = "#2B0A15"; g.fillText("roma-plus.it", 84, 1285);
 }
 async function apri(s) {
   ora = s;

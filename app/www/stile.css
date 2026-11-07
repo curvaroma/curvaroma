@@ -6,7 +6,7 @@ html,body{margin:0;height:100%;background:var(--scuro);color:var(--testo);font:4
 body{display:flex;flex-direction:column;height:100dvh}
 .testa{flex:none;position:relative;display:flex;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top) + 8px) 12px 10px;background:var(--rosso)}
 .marchio{display:flex;align-items:center;gap:8px;font:900 1.7rem/1 T;text-transform:uppercase}
-.marchio img{height:34px}
+.marchio img{height:30px}
 .onair{position:absolute;right:10px;bottom:10px;display:flex;align-items:center;gap:5px;height:32px;padding:0 9px;border:1px solid rgba(255,255,255,.5);border-radius:99px;background:rgba(20,6,10,.6);color:#fff;font:900 .8rem/1 T}
 .onair i{width:8px;height:8px;border-radius:50%;background:#ff3b30}
 .onair b{color:var(--giallo);font-size:.75rem}

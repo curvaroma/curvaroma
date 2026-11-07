@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Curva Roma: notizie AS Roma, pagelle e tifosi romanisti</title>
-<meta name="description" content="Curva Roma è il sito dei tifosi della Roma: notizie sull'AS Roma, pagelle dei tifosi, vigilia delle partite, analisi e annunci. Sito non ufficiale. Forza Roma!">
-<link rel="canonical" href="https://curvaroma.it/">
+<title>Roma+: notizie AS Roma, pagelle e tifosi romanisti</title>
+<meta name="description" content="Roma+ è il sito dei tifosi della Roma: notizie sull'AS Roma, pagelle dei tifosi, vigilia delle partite, analisi e annunci. Sito non ufficiale. Forza Roma!">
+<link rel="canonical" href="https://roma-plus.it/">
 <meta name="theme-color" content="#1E0B12">
 <link rel="icon" href="/img/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/img/icona-180.png">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Curva Roma">
-<meta property="og:title" content="Curva Roma: notizie AS Roma, pagelle e tifosi romanisti">
+<meta property="og:site_name" content="Roma+">
+<meta property="og:title" content="Roma+: notizie AS Roma, pagelle e tifosi romanisti">
 <meta property="og:description" content="Il sito dei tifosi della Roma: notizie, pagelle, vigilia e analisi. Sito non ufficiale.">
-<meta property="og:url" content="https://curvaroma.it/">
-<meta property="og:image" content="https://curvaroma.it/img/anteprima.jpg">
+<meta property="og:url" content="https://roma-plus.it/">
+<meta property="og:image" content="https://roma-plus.it/img/anteprima.jpg">
 <meta property="og:locale" content="it_IT">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" as="image" href="/img/tifosi.webp" imagesrcset="/img/tifosi-800.webp 800w,/img/tifosi.webp 1600w" imagesizes="100vw" fetchpriority="high">
@@ -53,7 +53,7 @@ p{margin:0}
 .testata .in{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;padding-block:20px}
 .foto-testata{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 58%;opacity:var(--foto-forza,.3)}
 .marchio{display:flex;align-items:center;gap:10px;text-decoration:none;min-width:0}
-.marchio img{display:block;width:92px;height:auto}
+.marchio img{display:block;width:168px;height:auto}
 .scritta{font:900 1.85rem/1 var(--display);letter-spacing:.02em;text-transform:uppercase;color:var(--su-banda);white-space:nowrap;transform:translateY(4px)}
 .su-chiaro{display:var(--vedi-rosso,block)}
 .su-scuro{display:var(--vedi-crema,none)}
@@ -192,8 +192,8 @@ body[data-partita] #v-pagella>:not(#pagella-partita,#sezione-archivio){display:n
 @keyframes lampeggia{50%{opacity:.25}}
 @media (min-width:900px){.onair{right:20px;min-height:38px;padding:0 12px;font-size:1rem}}
 @media (min-width:900px) and (max-width:1240px){body .testata .in{grid-template-columns:auto auto auto;justify-content:center;gap:14px;padding-right:128px;padding-left:12px}body .menu{gap:14px}body .menu a{font-size:1.1rem}}
-@media (min-width:900px) and (max-width:990px){body .menu{gap:9px}body .menu a{font-size:1rem}body .marchio img{width:84px}}
-@media (max-width:420px){.marchio{translate:-26px 0}}
+@media (min-width:900px) and (max-width:990px){body .menu{gap:9px}body .menu a{font-size:1rem}body .marchio img{width:150px}}
+@media (max-width:420px){.marchio img{width:140px}}
 #radio-box{display:grid;gap:22px;padding-block:32px 20px}
 .radio-ora{display:grid;gap:12px;padding:18px;border:1px solid var(--giallo);border-radius:12px}
 .radio-ora b{font:400 1.5rem/1.25 Georgia,"Times New Roman",serif}
@@ -336,7 +336,7 @@ body:not([data-vista="casa"]) .eroe{display:none}
   .notizia{max-width:none}
   .foto{height:130px}
   .pubblicita{grid-template-columns:170px minmax(0,1fr)}
-  .marchio img{width:104px}
+  .marchio img{width:200px}
   .scritta{font-size:2.1rem}
 }
 @media (min-width:1180px){
@@ -472,16 +472,15 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
 
 <header class="testata"><div class="in">
   <nav class="menu sinistra" aria-label="Sezioni"><a href="/">Casa</a><a href="/pagelle">Pagella</a><a href="/vigilia">Vigilia</a></nav>
-  <a class="marchio" href="/" aria-label="Curva Roma, vai alla home">
-    <span class="scritta">Curva</span>
-    <img src="/img/logo-chiaro.webp" alt="" width="480" height="179">
+  <a class="marchio" href="/" aria-label="Roma+, vai alla home">
+    <img src="/img/logo-chiaro.webp" alt="" width="480" height="86">
   </a>
   <nav class="menu destra" aria-label="Altre sezioni"><a href="/storia" data-storia hidden>Storia</a><a href="/analisi">Analisi</a><a href="/biglietti">Biglietti</a></nav>
   <button class="onair" id="onair" type="button" data-radio hidden aria-label="Ascolta Radio Curva"><span class="punto"></span><span>ON AIR</span><svg viewBox="0 0 24 24" aria-hidden="true"><path id="onair-ic" d="M8 5v14l11-7z"/></svg></button>
 </div>
 <img class="foto-testata" id="foto-testata" src="/img/tifosi.webp" srcset="/img/tifosi-800.webp 800w,/img/tifosi.webp 1600w" sizes="100vw" width="1600" height="1065" fetchpriority="high" alt="Curva Sud dei tifosi della Roma allo Stadio Olimpico piena di bandiere giallorosse"></header>
 
-<section class="eroe" aria-label="Curva Roma">
+<section class="eroe" aria-label="Roma+">
   <img class="eroe-foto" id="eroe-foto" src="/img/tifosi.webp" srcset="/img/tifosi-800.webp 800w,/img/tifosi.webp 1600w" sizes="100vw" width="1600" height="1065" fetchpriority="high" alt="">
   <div class="eroe-in">
     <div class="eroe-testo">
@@ -556,7 +555,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
     </section>
 
     <section class="in sez-storia" id="casa-storia" hidden></section>
-    <section class="in apertura"><h2>Curva Roma, il sito dei tifosi della Roma</h2><p>Notizie sull'AS Roma, pagelle dei tifosi, vigilia delle partite e analisi. Qui ogni romanista vota e discute, e la tifoseria segue la squadra ogni giorno. <a href="/tifosi-roma">Chi siamo</a>. Forza Roma!</p></section>
+    <section class="in apertura"><h2>Roma+, il sito dei tifosi della Roma</h2><p>Notizie sull'AS Roma, pagelle dei tifosi, vigilia delle partite e analisi. Qui ogni romanista vota e discute, e la tifoseria segue la squadra ogni giorno. <a href="/tifosi-roma">Chi siamo</a>. Forza Roma!</p></section>
   </div>
 
   <div class="vista" id="v-pagella" hidden>
@@ -588,7 +587,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
       <div class="radio-ora"><span class="nota" id="radio-stato">Ora in onda</span><b id="radio-titolo">Presto in onda</b><div class="radio-barra"><i id="radio-i"></i></div><button class="bottone pieno" id="radio-play" type="button">Ascolta</button></div>
       <h2 class="striscione">A seguire</h2>
       <ol class="voti-partita" id="radio-dopo"></ol>
-      <p class="nota">Voce generata con intelligenza artificiale. I racconti sono scritti da Curva Roma.</p>
+      <p class="nota">Voce generata con intelligenza artificiale. I racconti sono scritti da Roma+.</p>
     </section>
   </div>
 
@@ -682,7 +681,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
     <div class="in" data-annuncio></div>
     <section class="sezione in">
       <h2 class="striscione">Biglietti</h2>
-      <p>Il biglietto si compra e si cambia di intestatario solo sui canali ufficiali della Roma. Su Curva Roma non passano né pagamenti né biglietti.</p>
+      <p>Il biglietto si compra e si cambia di intestatario solo sui canali ufficiali della Roma. Su Roma+ non passano né pagamenti né biglietti.</p>
       <div class="link-ufficiali">
         <a class="bottone pieno" href="https://www.asroma.com/tickets" target="_blank" rel="noopener">Biglietti sul sito ufficiale</a>
         <a class="bottone vuoto" href="https://biglietti.asroma.com/tickets/season/changeowner/access?lang=it" target="_blank" rel="noopener">Cambio intestatario ufficiale</a>
@@ -693,14 +692,14 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
   <div class="vista" id="v-tifosi" hidden style="padding-top:20px">
     <article class="in testo-pagina">
       <h1 tabindex="-1">Tifosi della Roma: la casa dei romanisti</h1>
-      <p>Curva Roma è un sito indipendente fatto per la tifoseria della Roma. Ogni romanista trova qui le notizie del giorno, il voto dei tifosi ai giocatori, la vigilia di ogni partita e le analisi sulla squadra.</p>
+      <p>Roma+ è un sito indipendente fatto per la tifoseria della Roma. Ogni romanista trova qui le notizie del giorno, il voto dei tifosi ai giocatori, la vigilia di ogni partita e le analisi sulla squadra.</p>
       <h2>Una tifoseria che partecipa</h2>
       <p>Dopo ogni partita i tifosi della Roma votano i giocatori nelle pagelle. Prima della gara scelgono la formazione e provano a indovinare il risultato. Così il parere di ogni tifoso conta.</p>
       <h2>Dalla Curva Sud a casa tua</h2>
-      <p>La Curva Sud dello Stadio Olimpico è il cuore del tifo giallorosso. Curva Roma porta quello spirito online, per chi è allo stadio e per chi segue l'Associazione Sportiva Roma da lontano. Forza Roma!</p>
+      <p>La Curva Sud dello Stadio Olimpico è il cuore del tifo giallorosso. Roma+ porta quello spirito online, per chi è allo stadio e per chi segue l'Associazione Sportiva Roma da lontano. Forza Roma!</p>
       <h2>Da dove iniziare</h2>
       <p><a href="/pagelle">Vota le pagelle</a>, leggi le <a href="/analisi">analisi</a> o scopri la <a href="/vigilia">prossima partita</a>.</p>
-      <p class="nota">Curva Roma è un sito di tifosi non ufficiale e non è collegato all'AS Roma né alla Curva Sud.</p>
+      <p class="nota">Roma+ è un sito di tifosi non ufficiale e non è collegato all'AS Roma né alla Curva Sud.</p>
     </article>
   </div>
 </main>
@@ -709,8 +708,8 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
 
 <footer class="piede"><div class="in">
   <nav aria-label="Link utili"><a href="/">Notizie AS Roma</a><a href="/pagelle">Pagelle dei tifosi</a><a href="/giocatori">Giocatori della Roma</a><a href="/storia" data-storia hidden>Storia della Roma</a><a href="/radio" data-radio hidden>Radio Curva</a><a href="/analisi">Analisi</a><a href="/tifosi-roma">Tifosi della Roma</a></nav>
-  <img class="logo-piede su-chiaro" src="/img/logo.webp" alt="Curva Roma" width="480" height="179" loading="lazy"><img class="logo-piede su-scuro" src="/img/logo-chiaro.webp" alt="Curva Roma" width="480" height="179" loading="lazy">
-  <p>Sito di tifosi non ufficiale. Curva Roma non è collegato ad AS Roma.</p>
+  <img class="logo-piede su-chiaro" src="/img/logo.webp" alt="Roma+" width="480" height="86" loading="lazy"><img class="logo-piede su-scuro" src="/img/logo-chiaro.webp" alt="Roma+" width="480" height="86" loading="lazy">
+  <p>Sito di tifosi non ufficiale. Roma+ non è collegato ad AS Roma.</p>
   <p>In qualità di Affiliato Amazon, ricevo un guadagno dagli acquisti idonei.</p>
   <p>Stemmi: <a href="https://www.footylogos.com/" target="_blank" rel="noopener">FootyLogos.com</a>. I marchi appartengono ai rispettivi proprietari.</p>
 </div></footer>
@@ -1115,7 +1114,7 @@ function mazzo(box, dir) {
     if (avvisoVoti) c.append(el("p", "nota", avvisoVoti));
     if (Object.keys(stato.pagella).length) {
       const st = el("button", "bottone pieno", "Condividi in Storia"); st.type = "button"; st.onclick = () => condividiPagella(st);
-      const av = el("p", "nota esito-storia", "Aggiungi il link curvaroma.it alla Storia."); c.append(st, av);
+      const av = el("p", "nota esito-storia", "Aggiungi il link roma-plus.it alla Storia."); c.append(st, av);
     }
     if (home) { const a = el("a", "bottone pieno", "Vedi tutte le pagelle"); a.href = "/pagelle"; c.append(a); }
     const b = el("button", "bottone vuoto", "Cambia i tuoi voti"); b.type = "button"; b.style.color = "var(--testo)";
@@ -1247,9 +1246,7 @@ async function immaginePagella() {
   const k = Math.max(1080 / foto.width, 520 / foto.height), sw = 1080 / k, sh = 520 / k;
   g.drawImage(foto, (foto.width - sw) / 2, (foto.height - sh) * .6, sw, sh, 0, 0, 1080, 520);
   g.fillStyle = "rgba(43,10,21,.78)"; g.fillRect(0, 0, 1080, 520);
-  g.font = `900 92px ${TIT}`; const ln = g.measureText("CURVA ROMA").width, x0 = (1080 - 210 - 22 - ln) / 2;
-  g.drawImage(logo, x0, 232, 210, 210 * logo.height / logo.width);
-  g.fillStyle = "#FFF6F0"; g.fillText("CURVA ROMA", x0 + 232, 306);
+  g.drawImage(logo, 540 - 260, 236, 520, 520 * logo.height / logo.width);
   g.fillStyle = "#F0BC42"; g.textAlign = "center"; g.font = `900 124px ${TIT}`; g.fillText("LA MIA PAGELLA", 540, 462); g.textAlign = "left";
   g.fillStyle = "#8E1F2F"; g.fillRect(0, 520, 1080, 980);
   const p = C.partita, gara = `${p.casa} ${p.golCasa}-${p.golOspiti} ${p.ospiti}`;
@@ -1261,15 +1258,15 @@ async function immaginePagella() {
     g.fillStyle = "#F0BC42"; g.textAlign = "right"; g.font = `900 ${Math.min(62, passo * .84)}px ${TIT}`; g.fillText(virgola(stato.pagella[n]), 1010, y + 3); g.textAlign = "left";
   });
   g.fillStyle = "#FFF6F0"; g.font = `600 40px ${TES}`; g.textAlign = "center"; g.fillText("E tu che voti dai?", 540, 1566);
-  g.fillStyle = "#F0BC42"; g.font = `900 62px ${TIT}`; const ls = g.measureText("curvaroma.it").width; g.fillRect(540 - ls / 2 - 28, 1594, ls + 56, 88);
-  g.fillStyle = "#2B0A15"; g.fillText("curvaroma.it", 540, 1658);
+  g.fillStyle = "#F0BC42"; g.font = `900 62px ${TIT}`; const ls = g.measureText("roma-plus.it").width; g.fillRect(540 - ls / 2 - 28, 1594, ls + 56, 88);
+  g.fillStyle = "#2B0A15"; g.fillText("roma-plus.it", 540, 1658);
   g.fillStyle = "#FFF6F0"; g.font = `600 24px ${TES}`; g.fillText("Sito di tifosi non ufficiale", 540, 1722);
   return new Promise((ok, no) => t.toBlob(b => b ? ok(b) : no(new Error("immagine")), "image/jpeg", .9));
 }
 async function condividiPagella(b) {
   const testo = b.textContent; b.disabled = true; b.textContent = "Preparo la Storia…";
   try {
-    const blob = await immaginePagella(), file = new File([blob], "la-mia-pagella-curvaroma.jpg", { type: "image/jpeg" });
+    const blob = await immaginePagella(), file = new File([blob], "la-mia-pagella-romaplus.jpg", { type: "image/jpeg" });
     navigator.sendBeacon?.("/api/visita", new Blob([JSON.stringify({ sezione: "storia", mobile: innerWidth < 900 })], { type: "application/json" }));
     if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file] });
     else { const a = el("a"); a.href = URL.createObjectURL(blob); a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3e4); }
@@ -1335,7 +1332,7 @@ function aggiorna() { caricaMio(mioDoc); risultati(); esitoPronostico(); xiTifos
 /* Navigazione con passaggio animato */
 const VISTE = ["casa", "pagella", "vigilia", "analisi", "biglietti", "tifosi", "giocatori", "storia", "radio"];
 const PERCORSI = { casa: "/", pagella: "/pagelle", vigilia: "/vigilia", analisi: "/analisi", biglietti: "/biglietti", tifosi: "/tifosi-roma" };
-const TITOLI = { casa: "Curva Roma: notizie AS Roma, pagelle e tifosi romanisti", pagella: "Pagelle dei tifosi della Roma | Curva Roma", vigilia: "Vigilia della Roma: formazione e pronostico | Curva Roma", analisi: "Analisi AS Roma: tattica e dati | Curva Roma", biglietti: "Annunci biglietti Roma tra tifosi | Curva Roma", tifosi: "Tifosi della Roma: la casa dei romanisti | Curva Roma" };
+const TITOLI = { casa: "Roma+: notizie AS Roma, pagelle e tifosi romanisti", pagella: "Pagelle dei tifosi della Roma | Roma+", vigilia: "Vigilia della Roma: formazione e pronostico | Roma+", analisi: "Analisi AS Roma: tattica e dati | Roma+", biglietti: "Annunci biglietti Roma tra tifosi | Roma+", tifosi: "Tifosi della Roma: la casa dei romanisti | Roma+" };
 let vistaOra = null;
 const scegli = () => {
   const h = location.hash.slice(1), p = location.pathname.replace(/\/$/, "") || "/";
@@ -1354,7 +1351,7 @@ function disegnaAnalisi() {
   const id = (location.pathname.match(/^\/analisi\/([\w-]+)/) || [])[1];
   const scelta = id && lista.find(a => a.id === id);
   box.textContent = "";
-  if (scelta) { box.append(articolo(scelta, "pieno")); document.title = scelta.seoTitolo || `${scelta.titolo} | Curva Roma`; }
+  if (scelta) { box.append(articolo(scelta, "pieno")); document.title = scelta.seoTitolo || `${scelta.titolo} | Roma+`; }
   else { lista.forEach(a => box.append(articolo(a, "lista"))); if (vistaOra === "analisi") document.title = TITOLI.analisi; }
 }
 function mostra(v) {
