@@ -200,6 +200,7 @@ async function aggiornaLive() {
   const NOMI = { gol: "Gol", rigore: "Rigore", autogol: "Autogol", rosso: "Rosso" };
   const righe = (d.eventi || []).filter(x => x.tipo !== "giallo").map(x => `${NOMI[x.tipo]} ${x.giocatore} ${x.minuto}`.trim());
   if (righe.length) b.append(el("span", "eventi", righe.join(" · ")));
+  const f = el("a", "fonte", "Powered by SportScore"); f.href = "https://sportscore.com/"; f.rel = "dofollow"; f.onclick = e => { e.preventDefault(); e.stopPropagation(); apriLink(f.href); }; b.append(f);
   b.hidden = false;
 }
 $("#live").onclick = () => apri("vigilia");

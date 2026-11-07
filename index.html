@@ -192,6 +192,8 @@ body[data-partita] #v-pagella>:not(#pagella-partita,#sezione-archivio){display:n
 @keyframes lampeggia{50%{opacity:.25}}
 .live{position:relative;z-index:2;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;column-gap:14px;row-gap:4px;padding:8px 14px;background:rgba(20,6,10,.9);border-top:1px solid rgba(240,188,66,.3);border-bottom:2px solid var(--giallo);color:var(--su-banda);text-decoration:none}
 .live[hidden]{display:none}
+.live .vai{display:contents;color:inherit;text-decoration:none}
+.live .fonte{font-size:.68rem;color:#B89AA2;text-decoration:underline}
 body:has(#live:not([hidden])) .eroe-in{padding-top:160px}
 .live .tempo{display:inline-flex;align-items:center;gap:6px;font:800 .82rem/1 var(--display);letter-spacing:.04em;text-transform:uppercase;color:#fff}
 .live .punto{width:8px;height:8px;border-radius:50%;background:#ff3b30;animation:battito 1.4s ease-in-out infinite}
@@ -493,7 +495,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
   <nav class="menu destra" aria-label="Altre sezioni"><a href="/storia" data-storia hidden>Storia</a><a href="/analisi">Analisi</a><a href="/biglietti">Biglietti</a></nav>
   <button class="onair" id="onair" type="button" data-radio hidden aria-label="Ascolta Radio Curva"><span class="punto"></span><span>ON AIR</span><svg viewBox="0 0 24 24" aria-hidden="true"><path id="onair-ic" d="M8 5v14l11-7z"/></svg></button>
 </div>
-<a class="live" id="live" href="/vigilia" hidden aria-live="polite" aria-label="Risultato in diretta"></a>
+<div class="live" id="live" hidden aria-live="polite"></div>
 <img class="foto-testata" id="foto-testata" src="/img/tifosi.webp" srcset="/img/tifosi-800.webp 800w,/img/tifosi.webp 1600w" sizes="100vw" width="1600" height="1065" fetchpriority="high" alt="Curva Sud dei tifosi della Roma allo Stadio Olimpico piena di bandiere giallorosse"></header>
 
 <section class="eroe" aria-label="Curva Roma">
@@ -1434,10 +1436,12 @@ function disegnaLive(d) {
   const tempo = el("span", "tempo"); tempo.append(el("i", "punto"), document.createTextNode(d.fase === "in corso" ? "Live " + d.minuto : d.minuto));
   const sq = (n, lato) => { const s = el("span", "sq"), st = stemma(n); if (lato === "casa") { if (st) s.append(st); s.append(document.createTextNode(n)); } else { s.append(document.createTextNode(n)); if (st) s.append(st); } return s; };
   const gara = el("span", "gara"); gara.append(sq(d.casa.nome, "casa"), el("b", "ris", `${d.casa.gol} - ${d.ospiti.gol}`), sq(d.ospiti.nome, "ospiti"));
-  b.append(tempo, gara);
+  const vai = el("a", "vai"); vai.href = "/vigilia"; vai.append(tempo, gara); b.append(vai);
   const NOMI = { gol: "Gol", rigore: "Rigore", autogol: "Autogol", rosso: "Rosso" };
   const righe = (d.eventi || []).filter(x => x.tipo !== "giallo").map(x => `${NOMI[x.tipo]} ${x.giocatore} ${x.minuto}`.trim());
   if (righe.length) b.append(el("span", "eventi", righe.join(" · ")));
+  // Le condizioni gratuite di SportScore chiedono questo link visibile, con rel dofollow.
+  const f = el("a", "fonte", "Powered by SportScore"); f.href = "https://sportscore.com/"; f.rel = "dofollow"; f.target = "_blank"; b.append(f);
   b.setAttribute("aria-label", `${d.casa.nome} ${d.casa.gol}, ${d.ospiti.nome} ${d.ospiti.gol}, ${d.minuto}`);
   b.hidden = false;
 }

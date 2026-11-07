@@ -571,10 +571,13 @@ export async function onRequest(ctx) {
   for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
   return out;
 }
-// Risultato in diretta della Roma, da API-Football (api-sports.io). Serve la chiave nel segreto APIFOOTBALL_KEY:
-// senza chiave la barra resta spenta. Una chiamata ogni LIVE_SECONDI (30 di base) per tutti i visitatori, grazie alla cache.
-const ROMA_APIF = 497;
-const FASI_APIF = { TBD: "prima", NS: "prima", "1H": "in corso", "2H": "in corso", ET: "in corso", BT: "in corso", P: "in corso", LIVE: "in corso", HT: "intervallo", FT: "finita", AET: "finita", PEN: "finita" };
+// Risultato in diretta della Roma, da SportScore (gratis, senza chiave). Le condizioni chiedono un link visibile
+// "Powered by SportScore" dove si mostrano i dati: è nella barra. Una chiamata ogni 30 secondi per tutti, grazie alla cache.
+// Termini: https://sportscore.com/developers/terms/
+const SS_SQUADRE = { roma: "as-roma", milan: "ac-milan", inter: "inter-milan", "man. united": "manchester-united", "man. city": "manchester-city", psg: "paris-saint-germain", atletico: "atletico-madrid", bayern: "bayern-munich", lipsia: "rb-leipzig", barcellona: "barcelona", siviglia: "sevilla" };
+const ssSlug = n => SS_SQUADRE[String(n).toLowerCase().trim()] || String(n).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+// "Mario Hermoso" diventa "Hermoso", "Marten de Roon" diventa "de Roon".
+const corto = n => { const p = String(n || "").trim().split(/\s+/); return p.length > 1 ? p.slice(1).join(" ") : p[0] || ""; };
 async function live(ctx) {
   const { env } = ctx;
   const chiave = new Request(new URL("/api/live", ctx.request.url));
@@ -585,52 +588,43 @@ async function live(ctx) {
     ctx.waitUntil(caches.default.put(chiave, r.clone()));
     return r;
   };
-  if (!env.APIFOOTBALL_KEY) return rispondi({ attiva: false }, 300);
   const v = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'").first("valore");
   const q = v ? JSON.parse(v).prossima : null, inizio = Date.parse(q?.inizio || "");
   const ora = Date.now();
   if (!q || !inizio || ora < inizio - 30 * 60e3 || ora > inizio + 3 * 3600e3) return rispondi({ attiva: false }, 60);
-  const passo = Math.max(15, Number(env.LIVE_SECONDI) || 30);
-  const chiama = async u => {
-    const r = await fetch("https://v3.football.api-sports.io" + u, { headers: { "x-apisports-key": env.APIFOOTBALL_KEY } });
-    if (!r.ok) throw new Error("API-Football " + r.status);
-    const d = await r.json();
-    const err = d.errors && (Array.isArray(d.errors) ? d.errors.join(" ") : Object.values(d.errors).join(" "));
-    if (err) throw new Error(err);
-    return d.response || [];
+  const chiama = async slug => {
+    const r = await fetch(`https://sportscore.com/api/widget/match/?sport=football&slug=${encodeURIComponent(slug)}`, { headers: { accept: "application/json", "user-agent": "CurvaRoma/1.0 (+https://curvaroma.it)" } });
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error("SportScore " + r.status);
+    const m = (await r.json()).match;
+    // Stessa coppia di squadre può giocare più volte: vale solo la partita che inizia vicino all'orario previsto.
+    return m && Math.abs(Date.parse(m.time) - inizio) < 6 * 3600e3 ? m : null;
   };
   try {
-    const giorno = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date(inizio));
-    // L'id della partita si cerca una volta sola al giorno; poi si chiede solo quella partita, che include gli eventi.
-    const chiaveId = new Request(new URL(`/api/live-id-${giorno}`, ctx.request.url));
-    let id = await (await caches.default.match(chiaveId))?.text();
-    if (!id) {
-      const l = await chiama(`/fixtures?team=${ROMA_APIF}&date=${giorno}&timezone=Europe/Rome`);
-      id = String(l[0]?.fixture?.id || "");
-      if (!id) return rispondi({ attiva: false, errore: "partita non trovata" }, 120);
-      ctx.waitUntil(caches.default.put(chiaveId, new Response(id, { headers: { "cache-control": "public, max-age=21600" } })));
-    }
-    const f = (await chiama(`/fixtures?id=${id}&timezone=Europe/Rome`))[0];
-    if (!f) return rispondi({ attiva: false, errore: "partita non trovata" }, 120);
-    const s = f.fixture?.status || {}, fase = FASI_APIF[s.short] || "sconosciuta";
+    const a = ssSlug(q.casa), b = ssSlug(q.ospiti);
+    const candidati = [q.sportscore, `${a}-vs-${b}`, `${b}-vs-${a}`].filter(Boolean);
+    let m = null;
+    for (const s of candidati) if ((m = await chiama(s))) break;
+    if (!m) return rispondi({ attiva: false, errore: "partita non trovata", provati: candidati }, 120);
+    const testo = String(m.status_text || "");
+    const fase = m.status === "live" ? (/half.?time|break|interval/i.test(testo) ? "intervallo" : "in corso") : m.status === "finished" ? "finita" : m.status === "upcoming" ? "prima" : "sconosciuta";
     const avversario = [q.casa, q.ospiti].find(n => n && n !== "Roma") || "";
-    const nomeDi = t => t?.id === ROMA_APIF ? "Roma" : avversario || t?.name || "";
-    const min = t => t ? `${t.elapsed ?? ""}${t.extra ? "+" + t.extra : ""}'` : "";
-    const eventi = (f.events || []).map(x => {
-      const d = String(x.detail || "");
-      const tipo = x.type === "Goal" ? (d === "Own Goal" ? "autogol" : d === "Penalty" ? "rigore" : d === "Missed Penalty" ? null : "gol") : x.type === "Card" ? (/red|second yellow/i.test(d) ? "rosso" : "giallo") : null;
-      return tipo && { tipo, minuto: min(x.time), squadra: x.team?.id === f.teams?.home?.id ? "casa" : "ospiti", giocatore: x.player?.name || "" };
+    const nomeDi = n => /\broma\b/i.test(n || "") && !/women|femminile/i.test(n) ? "Roma" : avversario || n || "";
+    const eventi = (m.incidents || []).map(x => {
+      const tp = String(x.type || "");
+      const tipo = x.is_goal ? (/own/i.test(tp) ? "autogol" : /pen/i.test(tp) ? "rigore" : "gol") : x.is_card ? (/red|second/i.test(tp) ? "rosso" : "giallo") : null;
+      return tipo && { tipo, minuto: x.time != null ? `${x.time}'` : "", squadra: x.side === "home" ? "casa" : "ospiti", giocatore: corto(x.player) };
     }).filter(Boolean);
     return rispondi({
-      attiva: true, fase,
-      minuto: fase === "in corso" ? min({ elapsed: s.elapsed, extra: s.extra }) : fase === "intervallo" ? "Intervallo" : fase === "finita" ? "Finale" : "",
+      attiva: true, fase, fonte: "SportScore",
+      minuto: fase === "in corso" ? (m.live_minute != null ? `${m.live_minute}'` : testo) : fase === "intervallo" ? "Intervallo" : fase === "finita" ? "Finale" : "",
       competizione: q.competizione, inizio: q.inizio,
-      casa: { nome: nomeDi(f.teams?.home), gol: Number(f.goals?.home) || 0 },
-      ospiti: { nome: nomeDi(f.teams?.away), gol: Number(f.goals?.away) || 0 },
+      casa: { nome: nomeDi(m.home), gol: Number(m.home_score) || 0 },
+      ospiti: { nome: nomeDi(m.away), gol: Number(m.away_score) || 0 },
       eventi
-    }, fase === "finita" ? 300 : passo);
+    }, fase === "finita" ? 300 : 30);
   } catch (e) {
-    return rispondi({ attiva: true, fase: "sconosciuta", errore: "dati non disponibili", motivo: String(e?.message || e).slice(0, 120) }, passo);
+    return rispondi({ attiva: true, fase: "sconosciuta", errore: "dati non disponibili", motivo: String(e?.message || e).slice(0, 120) }, 30);
   }
 }
 async function servi(ctx, app) {
