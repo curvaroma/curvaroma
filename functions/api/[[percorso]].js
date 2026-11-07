@@ -571,6 +571,55 @@ export async function onRequest(ctx) {
   for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
   return out;
 }
+// Risultato in diretta della Roma, da ESPN (servizio non ufficiale e senza chiave: può cambiare senza preavviso).
+// Una sola chiamata a ESPN ogni 20 secondi per tutti i visitatori, grazie alla cache di Cloudflare.
+const LEGHE_ESPN = { "serie a": "ita.1", "champions league": "uefa.champions", "coppa italia": "ita.coppa_italia", "europa league": "uefa.europa", "conference league": "uefa.europa.conf" };
+const ROMA_ESPN = "104";
+async function live(ctx) {
+  const chiave = new Request(new URL("/api/live", ctx.request.url));
+  const inCache = await caches.default.match(chiave);
+  if (inCache) return inCache;
+  const rispondi = (dati, secondi) => {
+    const r = new Response(JSON.stringify(dati), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": `public, max-age=${secondi}` } });
+    ctx.waitUntil(caches.default.put(chiave, r.clone()));
+    return r;
+  };
+  const v = await ctx.env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'").first("valore");
+  const q = v ? JSON.parse(v).prossima : null, inizio = Date.parse(q?.inizio || "");
+  const ora = Date.now();
+  if (!q || !inizio || ora < inizio - 30 * 60e3 || ora > inizio + 3 * 3600e3) return rispondi({ attiva: false }, 60);
+  const lega = LEGHE_ESPN[String(q.competizione || "").toLowerCase().trim()];
+  if (!lega) return rispondi({ attiva: false, errore: "competizione non coperta" }, 300);
+  const giorno = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(inizio)).replaceAll("-", "");
+  try {
+    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${lega}/scoreboard?dates=${giorno}`, { headers: { "user-agent": "CurvaRoma/1.0 (+https://curvaroma.it)" } });
+    if (!r.ok) throw new Error("ESPN " + r.status);
+    const d = await r.json();
+    const ev = (d.events || []).find(e => (e.competitions?.[0]?.competitors || []).some(c => c.team?.id === ROMA_ESPN || /^(AS )?Roma$/i.test(c.team?.displayName || "")));
+    if (!ev) return rispondi({ attiva: false, errore: "partita non trovata" }, 60);
+    const gara = ev.competitions[0], st = gara.status || ev.status || {}, tipo = st.type || {};
+    const squadre = gara.competitors || [], casa = squadre.find(c => c.homeAway === "home") || squadre[0], ospiti = squadre.find(c => c.homeAway === "away") || squadre[1];
+    const avversario = [q.casa, q.ospiti].find(n => n && n !== "Roma") || "";
+    const nomeDi = c => c.team?.id === ROMA_ESPN ? "Roma" : avversario || c.team?.shortDisplayName || c.team?.displayName || "";
+    const eventi = (gara.details || []).map(x => {
+      const t = x.ownGoal ? "autogol" : x.scoringPlay && x.penaltyKick ? "rigore" : x.scoringPlay ? "gol" : x.redCard ? "rosso" : x.yellowCard ? "giallo" : null;
+      if (!t) return null;
+      const g = x.athletesInvolved?.[0];
+      return { tipo: t, minuto: x.clock?.displayValue || "", squadra: x.team?.id === casa.team?.id ? "casa" : "ospiti", giocatore: g?.shortName || g?.displayName || "" };
+    }).filter(Boolean);
+    const fase = tipo.state === "in" ? (tipo.name === "STATUS_HALFTIME" ? "intervallo" : "in corso") : tipo.state === "post" ? "finita" : "prima";
+    return rispondi({
+      attiva: true, fase,
+      minuto: fase === "in corso" ? st.displayClock || "" : fase === "intervallo" ? "Intervallo" : fase === "finita" ? "Finale" : "",
+      competizione: q.competizione, inizio: q.inizio,
+      casa: { nome: nomeDi(casa), gol: Number(casa.score) || 0 },
+      ospiti: { nome: nomeDi(ospiti), gol: Number(ospiti.score) || 0 },
+      eventi
+    }, fase === "finita" ? 120 : 20);
+  } catch (e) {
+    return rispondi({ attiva: true, fase: "sconosciuta", errore: "dati non disponibili" }, 15);
+  }
+}
 async function servi(ctx, app) {
   const { request: req, env } = ctx;
   const url = new URL(req.url);
@@ -578,6 +627,7 @@ async function servi(ctx, app) {
   try {
     if (req.method === "GET" && percorso[0] === "notizie") return notizie(ctx);
     if (!env.DB) return errore("Database non collegato", 503);
+    if (req.method === "GET" && percorso[0] === "live") return live(ctx);
     if (percorso[0] === "admin") return admin(ctx, percorso.slice(1));
     if (req.method === "GET" && percorso[0] === "pubblico") return pubblico(env);
     if (req.method === "GET" && percorso[0] === "img") return immagine(env, percorso[1]);

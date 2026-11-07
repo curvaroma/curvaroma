@@ -190,6 +190,20 @@ body[data-partita] #v-pagella>:not(#pagella-partita,#sezione-archivio){display:n
 .onair.acceso{border-color:var(--giallo);background:#8E1F2F}
 @media (prefers-reduced-motion:no-preference){.onair .punto{animation:lampeggia 1.6s ease-in-out infinite}}
 @keyframes lampeggia{50%{opacity:.25}}
+.live{position:relative;z-index:2;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;column-gap:14px;row-gap:4px;padding:8px 14px;background:rgba(20,6,10,.9);border-top:1px solid rgba(240,188,66,.3);border-bottom:2px solid var(--giallo);color:var(--su-banda);text-decoration:none}
+.live[hidden]{display:none}
+body:has(#live:not([hidden])) .eroe-in{padding-top:160px}
+.live .tempo{display:inline-flex;align-items:center;gap:6px;font:800 .82rem/1 var(--display);letter-spacing:.04em;text-transform:uppercase;color:#fff}
+.live .punto{width:8px;height:8px;border-radius:50%;background:#ff3b30;animation:battito 1.4s ease-in-out infinite}
+.live.finita .punto{background:var(--giallo);animation:none}
+@keyframes battito{50%{opacity:.25}}
+.live .gara{display:inline-flex;align-items:center;gap:10px;font:800 1.05rem/1 var(--display);text-transform:uppercase}
+.live .sq{display:inline-flex;align-items:center;gap:6px}
+.live .stemma{width:22px;height:22px}
+.live .ris{font:900 1.5rem/1 var(--display);color:var(--giallo);min-width:2.8em;text-align:center}
+.live .eventi{flex-basis:100%;text-align:center;font-size:.8rem;line-height:1.3;color:#E3C9CF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (min-width:900px){.live{padding:9px 24px}.live .eventi{flex-basis:auto;max-width:44%}.live .gara{font-size:1.2rem}}
+@media (prefers-reduced-motion:reduce){.live .punto{animation:none}}
 @media (min-width:900px){.onair{right:20px;min-height:38px;padding:0 12px;font-size:1rem}}
 @media (min-width:900px) and (max-width:1240px){body .testata .in{grid-template-columns:auto auto auto;justify-content:center;gap:14px;padding-right:128px;padding-left:12px}body .menu{gap:14px}body .menu a{font-size:1.1rem}}
 @media (min-width:900px) and (max-width:990px){body .menu{gap:9px}body .menu a{font-size:1rem}body .marchio img{width:84px}}
@@ -479,6 +493,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
   <nav class="menu destra" aria-label="Altre sezioni"><a href="/storia" data-storia hidden>Storia</a><a href="/analisi">Analisi</a><a href="/biglietti">Biglietti</a></nav>
   <button class="onair" id="onair" type="button" data-radio hidden aria-label="Ascolta Radio Curva"><span class="punto"></span><span>ON AIR</span><svg viewBox="0 0 24 24" aria-hidden="true"><path id="onair-ic" d="M8 5v14l11-7z"/></svg></button>
 </div>
+<a class="live" id="live" href="/vigilia" hidden aria-live="polite" aria-label="Risultato in diretta"></a>
 <img class="foto-testata" id="foto-testata" src="/img/tifosi.webp" srcset="/img/tifosi-800.webp 800w,/img/tifosi.webp 1600w" sizes="100vw" width="1600" height="1065" fetchpriority="high" alt="Curva Sud dei tifosi della Roma allo Stadio Olimpico piena di bandiere giallorosse"></header>
 
 <section class="eroe" aria-label="Curva Roma">
@@ -1409,6 +1424,32 @@ document.addEventListener("click", async e => {
 });
 $("#salva-formazione").onclick = async () => { let t; try { t = conferma(await salva("formazione", PROSSIMA, [...stato.formazione])); modifiche = false; } catch { t = "Non salvata. Riprova tra poco."; } $("#esito-formazione").textContent = t; };
 
+/* Risultato in diretta sotto la testata: chiede /api/live solo nelle ore della partita. */
+const FASI_LIVE = ["in corso", "intervallo", "finita"];
+function disegnaLive(d) {
+  const b = $("#live");
+  if (!d.attiva) { b.hidden = true; return; }
+  if (!FASI_LIVE.includes(d.fase)) { if (d.fase !== "sconosciuta") b.hidden = true; return; }
+  b.textContent = ""; b.classList.toggle("finita", d.fase === "finita");
+  const tempo = el("span", "tempo"); tempo.append(el("i", "punto"), document.createTextNode(d.fase === "in corso" ? "Live " + d.minuto : d.minuto));
+  const sq = (n, lato) => { const s = el("span", "sq"), st = stemma(n); if (lato === "casa") { if (st) s.append(st); s.append(document.createTextNode(n)); } else { s.append(document.createTextNode(n)); if (st) s.append(st); } return s; };
+  const gara = el("span", "gara"); gara.append(sq(d.casa.nome, "casa"), el("b", "ris", `${d.casa.gol} - ${d.ospiti.gol}`), sq(d.ospiti.nome, "ospiti"));
+  b.append(tempo, gara);
+  const NOMI = { gol: "Gol", rigore: "Rigore", autogol: "Autogol", rosso: "Rosso" };
+  const righe = (d.eventi || []).filter(x => x.tipo !== "giallo").map(x => `${NOMI[x.tipo]} ${x.giocatore} ${x.minuto}`.trim());
+  if (righe.length) b.append(el("span", "eventi", righe.join(" · ")));
+  b.setAttribute("aria-label", `${d.casa.nome} ${d.casa.gol}, ${d.ospiti.nome} ${d.ospiti.gol}, ${d.minuto}`);
+  b.hidden = false;
+}
+async function aggiornaLive() {
+  const q = C?.prossima, t = Date.parse(q?.inizio || ""), ora = Date.now();
+  if (!t || ora < t - 30 * 60e3 || ora > t + 3 * 3600e3) { $("#live").hidden = true; return; }
+  if (document.hidden) return;
+  try { disegnaLive(await (await fetch("/api/live")).json()); } catch {}
+}
+setInterval(aggiornaLive, 30000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) aggiornaLive(); });
+
 /* Avvio */
 function visitaSezione(v) {
   try { navigator.sendBeacon("/api/visita", new Blob([JSON.stringify({ sezione: v, mobile: innerWidth < 900 })], { type: "application/json" })); } catch {}
@@ -1427,6 +1468,7 @@ function applica(p) {
   }
   if (p.radio) { const a = el("a"); a.href = "/radio"; a.append(el("i", "", "Radio Curva"), el("b", "", "La nostra storia, sempre in onda"), el("span", "", "Ascolta ora")); cs.hidden = false; cs.append(a); }
   if (p.radio) caricaRadio();
+  aggiornaLive();
   const arch = $("#pagelle-archivio"); arch.textContent = "";
   for (const x of p.pagelle || []) {
     const a = el("a", "voce-pagelle"); a.href = "/pagelle/" + x.slug;

@@ -182,4 +182,29 @@ au.addEventListener("ended", () => { if (acceso) inOnda(); });
 $("#onair").onclick = () => { if (!R) return; acceso = !acceso; statoR(); if (acceso) inOnda(); else au.pause(); };
 chiama("/api/radio").then(d => { if (d.brani.length) { R = { ...d, t0: Date.now() - d.secondi * 1000 }; $("#onair").hidden = false; } }).catch(() => {});
 
+/* Risultato in diretta sotto la testata, solo nelle ore della partita. */
+const STEMMI = {"roma":"roma","lazio":"lazio","inter":"inter","como":"como","milan":"milan","frosinone":"frosinone","juventus":"juventus","napoli":"napoli","bologna":"bologna","torino":"torino","genoa":"genoa","cagliari":"cagliari","atalanta":"atalanta","lecce":"lecce","parma":"parma","fiorentina":"fiorentina","sassuolo":"sassuolo","monza":"monza","udinese":"udinese","venezia":"venezia","man. united":"man-united","manchester united":"man-united","man. city":"man-city","manchester city":"man-city","real madrid":"real-madrid","psg":"psg","paris saint-germain":"psg","sporting":"sporting","aek":"aek","lille":"lille","slovan":"slovan","fenerbahce":"fenerbahce","fenerbahçe":"fenerbahce","arsenal":"arsenal","liverpool":"liverpool","bayern":"bayern","barcellona":"barcellona","atletico":"atletico","atletico madrid":"atletico","dortmund":"dortmund","porto":"porto","psv":"psv","feyenoord":"feyenoord","galatasaray":"galatasaray","lipsia":"lipsia","stoccarda":"stoccarda","aston villa":"aston-villa","bruges":"bruges","betis":"betis","villarreal":"villarreal","lens":"lens","shakhtar":"shakhtar","slavia praga":"slavia-praga","bodo glimt":"bodo-glimt","viking":"viking","sabah":"sabah","lask":"lask"};
+const stemmaApp = n => { const f = STEMMI[String(n).toLowerCase().trim()]; if (!f) return null; const i = el("img", "stemma"); i.src = `${API}/img/stemmi/${f}.svg`; i.alt = ""; return i; };
+async function aggiornaLive() {
+  const b = $("#live"), q = P?.contenuti?.prossima, t = Date.parse(q?.inizio || ""), adesso = Date.now();
+  if (!t || adesso < t - 30 * 60e3 || adesso > t + 3 * 3600e3) { b.hidden = true; return; }
+  if (document.hidden) return;
+  let d; try { d = await chiama("/api/live"); } catch { return; }
+  if (!d.attiva) { b.hidden = true; return; }
+  if (!["in corso", "intervallo", "finita"].includes(d.fase)) { if (d.fase !== "sconosciuta") b.hidden = true; return; }
+  b.textContent = ""; b.classList.toggle("finita", d.fase === "finita");
+  const tempo = el("span", "tempo"); tempo.append(el("i"), document.createTextNode(d.fase === "in corso" ? "Live " + d.minuto : d.minuto));
+  const sq = (n, prima) => { const s = el("span", "sq"), st = stemmaApp(n); if (prima && st) s.append(st); s.append(document.createTextNode(n)); if (!prima && st) s.append(st); return s; };
+  const gara = el("span", "gara"); gara.append(sq(d.casa.nome, true), el("b", "ris", `${d.casa.gol} - ${d.ospiti.gol}`), sq(d.ospiti.nome, false));
+  b.append(tempo, gara);
+  const NOMI = { gol: "Gol", rigore: "Rigore", autogol: "Autogol", rosso: "Rosso" };
+  const righe = (d.eventi || []).filter(x => x.tipo !== "giallo").map(x => `${NOMI[x.tipo]} ${x.giocatore} ${x.minuto}`.trim());
+  if (righe.length) b.append(el("span", "eventi", righe.join(" · ")));
+  b.hidden = false;
+}
+$("#live").onclick = () => apri("vigilia");
+pubblico().then(aggiornaLive).catch(() => {});
+setInterval(aggiornaLive, 30000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) aggiornaLive(); });
+
 apri("notizie");
