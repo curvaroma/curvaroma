@@ -7,7 +7,7 @@ const FEED = [
   ["RomaNews", "https://www.romanews.eu/feed/"],
   ["Forzaroma.info", "https://www.forzaroma.info/feed/"],
   ["Corriere dello Sport", "https://www.corrieredellosport.it/rss/calcio"],
-  ["Giallorossi.net", "https://www.giallorossi.net/feed/"],
+  ["Gazzetta dello Sport", "https://www.gazzetta.it/dynamic-feed/rss/section/Calcio.xml"],
   ["Voce Giallorossa", "https://www.vocegiallorossa.it/rss"],
   ["AsRomaLive", "https://www.asromalive.it/feed/"],
   ["TuttoMercatoWeb", "https://www.tuttomercatoweb.com/rss/?squadra=roma"]
@@ -76,6 +76,8 @@ function leggiFeed(testata, xml) {
   }).filter(n => n.titolo && n.url.startsWith("https://"))
     .filter(n => testata !== "Corriere dello Sport" || n.url.includes("/roma/"))
     .filter(n => testata !== "TuttoMercatoWeb" || /\broma\b|giallorossi|gasperini/i.test(n.titolo))
+    // Gazzetta: il feed è di tutto il calcio, restano solo gli articoli sulla Roma, senza scommesse e siti partner.
+    .filter(n => testata !== "Gazzetta dello Sport" || (n.url.startsWith("https://www.gazzetta.it/") && !n.url.includes("/scommesse/") && (/\/Serie-A\/Roma\//i.test(n.url) || /\broma\b|giallorossi|gasperini/i.test(n.titolo))))
     .filter(n => !n.titolo.startsWith("ALTRE NOTIZIE"));
 }
 async function notizie(ctx) {
@@ -103,7 +105,7 @@ async function notizie(ctx) {
 }
 
 // Archivio per l'app: le notizie restano nel database, così scorrendo si torna indietro nel tempo.
-const FONTI_APP = ["Corriere dello Sport", "Giallorossi.net", "RomaNews"];
+const FONTI_APP = ["Corriere dello Sport", "Gazzetta dello Sport", "RomaNews"];
 async function aggiornaArchivio(env) {
   const ora = Date.now(), ultimo = Number(await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='notizie_agg'").first("valore")) || 0;
   if (ora - ultimo < 6e5) return;

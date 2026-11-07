@@ -190,11 +190,12 @@ body[data-partita] #v-pagella>:not(#pagella-partita,#sezione-archivio){display:n
 .onair.acceso{border-color:var(--giallo);background:#8E1F2F}
 @media (prefers-reduced-motion:no-preference){.onair .punto{animation:lampeggia 1.6s ease-in-out infinite}}
 @keyframes lampeggia{50%{opacity:.25}}
-.live{position:relative;z-index:2;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;column-gap:14px;row-gap:4px;padding:8px 14px;background:rgba(20,6,10,.9);border-top:1px solid rgba(240,188,66,.3);border-bottom:2px solid var(--giallo);color:var(--su-banda);text-decoration:none}
+.live{position:relative;z-index:2;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;column-gap:10px;row-gap:2px;padding:5px 12px;background:rgba(20,6,10,.9);border-top:1px solid rgba(240,188,66,.3);border-bottom:2px solid var(--giallo);color:var(--su-banda);text-decoration:none}
 .live[hidden]{display:none}
-.live .vai{display:contents;color:inherit;text-decoration:none}
+.live .vai{flex-basis:100%;display:flex;align-items:center;justify-content:center;gap:12px;color:inherit;text-decoration:none}
 .live .fonte{font-size:.68rem;color:#B89AA2;text-decoration:underline}
-body:has(#live:not([hidden])) .eroe-in{padding-top:160px}
+/* In home la testata sta sopra la foto: si aggiunge solo lo spazio esatto della barra, finché è visibile. */
+body:has(#live:not([hidden])) .eroe-in{padding-top:calc(96px + var(--alt-live,0px))}
 .live .tempo{display:inline-flex;align-items:center;gap:6px;font:800 .82rem/1 var(--display);letter-spacing:.04em;text-transform:uppercase;color:#fff}
 .live .punto{width:8px;height:8px;border-radius:50%;background:#ff3b30;animation:battito 1.4s ease-in-out infinite}
 .live.finita .punto{background:var(--giallo);animation:none}
@@ -203,8 +204,8 @@ body:has(#live:not([hidden])) .eroe-in{padding-top:160px}
 .live .sq{display:inline-flex;align-items:center;gap:6px}
 .live .stemma{width:22px;height:22px}
 .live .ris{font:900 1.5rem/1 var(--display);color:var(--giallo);min-width:2.8em;text-align:center}
-.live .eventi{flex-basis:100%;text-align:center;font-size:.8rem;line-height:1.3;color:#E3C9CF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-@media (min-width:900px){.live{padding:9px 24px}.live .eventi{flex-basis:auto;max-width:44%}.live .gara{font-size:1.2rem}}
+.live .eventi{max-width:calc(100% - 140px);font-size:.76rem;line-height:1.3;color:#E3C9CF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (min-width:900px){.live{flex-wrap:nowrap;column-gap:16px;padding:8px 24px}.live .vai{flex-basis:auto}.live .eventi{max-width:44%}.live .gara{font-size:1.2rem}}
 @media (prefers-reduced-motion:reduce){.live .punto{animation:none}}
 @media (min-width:900px){.onair{right:20px;min-height:38px;padding:0 12px;font-size:1rem}}
 @media (min-width:900px) and (max-width:1240px){body .testata .in{grid-template-columns:auto auto auto;justify-content:center;gap:14px;padding-right:128px;padding-left:12px}body .menu{gap:14px}body .menu a{font-size:1.1rem}}
@@ -1444,6 +1445,7 @@ function disegnaLive(d) {
   const f = el("a", "fonte", "Powered by SportScore"); f.href = "https://sportscore.com/"; f.rel = "dofollow"; f.target = "_blank"; b.append(f);
   b.setAttribute("aria-label", `${d.casa.nome} ${d.casa.gol}, ${d.ospiti.nome} ${d.ospiti.gol}, ${d.minuto}`);
   b.hidden = false;
+  document.documentElement.style.setProperty("--alt-live", b.offsetHeight + "px");
 }
 async function aggiornaLive() {
   const q = C?.prossima, t = Date.parse(q?.inizio || ""), ora = Date.now();

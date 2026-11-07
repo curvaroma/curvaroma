@@ -39,6 +39,8 @@ function annuncio(p) {
   a.onclick = e => { e.preventDefault(); fetch(API + "/api/clic", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prodotto: p.id }) }).catch(() => {}); apriLink(p.link); };
   return a;
 }
+// Un annuncio a caso, diverso a ogni apertura, nelle sezioni che non sono le notizie.
+function unAnnuncio(s) { const l = prodottiMisti(); if (l.length) s.append(annuncio(l[0])); }
 async function notizie() {
   const lista = el("div"), piede = el("div", "carica", "Carico le notizie…");
   vista.append(lista, piede);
@@ -94,6 +96,7 @@ async function pagelle() {
     try { await invia("/api/voti", { partita: p.id, voti }); es.textContent = "Voti salvati. Forza Roma!"; } catch (e) { es.textContent = e.message; }
   };
   box.append(sv, es); s.append(box);
+  unAnnuncio(s);
   if (st.medie.length) { const m = el("div", "card"); m.append(el("h2", "", "Il voto dei tifosi")); for (const x of st.medie) { const r = el("div", "riga"); r.append(el("span", "", x.n), el("b", "", x.m.toFixed(1).replace(".", ",").replace(",0", ""))); m.append(r); } s.append(m); }
   if (arch?.length > 1) { const m = el("div", "card"); m.append(el("h2", "", "Tutte le pagelle")); for (const x of arch) { const r = el("div", "riga"); r.append(el("span", "", `${x.casa}-${x.ospiti} ${x.golCasa}-${x.golOspiti}`), el("span", "nota", x.data)); r.onclick = () => apriLink(`${API}/pagelle/${x.slug}`); m.append(r); } s.append(m); }
 }
@@ -107,14 +110,16 @@ async function analisi() {
     const c = el("article", "card art"), i = el("img"), d = el("div"); i.src = assoluta(a.copertina || "/img/lavagna.jpg"); i.alt = ""; i.loading = "lazy";
     d.append(el("span", "meta", a.occhiello || ""), el("h2", "", a.titolo), el("span", "nota", a.riassunto || ""));
     c.append(i, d); c.onclick = () => leggi(a); s.append(c);
+    if (s.querySelectorAll(".art").length % 3 === 0) unAnnuncio(s);
   }
+  if (C.analisi.length % 3) unAnnuncio(s);
 }
 function leggi(a) {
   vista.textContent = ""; vista.scrollTop = 0;
   const s = el("div", "sez"), b = el("button", "indietro", "‹ Analisi"), t = el("div", "testo");
   b.onclick = () => apri("analisi");
   for (const par of String(a.testo || "").split(/\n\s*\n/)) { const x = par.trim(); if (x) t.append(x.startsWith("## ") ? el("h3", "", x.slice(3)) : el("p", "", x)); }
-  s.append(b, el("span", "meta", a.occhiello || ""), el("h1", "", a.titolo), t); vista.append(s);
+  s.append(b, el("span", "meta", a.occhiello || ""), el("h1", "", a.titolo), t); unAnnuncio(s); vista.append(s);
 }
 
 /* Vigilia */
@@ -134,6 +139,7 @@ async function vigilia() {
   sv.onclick = async () => { try { await invia("/api/pronostico", { partita: p.id, ...q }); es.textContent = "Pronostico salvato"; } catch (e) { es.textContent = e.message; } };
   b.append(el("h2", "", "Indovina il risultato"), riga, sv, es); s.append(b);
   if (st.pronostico) b.append(el("span", "nota", `Il risultato più scelto è ${st.pronostico.casa}-${st.pronostico.ospiti}`));
+  unAnnuncio(s);
   const k = el("div", "card"); k.append(el("h2", "", "Classifica Serie A")); for (const [n, v] of C.classifica) { const r = el("div", "riga"); r.append(el("span", "", n), el("b", "", v)); k.append(r); } s.append(k);
 }
 
@@ -152,6 +158,7 @@ async function biglietti() {
   if (!st.annunci.length) b.append(el("span", "nota", "Ancora nessun annuncio."));
   for (const a of st.annunci) { const r = el("div", "riga"), t = el("div"); t.append(el("div", "", `${a.tipo}: ${a.partita}`), el("span", "nota", `${a.quanti} in ${a.settore}, ${a.prezzo} €, ${a.contatto}`)); r.append(t); b.append(r); }
   s.append(el("h1", "", "Biglietti"), f, b);
+  unAnnuncio(s);
 }
 
 /* Navigazione */
