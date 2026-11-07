@@ -592,7 +592,7 @@ async function live(ctx) {
   if (!lega) return rispondi({ attiva: false, errore: "competizione non coperta" }, 300);
   const giorno = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(inizio)).replaceAll("-", "");
   try {
-    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${lega}/scoreboard?dates=${giorno}`, { headers: { "user-agent": "CurvaRoma/1.0 (+https://curvaroma.it)" } });
+    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${lega}/scoreboard?dates=${giorno}`, { headers: { accept: "application/json", "user-agent": "Mozilla/5.0 (compatible; CurvaRoma/1.0; +https://curvaroma.it)" } });
     if (!r.ok) throw new Error("ESPN " + r.status);
     const d = await r.json();
     const ev = (d.events || []).find(e => (e.competitions?.[0]?.competitors || []).some(c => c.team?.id === ROMA_ESPN || /^(AS )?Roma$/i.test(c.team?.displayName || "")));
@@ -617,7 +617,7 @@ async function live(ctx) {
       eventi
     }, fase === "finita" ? 120 : 20);
   } catch (e) {
-    return rispondi({ attiva: true, fase: "sconosciuta", errore: "dati non disponibili" }, 15);
+    return rispondi({ attiva: true, fase: "sconosciuta", errore: "dati non disponibili", motivo: String(e?.message || e).slice(0, 120) }, 15);
   }
 }
 async function servi(ctx, app) {
