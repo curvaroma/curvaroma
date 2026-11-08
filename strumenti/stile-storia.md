@@ -1,9 +1,10 @@
 # Stile dei racconti di storia di Roma+
 
-Sezione Storia di roma-plus.it, sito NON ufficiale di tifosi della Roma. È la sezione più romantica ed emotiva del sito.
+Sezione Storia di roma-plus.it, sito NON ufficiale di tifosi della Roma. È la sezione che celebra la Roma: ogni racconto deve far sentire fiero chi lo legge.
 
-TONO: molto romantico e giornalistico insieme. Pensa alle grandi firme del giornalismo sportivo italiano: un inviato che ama questa squadra e sa scrivere. Attacco che prende alla gola con una scena o un dettaglio vero, poi il racconto con date, nomi e luoghi precisi, poi una chiusa che resta addosso. Terza persona o "noi romanisti". Basta col "te lo racconto", "siediti", "tieniti a mente" e col tono da padre a figlio.
-Periodi vari: anche lunghi quando serve, secchi quando colpiscono. Niente retorica vuota, niente clickbait. Evita "non è solo X, è Y", elenchi e trattini lunghi.
+TONO: CELEBRATIVO. Ogni racconto è una festa della Roma e deve accendere il tifoso romanista che legge: orgoglio, emozione, voglia di cantare. Linguaggio sportivo, vivo, da grande telecronaca e da prima pagina del giorno dopo: verbi forti, ritmo che sale, frasi secche nei momenti decisivi. Terza persona o "noi romanisti". Attacco che esplode subito con il momento più glorioso, poi l'impresa con date, nomi, gol e luoghi precisi, poi una chiusa che fa venire i brividi.
+Si parla SOLO bene della Roma. Al centro ci sono le vittorie, i gol, i campioni, le notti magiche, il popolo giallorosso. Sconfitte pesanti, umiliazioni, scandali, polemiche, litigi, addii amari e momenti bui non si raccontano. Se il tema stesso è una partita persa, si celebrano il cammino, la squadra e la gente, e il risultato si dice una volta sola, senza insistere: mai cambiarlo o nasconderlo. Mai citare goleade subite.
+Niente "te lo racconto", "siediti" e tono da padre a figlio. Niente retorica vuota o clickbait. Evita "non è solo X, è Y", elenchi e trattini lunghi.
 
 REGOLE FERREE
 - Ogni fatto (date, risultati, marcatori, nomi, numeri) deve essere confermato da almeno due fonti indipendenti. Se non si conferma, via. Mai inventare fatti, scene, pensieri, meteo, emozioni di persone reali o frasi. Il romanticismo sta nello sguardo e nella scrittura, non in dettagli inventati. Niente virgolettati, salvo frasi brevissime confermate da due fonti.

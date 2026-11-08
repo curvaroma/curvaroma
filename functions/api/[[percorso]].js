@@ -1,5 +1,5 @@
-import { PAGINE, slugPartita, elencoPagelle } from "../_middleware.js";
-// API di Curva Roma. Binding richiesto nel progetto Pages: D1 con nome DB.
+import { PAGINE, slugPartita, elencoPagelle, GIOCATORI } from "../_middleware.js";
+// API di Roma+. Binding richiesto nel progetto Pages: D1 con nome DB.
 const COOKIE = "cr_tifoso";
 const ANNO = 60 * 60 * 24 * 365;
 const SETTORI = ["Curva Sud", "Curva Nord", "Distinti Sud", "Distinti Nord", "Tribuna Tevere", "Tribuna Monte Mario"];
@@ -7,7 +7,7 @@ const FEED = [
   ["RomaNews", "https://www.romanews.eu/feed/"],
   ["Forzaroma.info", "https://www.forzaroma.info/feed/"],
   ["Corriere dello Sport", "https://www.corrieredellosport.it/rss/calcio"],
-  ["Giallorossi.net", "https://www.giallorossi.net/feed/"],
+  ["Gazzetta dello Sport", "https://www.gazzetta.it/dynamic-feed/rss/section/Calcio.xml"],
   ["Voce Giallorossa", "https://www.vocegiallorossa.it/rss"],
   ["AsRomaLive", "https://www.asromalive.it/feed/"],
   ["TuttoMercatoWeb", "https://www.tuttomercatoweb.com/rss/?squadra=roma"]
@@ -76,6 +76,8 @@ function leggiFeed(testata, xml) {
   }).filter(n => n.titolo && n.url.startsWith("https://"))
     .filter(n => testata !== "Corriere dello Sport" || n.url.includes("/roma/"))
     .filter(n => testata !== "TuttoMercatoWeb" || /\broma\b|giallorossi|gasperini/i.test(n.titolo))
+    // Gazzetta: il feed è di tutto il calcio, restano solo gli articoli sulla Roma, senza scommesse e siti partner.
+    .filter(n => testata !== "Gazzetta dello Sport" || (n.url.startsWith("https://www.gazzetta.it/") && !n.url.includes("/scommesse/") && (/\/Serie-A\/Roma\//i.test(n.url) || /\broma\b|giallorossi|gasperini/i.test(n.titolo))))
     .filter(n => !n.titolo.startsWith("ALTRE NOTIZIE"));
 }
 async function notizie(ctx) {
@@ -97,29 +99,33 @@ async function notizie(ctx) {
   const lista = [];
   for (let i = 0; i < PER_TESTATA; i++) for (const g of gruppi.values()) if (g[i]) lista.push(g[i]);
   const fonti = Object.fromEntries(FEED.map(([t], i) => [t, risposte[i].status === "fulfilled" ? risposte[i].value.length : "errore"]));
-  const risposta = new Response(JSON.stringify({ notizie: lista, fonti }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=600" } });
+  const risposta = new Response(JSON.stringify({ notizie: lista, fonti }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=300" } });
   if (lista.length) ctx.waitUntil(caches.default.put(chiave, risposta.clone()));
+  if (ctx.env.DB) ctx.waitUntil(salvaArchivio(ctx.env, tutte).catch(() => {}));
   return risposta;
 }
 
 // Archivio per l'app: le notizie restano nel database, così scorrendo si torna indietro nel tempo.
-const FONTI_APP = ["Corriere dello Sport", "Giallorossi.net", "RomaNews"];
-async function aggiornaArchivio(env) {
+// L'app usa le stesse fonti del sito. L'archivio si riempie anche quando il sito scarica i feed, così resta sempre aggiornato.
+const FONTI_APP = FEED.map(([t]) => t);
+const salvaArchivio = (env, tutte) => { const l = tutte.filter(n => n.data); return l.length ? env.DB.batch(l.map(n => env.DB.prepare("INSERT OR IGNORE INTO notizie (url, testata, titolo, foto, pubblicata) VALUES (?,?,?,?,?)").bind(n.url, n.t, n.titolo, n.foto, new Date(n.data).toISOString()))) : null; };
+// Di norma ogni 5 minuti; quando nell'app si tira giù la lista basta un minuto dall'ultimo aggiornamento.
+async function aggiornaArchivio(env, intervallo = 3e5) {
   const ora = Date.now(), ultimo = Number(await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='notizie_agg'").first("valore")) || 0;
-  if (ora - ultimo < 6e5) return;
+  if (ora - ultimo < intervallo) return;
   await env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('notizie_agg',?) ON CONFLICT DO UPDATE SET valore=excluded.valore").bind(String(ora)).run();
   const esiti = await Promise.allSettled(FEED.filter(([t]) => FONTI_APP.includes(t)).map(async ([t, u]) => {
     const r = await fetch(u, { headers: { "user-agent": "RomaPlus/1.0 (+https://roma-plus.it)" } });
     return r.ok ? leggiFeed(t, await r.text()) : [];
   }));
-  const nuove = esiti.flatMap(e => e.status === "fulfilled" ? e.value : []).filter(n => n.data);
-  if (nuove.length) await env.DB.batch(nuove.map(n => env.DB.prepare("INSERT OR IGNORE INTO notizie (url, testata, titolo, foto, pubblicata) VALUES (?,?,?,?,?)").bind(n.url, n.t, n.titolo, n.foto, new Date(n.data).toISOString())));
+  await salvaArchivio(env, esiti.flatMap(e => e.status === "fulfilled" ? e.value : []));
 }
 async function archivioNotizie(ctx, url) {
   const { env } = ctx, prima = url.searchParams.get("prima"), n = Math.min(50, Math.max(1, Number(url.searchParams.get("limite")) || 30));
   if (prima && !/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(prima)) return errore("Data non valida");
   const vuoto = !(await env.DB.prepare("SELECT 1 x FROM notizie LIMIT 1").first("x"));
-  if (vuoto) await aggiornaArchivio(env); else ctx.waitUntil(aggiornaArchivio(env));
+  const forza = !prima && url.searchParams.get("aggiorna") === "1";
+  if (vuoto || forza) await aggiornaArchivio(env, vuoto ? 3e5 : 6e4).catch(() => {}); else ctx.waitUntil(aggiornaArchivio(env));
   const q = prima ? env.DB.prepare("SELECT testata, titolo, url, foto, pubblicata FROM notizie WHERE pubblicata < ? ORDER BY pubblicata DESC LIMIT ?").bind(prima, n) : env.DB.prepare("SELECT testata, titolo, url, foto, pubblicata FROM notizie ORDER BY pubblicata DESC LIMIT ?").bind(n);
   return json({ notizie: (await q.all()).results });
 }
@@ -571,6 +577,99 @@ export async function onRequest(ctx) {
   for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
   return out;
 }
+// Risultato in diretta della Roma, da SportScore (gratis, senza chiave). Le condizioni chiedono un link visibile
+// "Powered by SportScore" dove si mostrano i dati: è nella barra. Una chiamata ogni 30 secondi per tutti, grazie alla cache.
+// Termini: https://sportscore.com/developers/terms/
+const SS_SQUADRE = { roma: "as-roma", milan: "ac-milan", inter: "inter-milan", "man. united": "manchester-united", "man. city": "manchester-city", psg: "paris-saint-germain", atletico: "atletico-madrid", bayern: "bayern-munich", lipsia: "rb-leipzig", barcellona: "barcelona", siviglia: "sevilla" };
+const ssSlug = n => SS_SQUADRE[String(n).toLowerCase().trim()] || String(n).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+// "Mario Hermoso" diventa "Hermoso", "Marten de Roon" diventa "de Roon".
+const corto = n => { const p = String(n || "").trim().split(/\s+/); return p.length > 1 ? p.slice(1).join(" ") : p[0] || ""; };
+// Pagelle automatiche (deciso da Andrea il 7 novembre): al fischio finale la partita giocata diventa quella da votare,
+// con titolari ed entrati presi da SportScore. La Vigilia della gara dopo resta alla bozza del mattino.
+const piano = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z ]/g, " ").split(/\s+/).filter(Boolean);
+const RUOLI_SS = { G: "Portiere", D: "Difensore", M: "Centrocampista", F: "Attaccante" };
+function nostroGiocatore(nome, posizione) {
+  const t = piano(nome);
+  const g = GIOCATORI.find(x => piano(x.nome).every(p => t.includes(p)));
+  return g ? [g.voti, g.ruolo] : [corto(nome), RUOLI_SS[posizione] || "Centrocampista"];
+}
+async function apriPagelle(ctx, contenuti, q, m, nomeDi) {
+  const { env } = ctx, giorno = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date(q.inizio));
+  const id = `${String(q.id).replace(/-\d{4}-\d{2}-\d{2}$/, "")}-g-${giorno}`;
+  if (contenuti.partita?.id === id) return "già aperte";
+  const lato = nomeDi(m.home) === "Roma" ? "home" : nomeDi(m.away) === "Roma" ? "away" : null, l = m.lineups || {};
+  const xi = lato ? l[lato + "_xi"] || [] : [];
+  if (xi.length < 11) return "formazioni mancanti";
+  const ORDINE = ["Portiere", "Difensore", "Centrocampista", "Attaccante"];
+  const titolari = xi.map(x => nostroGiocatore(x.name, x.position)).sort((a, b) => ORDINE.indexOf(a[1]) - ORDINE.indexOf(b[1]));
+  for (const x of m.incidents || []) if (x.is_sub && x.side === lato && x.player_in) {
+    const g = nostroGiocatore(x.player_in, (l[lato + "_subs"] || []).find(y => y.name === x.player_in)?.position);
+    if (!titolari.some(([n]) => n === g[0])) titolari.push(g);
+  }
+  const casa = nomeDi(m.home), ospiti = nomeDi(m.away), golCasa = Number(m.home_score) || 0, golOspiti = Number(m.away_score) || 0;
+  const partita = {
+    id, competizione: q.competizione, casa, ospiti, golCasa, golOspiti, titolari,
+    data: new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", day: "numeric", month: "long" }).format(new Date(q.inizio)),
+    gol: (m.incidents || []).filter(x => x.is_goal).map(x => [Number(x.time) || 0, x.side === "home" ? "casa" : "ospiti"])
+  };
+  await env.DB.batch([
+    env.DB.prepare("UPDATE impostazioni SET valore=json_set(valore,'$.partita',json(?)), aggiornato=CURRENT_TIMESTAMP WHERE chiave='contenuti' AND json_extract(valore,'$.partita.id') IS NOT ?").bind(JSON.stringify(partita), id),
+    await archivioPagelle(env, contenuti.partita, partita),
+    env.DB.prepare("INSERT INTO risultati (partita, nome, casa, ospiti) VALUES (?,?,?,?) ON CONFLICT(partita) DO UPDATE SET nome=excluded.nome, casa=excluded.casa, ospiti=excluded.ospiti").bind(q.id, `${casa}-${ospiti}`, golCasa, golOspiti)
+  ]);
+  return "aperte";
+}
+async function live(ctx) {
+  const { env } = ctx;
+  const chiave = new Request(new URL("/api/live", ctx.request.url));
+  const inCache = await caches.default.match(chiave);
+  if (inCache) return inCache;
+  const rispondi = (dati, secondi) => {
+    const r = new Response(JSON.stringify(dati), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": `public, max-age=${secondi}` } });
+    ctx.waitUntil(caches.default.put(chiave, r.clone()));
+    return r;
+  };
+  const v = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'").first("valore");
+  const contenuti = v ? JSON.parse(v) : null, q = contenuti?.prossima, inizio = Date.parse(q?.inizio || "");
+  const ora = Date.now();
+  if (!q || !inizio || ora < inizio - 30 * 60e3 || ora > inizio + 3 * 3600e3) return rispondi({ attiva: false }, 60);
+  const chiama = async slug => {
+    const r = await fetch(`https://sportscore.com/api/widget/match/?sport=football&slug=${encodeURIComponent(slug)}`, { headers: { accept: "application/json", "user-agent": "RomaPlus/1.0 (+https://roma-plus.it)" } });
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error("SportScore " + r.status);
+    const m = (await r.json()).match;
+    // Stessa coppia di squadre può giocare più volte: vale solo la partita che inizia vicino all'orario previsto.
+    return m && Math.abs(Date.parse(m.time) - inizio) < 6 * 3600e3 ? m : null;
+  };
+  try {
+    const a = ssSlug(q.casa), b = ssSlug(q.ospiti);
+    const candidati = [q.sportscore, `${a}-vs-${b}`, `${b}-vs-${a}`].filter(Boolean);
+    let m = null;
+    for (const s of candidati) if ((m = await chiama(s))) break;
+    if (!m) return rispondi({ attiva: false, errore: "partita non trovata", provati: candidati }, 120);
+    const testo = String(m.status_text || "");
+    const fase = m.status === "live" ? (/half.?time|break|interval/i.test(testo) ? "intervallo" : "in corso") : m.status === "finished" ? "finita" : m.status === "upcoming" ? "prima" : "sconosciuta";
+    const avversario = [q.casa, q.ospiti].find(n => n && n !== "Roma") || "";
+    const nomeDi = n => /\broma\b/i.test(n || "") && !/women|femminile/i.test(n) ? "Roma" : avversario || n || "";
+    const eventi = (m.incidents || []).map(x => {
+      const tp = String(x.type || "");
+      const tipo = x.is_goal ? (/own/i.test(tp) ? "autogol" : /pen/i.test(tp) ? "rigore" : "gol") : x.is_card ? (/red|second/i.test(tp) ? "rosso" : "giallo") : null;
+      return tipo && { tipo, minuto: x.time != null ? `${x.time}'` : "", squadra: x.side === "home" ? "casa" : "ospiti", giocatore: corto(x.player) };
+    }).filter(Boolean);
+    let pagelle = null;
+    if (fase === "finita") pagelle = await apriPagelle(ctx, contenuti, q, m, nomeDi).catch(e => "errore: " + String(e?.message || e).slice(0, 80));
+    return rispondi({
+      attiva: true, fase, fonte: "SportScore", pagelle,
+      minuto: fase === "in corso" ? (m.live_minute != null ? `${m.live_minute}'` : testo) : fase === "intervallo" ? "Intervallo" : fase === "finita" ? "Finale" : "",
+      competizione: q.competizione, inizio: q.inizio,
+      casa: { nome: nomeDi(m.home), gol: Number(m.home_score) || 0 },
+      ospiti: { nome: nomeDi(m.away), gol: Number(m.away_score) || 0 },
+      eventi
+    }, fase === "finita" ? 300 : 30);
+  } catch (e) {
+    return rispondi({ attiva: true, fase: "sconosciuta", errore: "dati non disponibili", motivo: String(e?.message || e).slice(0, 120) }, 30);
+  }
+}
 async function servi(ctx, app) {
   const { request: req, env } = ctx;
   const url = new URL(req.url);
@@ -578,6 +677,7 @@ async function servi(ctx, app) {
   try {
     if (req.method === "GET" && percorso[0] === "notizie") return notizie(ctx);
     if (!env.DB) return errore("Database non collegato", 503);
+    if (req.method === "GET" && percorso[0] === "live") return live(ctx);
     if (percorso[0] === "admin") return admin(ctx, percorso.slice(1));
     if (req.method === "GET" && percorso[0] === "pubblico") return pubblico(env);
     if (req.method === "GET" && percorso[0] === "img") return immagine(env, percorso[1]);

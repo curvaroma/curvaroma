@@ -11,7 +11,7 @@ body{display:flex;flex-direction:column;height:100dvh}
 .onair i{width:8px;height:8px;border-radius:50%;background:#ff3b30}
 .onair b{color:var(--giallo);font-size:.75rem}
 .onair.acceso{background:#5F0E24;border-color:var(--giallo)}
-main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
 .barra{flex:none;display:grid;grid-template-columns:repeat(5,1fr);background:#14060A;border-top:1px solid var(--linea);padding-bottom:env(safe-area-inset-bottom)}
 .barra button{height:58px;background:none;border:0;color:var(--muto);font:600 .72rem/1 C;display:grid;justify-items:center;align-content:center;gap:4px}
 .barra svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
@@ -50,3 +50,23 @@ input,select{width:100%;height:44px;border:1px solid var(--linea);border-radius:
 .esito{min-height:1.2em;color:var(--giallo);font-size:.9rem}
 .carica{padding:18px;text-align:center;color:var(--muto)}
 .indietro{background:none;border:0;color:var(--giallo);font:600 .95rem C;padding:0;text-align:left}
+.live{flex:none;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;column-gap:12px;row-gap:3px;width:100%;padding:7px 12px;border:0;border-bottom:2px solid var(--giallo);background:#14060A;color:var(--testo);font:inherit}
+.live[hidden]{display:none}
+.live .tempo{display:inline-flex;align-items:center;gap:6px;font:900 .8rem/1 T;text-transform:uppercase;letter-spacing:.04em}
+.live .tempo i{width:8px;height:8px;border-radius:50%;background:#ff3b30;animation:battito 1.4s ease-in-out infinite}
+.live.finita .tempo i{background:var(--giallo);animation:none}
+@keyframes battito{50%{opacity:.25}}
+.live .gara{display:inline-flex;align-items:center;gap:9px;font:900 1rem/1 T;text-transform:uppercase}
+.live .sq{display:inline-flex;align-items:center;gap:5px}
+.live .stemma{width:20px;height:20px;object-fit:contain}
+.live .ris{font:900 1.35rem/1 T;color:var(--giallo);min-width:2.8em;text-align:center}
+.live .eventi{flex-basis:100%;text-align:center;font-size:.78rem;color:var(--muto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.onair[hidden]{display:none}
+.live .fonte{font-size:.66rem;color:var(--muto);text-decoration:underline}
+.sez .adv{margin:0}
+.tira{height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muto);font-size:.82rem;transition:height .2s ease}
+.tira.tocco{transition:none}
+.tira i{flex:none;width:18px;height:18px;border:2px solid var(--linea);border-top-color:var(--giallo);border-radius:50%;transform:rotate(calc(var(--g,0) * 1deg))}
+.tira.pronto{color:var(--giallo)}
+.tira.gira i{animation:gira .8s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}

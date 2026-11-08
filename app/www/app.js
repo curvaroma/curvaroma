@@ -23,7 +23,7 @@ function apriLink(url) {
 let P = null;
 const pubblico = async () => (P ||= await chiama("/api/pubblico"));
 
-/* Notizie: sempre dalla più recente, scorrendo si torna indietro. */
+/* Notizie: sempre dalla più recente, scorrendo si torna indietro. Tirando giù dall'inizio la lista si aggiorna. */
 const QUANDO = new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit" });
 const GIORNO = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "short" });
 const ora = d => { const x = new Date(d), oggi = x.toDateString() === new Date().toDateString(); return oggi ? QUANDO.format(x) : `${GIORNO.format(x)} ${QUANDO.format(x)}`; };
@@ -39,32 +39,73 @@ function annuncio(p) {
   a.onclick = e => { e.preventDefault(); fetch(API + "/api/clic", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prodotto: p.id }) }).catch(() => {}); apriLink(p.link); };
   return a;
 }
+// Un annuncio a caso, diverso a ogni apertura, nelle sezioni che non sono le notizie.
+function unAnnuncio(s) { const l = prodottiMisti(); if (l.length) s.append(annuncio(l[0])); }
+const SOGLIA = 70;
 async function notizie() {
-  const lista = el("div"), piede = el("div", "carica", "Carico le notizie…");
-  vista.append(lista, piede);
+  const tira = el("div", "tira"), scritta = el("span", "", "Tira per aggiornare"), lista = el("div"), piede = el("div", "carica", "Carico le notizie…");
+  tira.append(el("i"), scritta);
+  vista.append(tira, lista, piede);
   await pubblico().catch(() => {});
   const adv = prodottiMisti();
-  let prima = null, finito = false, inCorso = false, n = 0;
+  let prima = null, finito = false, inCorso = false, n = 0, primaUrl = null;
+  const scrivi = l => {
+    for (const x of l) {
+      const a = el("a", "notizia"); a.href = "#";
+      const f = el("img"); f.alt = ""; f.loading = "lazy"; if (x.foto) f.src = x.foto;
+      const c = el("div"); c.append(el("span", "meta", `${ora(x.pubblicata)} · ${x.testata}`), el("b", "", x.titolo));
+      a.append(f, c); a.onclick = e => { e.preventDefault(); apriLink(x.url); };
+      lista.append(a);
+      if (++n % 6 === 0 && adv.length) lista.append(annuncio(adv[(n / 6 - 1) % adv.length]));
+      prima = x.pubblicata;
+    }
+    finito = l.length < 30;
+    piede.textContent = finito ? "Sei arrivato all'inizio dell'archivio" : "";
+  };
+  // Scorrendo verso il basso arrivano le notizie più vecchie.
   const altre = async () => {
     if (inCorso || finito) return;
     inCorso = true;
-    try {
-      const d = await chiama(`/api/archivio?limite=30${prima ? "&prima=" + encodeURIComponent(prima) : ""}`);
-      for (const x of d.notizie) {
-        const a = el("a", "notizia"); a.href = "#";
-        const f = el("img"); f.alt = ""; f.loading = "lazy"; if (x.foto) f.src = x.foto;
-        const c = el("div"); c.append(el("span", "meta", `${ora(x.pubblicata)} · ${x.testata}`), el("b", "", x.titolo));
-        a.append(f, c); a.onclick = e => { e.preventDefault(); apriLink(x.url); };
-        lista.append(a);
-        if (++n % 6 === 0 && adv.length) lista.append(annuncio(adv[(n / 6 - 1) % adv.length]));
-        prima = x.pubblicata;
-      }
-      finito = d.notizie.length < 30;
-      piede.textContent = finito ? "Sei arrivato all'inizio dell'archivio" : "";
-    } catch (e) { piede.textContent = e.message; }
+    try { const d = await chiama(`/api/archivio?limite=30${prima ? "&prima=" + encodeURIComponent(prima) : ""}`); if (!primaUrl) primaUrl = d.notizie[0]?.url || null; scrivi(d.notizie); }
+    catch (e) { piede.textContent = e.message; }
     inCorso = false;
   };
+  // Tirando giù si riparte dalle più recenti; il server scarica prima i feed, se non lo ha fatto nell'ultimo minuto.
+  const daCapo = async () => {
+    if (inCorso) return "";
+    inCorso = true;
+    let esito = "";
+    try {
+      const d = await chiama("/api/archivio?limite=30&aggiorna=1", { cache: "no-store" });
+      const nuovo = d.notizie[0]?.url || null;
+      esito = nuovo && nuovo === primaUrl ? "Nessuna notizia nuova" : "Notizie aggiornate";
+      lista.textContent = ""; prima = null; n = 0; primaUrl = nuovo; scrivi(d.notizie);
+    } catch (e) { esito = e.message || "Connessione assente"; }
+    inCorso = false;
+    return esito;
+  };
   vista.onscroll = () => { if (vista.scrollTop + vista.clientHeight > vista.scrollHeight - 700) altre(); };
+  let y0 = null, tirato = 0;
+  const altezza = h => { tira.style.height = h + "px"; tira.style.setProperty("--g", h * 4); };
+  vista.ontouchstart = e => { y0 = vista.scrollTop <= 0 && !inCorso && e.touches.length === 1 ? e.touches[0].clientY : null; tirato = 0; };
+  vista.ontouchmove = e => {
+    if (y0 == null) return;
+    const d = e.touches[0].clientY - y0;
+    if (d <= 0 || vista.scrollTop > 0) { if (tirato) { tirato = 0; altezza(0); } return; }
+    tira.classList.add("tocco");
+    tirato = Math.min(110, d * .5); altezza(tirato);
+    const pronto = tirato >= SOGLIA; tira.classList.toggle("pronto", pronto); scritta.textContent = pronto ? "Rilascia per aggiornare" : "Tira per aggiornare";
+    if (e.cancelable) e.preventDefault();
+  };
+  vista.ontouchend = vista.ontouchcancel = async () => {
+    if (y0 == null) return;
+    y0 = null; tira.classList.remove("tocco");
+    if (tirato < SOGLIA) { tirato = 0; altezza(0); tira.classList.remove("pronto"); return; }
+    tirato = 0; tira.classList.remove("pronto"); tira.classList.add("gira"); altezza(52); scritta.textContent = "Aggiorno le notizie…";
+    const esito = await daCapo();
+    tira.classList.remove("gira"); scritta.textContent = esito; vista.scrollTop = 0;
+    setTimeout(() => { if (!tira.classList.contains("gira") && !tira.classList.contains("tocco")) altezza(0); }, 1200);
+  };
   await altre();
 }
 
@@ -94,6 +135,7 @@ async function pagelle() {
     try { await invia("/api/voti", { partita: p.id, voti }); es.textContent = "Voti salvati. Forza Roma!"; } catch (e) { es.textContent = e.message; }
   };
   box.append(sv, es); s.append(box);
+  unAnnuncio(s);
   if (st.medie.length) { const m = el("div", "card"); m.append(el("h2", "", "Il voto dei tifosi")); for (const x of st.medie) { const r = el("div", "riga"); r.append(el("span", "", x.n), el("b", "", x.m.toFixed(1).replace(".", ",").replace(",0", ""))); m.append(r); } s.append(m); }
   if (arch?.length > 1) { const m = el("div", "card"); m.append(el("h2", "", "Tutte le pagelle")); for (const x of arch) { const r = el("div", "riga"); r.append(el("span", "", `${x.casa}-${x.ospiti} ${x.golCasa}-${x.golOspiti}`), el("span", "nota", x.data)); r.onclick = () => apriLink(`${API}/pagelle/${x.slug}`); m.append(r); } s.append(m); }
 }
@@ -107,14 +149,16 @@ async function analisi() {
     const c = el("article", "card art"), i = el("img"), d = el("div"); i.src = assoluta(a.copertina || "/img/lavagna.jpg"); i.alt = ""; i.loading = "lazy";
     d.append(el("span", "meta", a.occhiello || ""), el("h2", "", a.titolo), el("span", "nota", a.riassunto || ""));
     c.append(i, d); c.onclick = () => leggi(a); s.append(c);
+    if (s.querySelectorAll(".art").length % 3 === 0) unAnnuncio(s);
   }
+  if (C.analisi.length % 3) unAnnuncio(s);
 }
 function leggi(a) {
   vista.textContent = ""; vista.scrollTop = 0;
   const s = el("div", "sez"), b = el("button", "indietro", "‹ Analisi"), t = el("div", "testo");
   b.onclick = () => apri("analisi");
   for (const par of String(a.testo || "").split(/\n\s*\n/)) { const x = par.trim(); if (x) t.append(x.startsWith("## ") ? el("h3", "", x.slice(3)) : el("p", "", x)); }
-  s.append(b, el("span", "meta", a.occhiello || ""), el("h1", "", a.titolo), t); vista.append(s);
+  s.append(b, el("span", "meta", a.occhiello || ""), el("h1", "", a.titolo), t); unAnnuncio(s); vista.append(s);
 }
 
 /* Vigilia */
@@ -134,6 +178,7 @@ async function vigilia() {
   sv.onclick = async () => { try { await invia("/api/pronostico", { partita: p.id, ...q }); es.textContent = "Pronostico salvato"; } catch (e) { es.textContent = e.message; } };
   b.append(el("h2", "", "Indovina il risultato"), riga, sv, es); s.append(b);
   if (st.pronostico) b.append(el("span", "nota", `Il risultato più scelto è ${st.pronostico.casa}-${st.pronostico.ospiti}`));
+  unAnnuncio(s);
   const k = el("div", "card"); k.append(el("h2", "", "Classifica Serie A")); for (const [n, v] of C.classifica) { const r = el("div", "riga"); r.append(el("span", "", n), el("b", "", v)); k.append(r); } s.append(k);
 }
 
@@ -152,6 +197,7 @@ async function biglietti() {
   if (!st.annunci.length) b.append(el("span", "nota", "Ancora nessun annuncio."));
   for (const a of st.annunci) { const r = el("div", "riga"), t = el("div"); t.append(el("div", "", `${a.tipo}: ${a.partita}`), el("span", "nota", `${a.quanti} in ${a.settore}, ${a.prezzo} €, ${a.contatto}`)); r.append(t); b.append(r); }
   s.append(el("h1", "", "Biglietti"), f, b);
+  unAnnuncio(s);
 }
 
 /* Navigazione */
@@ -168,7 +214,7 @@ for (const [k, [t]] of Object.entries(SCHERMI)) {
 }
 async function apri(k) {
   document.querySelectorAll("#barra button").forEach(b => b.classList.toggle("ora", b.dataset.k === k));
-  vista.textContent = ""; vista.onscroll = null; vista.scrollTop = 0;
+  vista.textContent = ""; vista.onscroll = vista.ontouchstart = vista.ontouchmove = vista.ontouchend = vista.ontouchcancel = null; vista.scrollTop = 0;
   try { await SCHERMI[k][1](); } catch (e) { vista.textContent = ""; vista.append(el("div", "carica", e.message || "Connessione assente")); }
 }
 
@@ -181,5 +227,31 @@ const statoR = () => { $("#onair").classList.toggle("acceso", acceso); $("#onair
 au.addEventListener("ended", () => { if (acceso) inOnda(); });
 $("#onair").onclick = () => { if (!R) return; acceso = !acceso; statoR(); if (acceso) inOnda(); else au.pause(); };
 chiama("/api/radio").then(d => { if (d.brani.length) { R = { ...d, t0: Date.now() - d.secondi * 1000 }; $("#onair").hidden = false; } }).catch(() => {});
+
+/* Risultato in diretta sotto la testata, solo nelle ore della partita. */
+const STEMMI = {"roma":"roma","lazio":"lazio","inter":"inter","como":"como","milan":"milan","frosinone":"frosinone","juventus":"juventus","napoli":"napoli","bologna":"bologna","torino":"torino","genoa":"genoa","cagliari":"cagliari","atalanta":"atalanta","lecce":"lecce","parma":"parma","fiorentina":"fiorentina","sassuolo":"sassuolo","monza":"monza","udinese":"udinese","venezia":"venezia","man. united":"man-united","manchester united":"man-united","man. city":"man-city","manchester city":"man-city","real madrid":"real-madrid","psg":"psg","paris saint-germain":"psg","sporting":"sporting","aek":"aek","lille":"lille","slovan":"slovan","fenerbahce":"fenerbahce","fenerbahçe":"fenerbahce","arsenal":"arsenal","liverpool":"liverpool","bayern":"bayern","barcellona":"barcellona","atletico":"atletico","atletico madrid":"atletico","dortmund":"dortmund","porto":"porto","psv":"psv","feyenoord":"feyenoord","galatasaray":"galatasaray","lipsia":"lipsia","stoccarda":"stoccarda","aston villa":"aston-villa","bruges":"bruges","betis":"betis","villarreal":"villarreal","lens":"lens","shakhtar":"shakhtar","slavia praga":"slavia-praga","bodo glimt":"bodo-glimt","viking":"viking","sabah":"sabah","lask":"lask"};
+const stemmaApp = n => { const f = STEMMI[String(n).toLowerCase().trim()]; if (!f) return null; const i = el("img", "stemma"); i.src = `${API}/img/stemmi/${f}.svg`; i.alt = ""; return i; };
+async function aggiornaLive() {
+  const b = $("#live"), q = P?.contenuti?.prossima, t = Date.parse(q?.inizio || ""), adesso = Date.now();
+  if (!t || adesso < t - 30 * 60e3 || adesso > t + 3 * 3600e3) { b.hidden = true; return; }
+  if (document.hidden) return;
+  let d; try { d = await chiama("/api/live"); } catch { return; }
+  if (!d.attiva) { b.hidden = true; return; }
+  if (!["in corso", "intervallo", "finita"].includes(d.fase)) { if (d.fase !== "sconosciuta") b.hidden = true; return; }
+  b.textContent = ""; b.classList.toggle("finita", d.fase === "finita");
+  const tempo = el("span", "tempo"); tempo.append(el("i"), document.createTextNode(d.fase === "in corso" ? "Live " + d.minuto : d.minuto));
+  const sq = (n, prima) => { const s = el("span", "sq"), st = stemmaApp(n); if (prima && st) s.append(st); s.append(document.createTextNode(n)); if (!prima && st) s.append(st); return s; };
+  const gara = el("span", "gara"); gara.append(sq(d.casa.nome, true), el("b", "ris", `${d.casa.gol} - ${d.ospiti.gol}`), sq(d.ospiti.nome, false));
+  b.append(tempo, gara);
+  const NOMI = { gol: "Gol", rigore: "Rigore", autogol: "Autogol", rosso: "Rosso" };
+  const righe = (d.eventi || []).filter(x => x.tipo !== "giallo").map(x => `${NOMI[x.tipo]} ${x.giocatore} ${x.minuto}`.trim());
+  if (righe.length) b.append(el("span", "eventi", righe.join(" · ")));
+  const f = el("a", "fonte", "Powered by SportScore"); f.href = "https://sportscore.com/"; f.rel = "dofollow"; f.onclick = e => { e.preventDefault(); e.stopPropagation(); apriLink(f.href); }; b.append(f);
+  b.hidden = false;
+}
+$("#live").onclick = () => apri("vigilia");
+pubblico().then(aggiornaLive).catch(() => {});
+setInterval(aggiornaLive, 30000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) aggiornaLive(); });
 
 apri("notizie");
