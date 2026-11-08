@@ -23,7 +23,7 @@ function apriLink(url) {
 let P = null;
 const pubblico = async () => (P ||= await chiama("/api/pubblico"));
 
-/* Notizie: sempre dalla più recente, scorrendo si torna indietro. */
+/* Notizie: sempre dalla più recente, scorrendo si torna indietro. Tirando giù dall'inizio la lista si aggiorna. */
 const QUANDO = new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit" });
 const GIORNO = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "short" });
 const ora = d => { const x = new Date(d), oggi = x.toDateString() === new Date().toDateString(); return oggi ? QUANDO.format(x) : `${GIORNO.format(x)} ${QUANDO.format(x)}`; };
@@ -41,32 +41,71 @@ function annuncio(p) {
 }
 // Un annuncio a caso, diverso a ogni apertura, nelle sezioni che non sono le notizie.
 function unAnnuncio(s) { const l = prodottiMisti(); if (l.length) s.append(annuncio(l[0])); }
+const SOGLIA = 70;
 async function notizie() {
-  const lista = el("div"), piede = el("div", "carica", "Carico le notizie…");
-  vista.append(lista, piede);
+  const tira = el("div", "tira"), scritta = el("span", "", "Tira per aggiornare"), lista = el("div"), piede = el("div", "carica", "Carico le notizie…");
+  tira.append(el("i"), scritta);
+  vista.append(tira, lista, piede);
   await pubblico().catch(() => {});
   const adv = prodottiMisti();
-  let prima = null, finito = false, inCorso = false, n = 0;
+  let prima = null, finito = false, inCorso = false, n = 0, primaUrl = null;
+  const scrivi = l => {
+    for (const x of l) {
+      const a = el("a", "notizia"); a.href = "#";
+      const f = el("img"); f.alt = ""; f.loading = "lazy"; if (x.foto) f.src = x.foto;
+      const c = el("div"); c.append(el("span", "meta", `${ora(x.pubblicata)} · ${x.testata}`), el("b", "", x.titolo));
+      a.append(f, c); a.onclick = e => { e.preventDefault(); apriLink(x.url); };
+      lista.append(a);
+      if (++n % 6 === 0 && adv.length) lista.append(annuncio(adv[(n / 6 - 1) % adv.length]));
+      prima = x.pubblicata;
+    }
+    finito = l.length < 30;
+    piede.textContent = finito ? "Sei arrivato all'inizio dell'archivio" : "";
+  };
+  // Scorrendo verso il basso arrivano le notizie più vecchie.
   const altre = async () => {
     if (inCorso || finito) return;
     inCorso = true;
-    try {
-      const d = await chiama(`/api/archivio?limite=30${prima ? "&prima=" + encodeURIComponent(prima) : ""}`);
-      for (const x of d.notizie) {
-        const a = el("a", "notizia"); a.href = "#";
-        const f = el("img"); f.alt = ""; f.loading = "lazy"; if (x.foto) f.src = x.foto;
-        const c = el("div"); c.append(el("span", "meta", `${ora(x.pubblicata)} · ${x.testata}`), el("b", "", x.titolo));
-        a.append(f, c); a.onclick = e => { e.preventDefault(); apriLink(x.url); };
-        lista.append(a);
-        if (++n % 6 === 0 && adv.length) lista.append(annuncio(adv[(n / 6 - 1) % adv.length]));
-        prima = x.pubblicata;
-      }
-      finito = d.notizie.length < 30;
-      piede.textContent = finito ? "Sei arrivato all'inizio dell'archivio" : "";
-    } catch (e) { piede.textContent = e.message; }
+    try { const d = await chiama(`/api/archivio?limite=30${prima ? "&prima=" + encodeURIComponent(prima) : ""}`); if (!primaUrl) primaUrl = d.notizie[0]?.url || null; scrivi(d.notizie); }
+    catch (e) { piede.textContent = e.message; }
     inCorso = false;
   };
+  // Tirando giù si riparte dalle più recenti; il server scarica prima i feed, se non lo ha fatto nell'ultimo minuto.
+  const daCapo = async () => {
+    if (inCorso) return "";
+    inCorso = true;
+    let esito = "";
+    try {
+      const d = await chiama("/api/archivio?limite=30&aggiorna=1", { cache: "no-store" });
+      const nuovo = d.notizie[0]?.url || null;
+      esito = nuovo && nuovo === primaUrl ? "Nessuna notizia nuova" : "Notizie aggiornate";
+      lista.textContent = ""; prima = null; n = 0; primaUrl = nuovo; scrivi(d.notizie);
+    } catch (e) { esito = e.message || "Connessione assente"; }
+    inCorso = false;
+    return esito;
+  };
   vista.onscroll = () => { if (vista.scrollTop + vista.clientHeight > vista.scrollHeight - 700) altre(); };
+  let y0 = null, tirato = 0;
+  const altezza = h => { tira.style.height = h + "px"; tira.style.setProperty("--g", h * 4); };
+  vista.ontouchstart = e => { y0 = vista.scrollTop <= 0 && !inCorso && e.touches.length === 1 ? e.touches[0].clientY : null; tirato = 0; };
+  vista.ontouchmove = e => {
+    if (y0 == null) return;
+    const d = e.touches[0].clientY - y0;
+    if (d <= 0 || vista.scrollTop > 0) { if (tirato) { tirato = 0; altezza(0); } return; }
+    tira.classList.add("tocco");
+    tirato = Math.min(110, d * .5); altezza(tirato);
+    const pronto = tirato >= SOGLIA; tira.classList.toggle("pronto", pronto); scritta.textContent = pronto ? "Rilascia per aggiornare" : "Tira per aggiornare";
+    if (e.cancelable) e.preventDefault();
+  };
+  vista.ontouchend = vista.ontouchcancel = async () => {
+    if (y0 == null) return;
+    y0 = null; tira.classList.remove("tocco");
+    if (tirato < SOGLIA) { tirato = 0; altezza(0); tira.classList.remove("pronto"); return; }
+    tirato = 0; tira.classList.remove("pronto"); tira.classList.add("gira"); altezza(52); scritta.textContent = "Aggiorno le notizie…";
+    const esito = await daCapo();
+    tira.classList.remove("gira"); scritta.textContent = esito; vista.scrollTop = 0;
+    setTimeout(() => { if (!tira.classList.contains("gira") && !tira.classList.contains("tocco")) altezza(0); }, 1200);
+  };
   await altre();
 }
 
@@ -175,7 +214,7 @@ for (const [k, [t]] of Object.entries(SCHERMI)) {
 }
 async function apri(k) {
   document.querySelectorAll("#barra button").forEach(b => b.classList.toggle("ora", b.dataset.k === k));
-  vista.textContent = ""; vista.onscroll = null; vista.scrollTop = 0;
+  vista.textContent = ""; vista.onscroll = vista.ontouchstart = vista.ontouchmove = vista.ontouchend = vista.ontouchcancel = null; vista.scrollTop = 0;
   try { await SCHERMI[k][1](); } catch (e) { vista.textContent = ""; vista.append(el("div", "carica", e.message || "Connessione assente")); }
 }
 

@@ -109,9 +109,10 @@ async function notizie(ctx) {
 // L'app usa le stesse fonti del sito. L'archivio si riempie anche quando il sito scarica i feed, così resta sempre aggiornato.
 const FONTI_APP = FEED.map(([t]) => t);
 const salvaArchivio = (env, tutte) => { const l = tutte.filter(n => n.data); return l.length ? env.DB.batch(l.map(n => env.DB.prepare("INSERT OR IGNORE INTO notizie (url, testata, titolo, foto, pubblicata) VALUES (?,?,?,?,?)").bind(n.url, n.t, n.titolo, n.foto, new Date(n.data).toISOString()))) : null; };
-async function aggiornaArchivio(env) {
+// Di norma ogni 5 minuti; quando nell'app si tira giù la lista basta un minuto dall'ultimo aggiornamento.
+async function aggiornaArchivio(env, intervallo = 3e5) {
   const ora = Date.now(), ultimo = Number(await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='notizie_agg'").first("valore")) || 0;
-  if (ora - ultimo < 3e5) return;
+  if (ora - ultimo < intervallo) return;
   await env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('notizie_agg',?) ON CONFLICT DO UPDATE SET valore=excluded.valore").bind(String(ora)).run();
   const esiti = await Promise.allSettled(FEED.filter(([t]) => FONTI_APP.includes(t)).map(async ([t, u]) => {
     const r = await fetch(u, { headers: { "user-agent": "CurvaRoma/1.0 (+https://curvaroma.it)" } });
@@ -123,7 +124,8 @@ async function archivioNotizie(ctx, url) {
   const { env } = ctx, prima = url.searchParams.get("prima"), n = Math.min(50, Math.max(1, Number(url.searchParams.get("limite")) || 30));
   if (prima && !/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(prima)) return errore("Data non valida");
   const vuoto = !(await env.DB.prepare("SELECT 1 x FROM notizie LIMIT 1").first("x"));
-  if (vuoto) await aggiornaArchivio(env); else ctx.waitUntil(aggiornaArchivio(env));
+  const forza = !prima && url.searchParams.get("aggiorna") === "1";
+  if (vuoto || forza) await aggiornaArchivio(env, vuoto ? 3e5 : 6e4).catch(() => {}); else ctx.waitUntil(aggiornaArchivio(env));
   const q = prima ? env.DB.prepare("SELECT testata, titolo, url, foto, pubblicata FROM notizie WHERE pubblicata < ? ORDER BY pubblicata DESC LIMIT ?").bind(prima, n) : env.DB.prepare("SELECT testata, titolo, url, foto, pubblicata FROM notizie ORDER BY pubblicata DESC LIMIT ?").bind(n);
   return json({ notizie: (await q.all()).results });
 }
