@@ -21,10 +21,50 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
+      # Notifiche: servono GoogleService-Info.plist di Firebase (segreto in base64) e un profilo con Push Notifications.
+      # Se manca uno dei due, il plugin si toglie e l'app esce senza notifiche ma funziona.
+      - name: Notifiche (Firebase)
+        env:
+          PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+          PROFILO: ${{ secrets.CURVAROMA_IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          ATTIVE=no
+          if [ "$HA_FIRMA" = "true" ] && [ -n "$PLIST" ]; then
+            echo "$PROFILO" | base64 -d > $RUNNER_TEMP/prof.mobileprovision
+            security cms -D -i $RUNNER_TEMP/prof.mobileprovision > $RUNNER_TEMP/prof.plist
+            if /usr/libexec/PlistBuddy -c 'Print :Entitlements:aps-environment' $RUNNER_TEMP/prof.plist >/dev/null 2>&1; then
+              ATTIVE=si
+            else
+              echo "::warning::Il profilo di provisioning non ha Push Notifications: rigeneralo dopo averle attivate sull'App ID. Build senza notifiche."
+            fi
+          else
+            echo "::warning::GOOGLE_SERVICE_INFO_PLIST_BASE64 o firma assenti: build senza notifiche."
+          fi
+          if [ "$ATTIVE" = si ]; then
+            echo "$PLIST" | base64 -d > ios/App/App/GoogleService-Info.plist
+            echo "PUSH_IOS=si" >> $GITHUB_ENV
+            echo "Notifiche attive"
+          else
+            npm uninstall --no-save @capacitor-firebase/messaging
+          fi
       - run: npx cap sync ios
       - name: Installa CocoaPods
         working-directory: app/ios/App
         run: pod install
+      - name: Aggiungi Firebase e notifiche al progetto Xcode
+        if: env.PUSH_IOS == 'si'
+        working-directory: app/ios/App
+        run: |
+          ruby -e '
+            require "xcodeproj"
+            p = Xcodeproj::Project.open("App.xcodeproj")
+            t = p.targets.find { |x| x.name == "App" }
+            g = p.main_group["App"]
+            f = g.files.find { |x| x.path == "GoogleService-Info.plist" } || g.new_reference("GoogleService-Info.plist")
+            t.add_resources([f]) unless t.resources_build_phase.files_references.include?(f)
+            t.build_configurations.each { |c| c.build_settings["CODE_SIGN_ENTITLEMENTS"] = "App/App.entitlements" }
+            p.save
+            puts "GoogleService-Info.plist ed entitlements aggiunti"
       - name: Prova di compilazione senza firma
         if: env.HA_FIRMA != 'true'
         working-directory: app/ios/App

@@ -17,6 +17,18 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm ci
+      # Notifiche: servono il google-services.json di Firebase (segreto in base64). Senza, la build esce senza notifiche.
+      - name: Notifiche (Firebase)
+        env:
+          GSJ: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          if [ -n "$GSJ" ]; then
+            echo "$GSJ" | base64 -d > android/app/google-services.json
+            echo "Notifiche attive"
+          else
+            echo "::warning::GOOGLE_SERVICES_JSON_BASE64 assente: build senza notifiche."
+            npm uninstall --no-save @capacitor-firebase/messaging
+          fi
       - run: npx cap sync android
       - name: Keystore di firma
         env:

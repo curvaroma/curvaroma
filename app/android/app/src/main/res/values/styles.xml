@@ -15,8 +15,13 @@
         <item name="android:background">@null</item>
     </style>
 
-
+    <!-- Avvio: solo rosso Roma, senza icona. Il logo animato lo disegna l'app subito dopo. -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <item name="windowSplashScreenBackground">@color/rosso_avvio</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/avvio_vuoto</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+        <item name="android:statusBarColor">@color/rosso_avvio</item>
+        <item name="android:navigationBarColor">@color/rosso_avvio</item>
     </style>
 </resources>

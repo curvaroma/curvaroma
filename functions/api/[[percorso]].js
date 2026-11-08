@@ -107,7 +107,9 @@ async function notizie(ctx) {
 
 // Archivio per l'app: le notizie restano nel database, così scorrendo si torna indietro nel tempo.
 // L'app usa le stesse fonti del sito. L'archivio si riempie anche quando il sito scarica i feed, così resta sempre aggiornato.
-const FONTI_APP = FEED.map(([t]) => t);
+// Nell'app solo tre fonti, per una lista più ordinata (deciso da Andrea l'8 novembre). Il sito le usa tutte.
+const FONTI_APP = ["Corriere dello Sport", "Voce Giallorossa", "RomaNews"];
+const SOLO_APP = `testata IN (${FONTI_APP.map(() => "?").join(",")})`;
 const salvaArchivio = (env, tutte) => { const l = tutte.filter(n => n.data); return l.length ? env.DB.batch(l.map(n => env.DB.prepare("INSERT OR IGNORE INTO notizie (url, testata, titolo, foto, pubblicata) VALUES (?,?,?,?,?)").bind(n.url, n.t, n.titolo, n.foto, new Date(n.data).toISOString()))) : null; };
 // Di norma ogni 5 minuti; quando nell'app si tira giù la lista basta un minuto dall'ultimo aggiornamento.
 async function aggiornaArchivio(env, intervallo = 3e5) {
@@ -123,10 +125,10 @@ async function aggiornaArchivio(env, intervallo = 3e5) {
 async function archivioNotizie(ctx, url) {
   const { env } = ctx, prima = url.searchParams.get("prima"), n = Math.min(50, Math.max(1, Number(url.searchParams.get("limite")) || 30));
   if (prima && !/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(prima)) return errore("Data non valida");
-  const vuoto = !(await env.DB.prepare("SELECT 1 x FROM notizie LIMIT 1").first("x"));
+  const vuoto = !(await env.DB.prepare(`SELECT 1 x FROM notizie WHERE ${SOLO_APP} LIMIT 1`).bind(...FONTI_APP).first("x"));
   const forza = !prima && url.searchParams.get("aggiorna") === "1";
   if (vuoto || forza) await aggiornaArchivio(env, vuoto ? 3e5 : 6e4).catch(() => {}); else ctx.waitUntil(aggiornaArchivio(env));
-  const q = prima ? env.DB.prepare("SELECT testata, titolo, url, foto, pubblicata FROM notizie WHERE pubblicata < ? ORDER BY pubblicata DESC LIMIT ?").bind(prima, n) : env.DB.prepare("SELECT testata, titolo, url, foto, pubblicata FROM notizie ORDER BY pubblicata DESC LIMIT ?").bind(n);
+  const q = prima ? env.DB.prepare(`SELECT testata, titolo, url, foto, pubblicata FROM notizie WHERE ${SOLO_APP} AND pubblicata < ? ORDER BY pubblicata DESC LIMIT ?`).bind(...FONTI_APP, prima, n) : env.DB.prepare(`SELECT testata, titolo, url, foto, pubblicata FROM notizie WHERE ${SOLO_APP} ORDER BY pubblicata DESC LIMIT ?`).bind(...FONTI_APP, n);
   return json({ notizie: (await q.all()).results });
 }
 
@@ -303,6 +305,63 @@ function unisci(base, modifiche) {
     else base[k] = v;
   }
 }
+/* Notifiche dell'app con Firebase Cloud Messaging. Ogni app iscritta riceve i messaggi del topic "tutti",
+   così il server manda un solo messaggio per novità. Servono le variabili segrete FCM_SERVICE_ACCOUNT
+   (il JSON dell'account di servizio Firebase): senza, non parte niente e il resto funziona uguale. */
+const TOPIC = "tutti";
+let FCM_TOKEN = null;
+const b64url = b => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const testo64 = s => b64url(new TextEncoder().encode(s));
+async function tokenFcm(sa) {
+  if (FCM_TOKEN && FCM_TOKEN.scade > Date.now() + 6e4) return FCM_TOKEN.valore;
+  const pem = sa.private_key.replace(/-----[^-]+-----|\s/g, "");
+  const chiave = await crypto.subtle.importKey("pkcs8", Uint8Array.from(atob(pem), c => c.charCodeAt(0)), { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
+  const ora = Math.floor(Date.now() / 1000);
+  const corpo = `${testo64(JSON.stringify({ alg: "RS256", typ: "JWT" }))}.${testo64(JSON.stringify({ iss: sa.client_email, scope: "https://www.googleapis.com/auth/firebase.messaging", aud: "https://oauth2.googleapis.com/token", iat: ora, exp: ora + 3600 }))}`;
+  const firma = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", chiave, new TextEncoder().encode(corpo));
+  const r = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: `grant_type=${encodeURIComponent("urn:ietf:params:oauth:grant-type:jwt-bearer")}&assertion=${corpo}.${b64url(firma)}` });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.access_token) throw new Error("Accesso a Firebase non riuscito");
+  FCM_TOKEN = { valore: d.access_token, scade: Date.now() + (d.expires_in || 3600) * 1000 };
+  return FCM_TOKEN.valore;
+}
+async function inviaNotifica(env, n) {
+  if (!env.FCM_SERVICE_ACCOUNT) return "Notifiche spente: manca FCM_SERVICE_ACCOUNT";
+  const sa = JSON.parse(env.FCM_SERVICE_ACCOUNT);
+  const message = {
+    topic: TOPIC,
+    notification: { title: n.titolo, body: n.testo },
+    data: { sezione: n.sezione, id: n.id || "", url: n.url || "" },
+    android: { priority: "high", notification: { icon: "ic_notifica", color: "#7E031A", sound: "default" } },
+    apns: { payload: { aps: { sound: "default" } } }
+  };
+  const r = await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, { method: "POST", headers: { authorization: `Bearer ${await tokenFcm(sa)}`, "content-type": "application/json" }, body: JSON.stringify({ message }) });
+  return r.ok ? "inviata" : `errore ${r.status}`;
+}
+// Confronta i contenuti prima e dopo una modifica: pagelle nuove, nuova Vigilia, nuove analisi e nuovi racconti.
+function novita(prima, dopo) {
+  const out = [], p = dopo?.partita, q = dopo?.prossima;
+  if (p?.id && p.id !== prima?.partita?.id && p.titolari?.length) out.push({ titolo: "Pagelle aperte", testo: `${p.casa}-${p.ospiti} ${p.golCasa}-${p.golOspiti}: dai il tuo voto ai giocatori della Roma.`, sezione: "pagelle" });
+  if (q?.id && q.id !== prima?.prossima?.id) out.push({ titolo: `Vigilia: ${q.casa}-${q.ospiti}`, testo: `${q.quando}. Scegli la formazione e indovina il risultato.`, sezione: "vigilia" });
+  const visti = new Set(visibili(prima?.analisi).map(a => a.id));
+  for (const a of visibili(dopo?.analisi)) if (!visti.has(a.id)) out.push({ titolo: "Nuova analisi", testo: a.titolo, sezione: "analisi", id: a.id });
+  const giaStoria = new Set((prima?.storia || []).map(a => a.id)), nuove = (dopo?.storia || []).filter(a => !giaStoria.has(a.id));
+  if (nuove.length === 1) out.push({ titolo: "Nuovo racconto nella Storia", testo: nuove[0].titolo, sezione: "storia", id: nuove[0].id, url: `${BASE_SITO}/storia/${nuove[0].id}` });
+  else if (nuove.length > 1) out.push({ titolo: "Nuovi racconti nella Storia", testo: `${nuove.length} nuovi racconti sulla storia della Roma.`, sezione: "storia", url: `${BASE_SITO}/storia` });
+  return out.slice(0, 4);
+}
+// Invia le novità e tiene le ultime 30 nella riga notifiche, così si vede cosa è partito.
+async function avvisa(env, prima, dopo) {
+  const lista = novita(prima, dopo);
+  if (!lista.length) return;
+  const esiti = [];
+  for (const n of lista) esiti.push({ ...n, quando: new Date().toISOString(), esito: await inviaNotifica(env, n).catch(e => `errore: ${e.message}`) });
+  const r = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='notifiche'").first("valore").catch(() => null);
+  const log = [...esiti, ...(r ? JSON.parse(r) : [])].slice(0, 30);
+  await env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('notifiche',?) ON CONFLICT DO UPDATE SET valore=excluded.valore, aggiornato=CURRENT_TIMESTAMP").bind(JSON.stringify(log)).run();
+}
+const BASE_SITO = "https://roma-plus.it";
+
 // Tiene nell'archivio ogni partita, così i voti restano leggibili anche dopo la gara successiva.
 async function archivioPagelle(env, ...partite) {
   const r = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='pagelle'").first("valore");
@@ -433,6 +492,7 @@ async function admin(ctx, p) {
       env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('contenuti',?) ON CONFLICT DO UPDATE SET valore=excluded.valore, aggiornato=CURRENT_TIMESTAMP").bind(testo),
       await archivioPagelle(env, vecchi ? JSON.parse(vecchi).partita : null, c.partita)
     ]);
+    if (vecchi) ctx.waitUntil(avvisa(env, JSON.parse(vecchi), c).catch(() => {}));
     return json({ ok: true });
   }
   if (p[0] === "bozze") {
@@ -449,11 +509,14 @@ async function admin(ctx, p) {
     }
     if (p[2] !== "pubblica") return errore("Percorso non trovato", 404);
     const scritture = [];
+    // Le notifiche partono solo dopo che la pubblicazione è andata a buon fine.
+    let notifica = null;
     if (b.sito?.modifiche || b.sito?.articolo || b.sito?.storiaUrl) {
       const v = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'").first("valore");
       const c = v ? JSON.parse(v) : null;
       if (!c) return errore("Contenuti non trovati");
       const prima = structuredClone(c.partita);
+      notifica = [JSON.parse(v), c];
       unisci(c, b.sito.modifiche || {});
       if (b.sito.articolo) {
         c.analisi ||= [];
@@ -483,6 +546,7 @@ async function admin(ctx, p) {
     b.stato = "pubblicata"; b.pubblicata = new Date().toISOString();
     scritture.push(env.DB.prepare("UPDATE impostazioni SET valore=?, aggiornato=CURRENT_TIMESTAMP WHERE chiave='bozze'").bind(JSON.stringify(bozze)));
     await env.DB.batch(scritture);
+    if (notifica) ctx.waitUntil(avvisa(env, ...notifica).catch(() => {}));
     return json({ ok: true });
   }
   if (p[0] === "tifosi") {
@@ -612,11 +676,13 @@ async function apriPagelle(ctx, contenuti, q, m, nomeDi) {
     data: new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", day: "numeric", month: "long" }).format(new Date(q.inizio)),
     gol: (m.incidents || []).filter(x => x.is_goal).map(x => [Number(x.time) || 0, x.side === "home" ? "casa" : "ospiti"])
   };
-  await env.DB.batch([
+  const esiti = await env.DB.batch([
     env.DB.prepare("UPDATE impostazioni SET valore=json_set(valore,'$.partita',json(?)), aggiornato=CURRENT_TIMESTAMP WHERE chiave='contenuti' AND json_extract(valore,'$.partita.id') IS NOT ?").bind(JSON.stringify(partita), id),
     await archivioPagelle(env, contenuti.partita, partita),
     env.DB.prepare("INSERT INTO risultati (partita, nome, casa, ospiti) VALUES (?,?,?,?) ON CONFLICT(partita) DO UPDATE SET nome=excluded.nome, casa=excluded.casa, ospiti=excluded.ospiti").bind(q.id, `${casa}-${ospiti}`, golCasa, golOspiti)
   ]);
+  // Solo la richiesta che ha davvero aperto le pagelle manda la notifica.
+  if (esiti[0]?.meta?.changes) ctx.waitUntil(avvisa(env, { partita: contenuti.partita }, { partita }).catch(() => {}));
   return "aperte";
 }
 async function live(ctx) {

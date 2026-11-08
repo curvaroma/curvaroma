@@ -254,4 +254,36 @@ pubblico().then(aggiornaLive).catch(() => {});
 setInterval(aggiornaLive, 30000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) aggiornaLive(); });
 
+/* Schermata d'avvio: sparisce a fine animazione, o dopo 3 secondi se l'animazione non parte. */
+const avvio = $("#avvio");
+const togliAvvio = () => avvio?.classList.add("via");
+avvio?.addEventListener("animationend", e => { if (e.target === avvio) togliAvvio(); });
+setTimeout(togliAvvio, 3000);
+
+/* Notifiche: pagelle aperte, nuova Vigilia, nuova analisi, nuovo racconto. Il server scrive al topic "tutti".
+   Il plugin c'è solo nelle build con Firebase configurato: senza, l'app funziona come prima. */
+function apriDaNotifica(d = {}) {
+  if (d.sezione === "storia") { if (d.url) apriLink(d.url); return; }
+  if (!SCHERMI[d.sezione]) return;
+  apri(d.sezione).then(async () => {
+    if (d.sezione !== "analisi" || !d.id) return;
+    const a = (await pubblico().catch(() => null))?.contenuti?.analisi?.find(x => x.id === d.id);
+    if (a) leggi(a);
+  });
+}
+const FM = window.Capacitor?.isPluginAvailable?.("FirebaseMessaging") ? window.Capacitor.Plugins.FirebaseMessaging : null;
+// L'ascolto parte subito: se l'app si apre toccando una notifica, va nella sezione giusta.
+FM?.addListener("notificationActionPerformed", e => apriDaNotifica(e?.notification?.data));
+async function avviaNotifiche() {
+  const F = FM;
+  if (!F) return;
+  try {
+    let s = await F.checkPermissions();
+    if (s.receive !== "granted" && s.receive !== "denied") s = await F.requestPermissions();
+    if (s.receive === "granted") await F.subscribeToTopic({ topic: "tutti" });
+  } catch {}
+}
+// Il permesso si chiede dopo la schermata d'avvio, così non la copre.
+setTimeout(avviaNotifiche, 2500);
+
 apri("notizie");

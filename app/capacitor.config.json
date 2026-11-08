@@ -1,1 +1,9 @@
-{ "appId": "it.curvaroma.app", "appName": "Roma+", "webDir": "www", "backgroundColor": "#1E0B12" }
+{
+  "appId": "it.curvaroma.app",
+  "appName": "Roma+",
+  "webDir": "www",
+  "backgroundColor": "#7E031A",
+  "plugins": {
+    "FirebaseMessaging": { "presentationOptions": ["alert", "badge", "sound"] }
+  }
+}

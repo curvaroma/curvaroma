@@ -70,3 +70,23 @@ input,select{width:100%;height:44px;border:1px solid var(--linea);border-radius:
 .tira.pronto{color:var(--giallo)}
 .tira.gira i{animation:gira .8s linear infinite}
 @keyframes gira{to{transform:rotate(360deg)}}
+/* Schermata d'avvio: le lettere salgono una alla volta, il + entra ruotando, poi un cerchio si chiude e si apre l'app. */
+#avvio{position:fixed;inset:0;z-index:100;display:grid;place-items:center;align-content:center;gap:22px;background:#7E031A;clip-path:circle(150% at 50% 50%);animation:avvio-chiudi .55s cubic-bezier(.7,0,.84,0) 1.85s forwards}
+#avvio.via{display:none}
+.avvio-alone{position:absolute;inset:0;background:radial-gradient(60% 40% at 50% 50%,rgba(252,198,16,.22),rgba(252,198,16,0) 70%);opacity:0;animation:avvio-alone 1.6s ease-out .35s forwards}
+.avvio-logo{position:relative;width:min(72vw,340px);height:auto;overflow:visible;animation:avvio-respiro .55s cubic-bezier(.7,0,.84,0) 1.85s forwards}
+.avvio-logo path{transform-box:fill-box;transform-origin:50% 50%}
+.lettera{opacity:0;transform:translateY(70%);filter:blur(6px);animation:avvio-lettera .8s cubic-bezier(.16,1,.3,1) calc(.15s + var(--i) * .08s) forwards}
+.piu{opacity:0;transform:scale(0) rotate(-180deg);animation:avvio-piu .75s cubic-bezier(.34,1.56,.64,1) .62s forwards}
+.avvio-linea{position:relative;display:block;width:min(42vw,200px);height:3px;border-radius:3px;background:linear-gradient(90deg,rgba(252,198,16,0),#FCC610,rgba(252,198,16,0));transform:scaleX(0);animation:avvio-linea .7s cubic-bezier(.16,1,.3,1) .95s forwards}
+@keyframes avvio-lettera{to{opacity:1;transform:none;filter:none}}
+@keyframes avvio-piu{to{opacity:1;transform:none}}
+@keyframes avvio-linea{to{transform:scaleX(1)}}
+@keyframes avvio-alone{40%{opacity:1}to{opacity:.55}}
+@keyframes avvio-respiro{to{transform:scale(.9);opacity:0}}
+@keyframes avvio-chiudi{to{clip-path:circle(0% at 50% 50%)}}
+@media (prefers-reduced-motion:reduce){
+  #avvio,.avvio-logo,.lettera,.piu,.avvio-linea,.avvio-alone{animation:none;opacity:1;transform:none;filter:none}
+  #avvio{animation:avvio-sfuma .3s ease .6s forwards}
+}
+@keyframes avvio-sfuma{to{opacity:0}}
