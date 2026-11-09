@@ -204,16 +204,20 @@ const PAGINE = {
     v.append(barre("Minuti ascoltati al giorno", d.giorni.map(x => [x.giorno.slice(5), min(x.secondi)])), barre("Racconti più ascoltati, in minuti", d.brani.map(x => [storie.find(a => a.id === x.brano)?.titolo.slice(0, 22) || x.brano, min(x.secondi)])));
   },
   storia(v) {
-    const c = el("div", "card"); c.append(el("h2", "", "Foto dei racconti"), el("p", "nota", "La foto va dietro il titolo del racconto. Dopo le modifiche premi Salva sul sito in basso. Lo sfondo generale si cambia nella scheda Immagini."));
-    for (const a of C.storia || []) {
-      const r = el("div", "prod"), i = el("img"), f = el("div"); i.alt = ""; i.src = a.copertina || "/img/stadio.jpg"; i.style.objectFit = "cover"; i.style.objectPosition = `center ${a.posizione ?? 50}%`; f.style.cssText = "display:grid;gap:8px;min-width:0";
-      const b = el("div", "riga"), via = el("button", "az sec", "Rimetti sfondo generale");
-      via.onclick = () => { delete a.copertina; delete a.posizione; segna(); apri("storia"); };
-      b.append(tastoFile("Cambia foto", async file => { a.copertina = await carica(file); i.src = a.copertina; segna(); }), via);
-      f.append(el("b", "", `${a.anno}: ${a.titolo}`), campo("Posizione foto (0 alto, 100 basso)", a.posizione ?? 50, x => { a.posizione = Math.min(100, Math.max(0, +x || 0)); i.style.objectPosition = `center ${a.posizione}%`; }, "number"), b);
-      r.append(i, f); c.append(r);
-    }
+    C.storia ||= [];
+    const add = el("button", "az", "Nuovo racconto");
+    add.onclick = () => { const a = { id: "bozza-" + Date.now().toString(36), stato: "bozza", anno: "", epoca: "", titolo: "", occhiello: "", riassunto: "", testo: "", seoTitolo: "", seoDescrizione: "", fonti: [] }; C.storia.unshift(a); aperto = a; segna(); apri("storia"); };
+    const c = el("div", "card"); c.append(el("h2", "", "Racconti della Storia"), el("p", "nota", "Qui cambi titolo, testo, foto e tutto il resto dei racconti. Sul sito escono in ordine di anno. Le bozze restano nascoste. Dopo le modifiche premi Salva sul sito in basso."), add);
     v.append(c);
+    C.storia.forEach((a, n) => {
+      const r = el("div", "card"), t = el("div", "voce"), inf = el("div"), bozza = a.stato === "bozza";
+      inf.append(el("b", "", `${a.anno ? a.anno + ": " : ""}${a.titolo || "Senza titolo"}`), el("span", "nota", `${a.epoca || "Senza epoca"}, ${conta(a.testo)} parole${a.copertina ? ", con foto" : ""}`));
+      const seg = el("span", "segno" + (bozza ? "" : " ok"), bozza ? "Bozza" : "Pubblicato"), ap = el("button", "az sec", aperto === a ? "Chiudi" : "Modifica"), dx = el("div", "riga");
+      ap.onclick = () => { aperto = aperto === a ? null : a; apri("storia"); };
+      dx.append(seg, ap); t.append(inf, dx); r.append(t);
+      if (aperto === a) r.append(editorStoria(a, n));
+      v.append(r);
+    });
   },
   async sicurezza(v) {
     const s = await api("sicurezza"), c = el("div", "card"), es = el("p", "esito"), campoCodice = () => { const l = el("label", "", "Codice a 6 cifre dell'app"), i = el("input"); i.inputMode = "numeric"; i.maxLength = 6; i.autocomplete = "one-time-code"; l.append(i); return [l, i]; };
@@ -429,6 +433,33 @@ const PAGINE = {
     v.append(d);
   }
 };
+function editorStoria(a, n) {
+  const c = el("div", ""); c.style.cssText = "display:grid;gap:12px;border-top:1px solid var(--linea);padding-top:12px";
+  const g = el("div", "griglia"), st = el("select"), ls = el("label", "", "Stato");
+  for (const [k, t] of [["bozza", "Bozza"], ["pubblicato", "Pubblicato"]]) { const o = el("option", "", t); o.value = k; st.append(o); }
+  st.value = a.stato === "bozza" ? "bozza" : "pubblicato"; st.onchange = () => { if (st.value === "bozza") a.stato = "bozza"; else delete a.stato; segna(); }; ls.append(st);
+  const nuova = a.stato === "bozza", ind = campo("Indirizzo della pagina", a.id, x => { a.id = id(x); a.auto = 0; agg(); }), ii = ind.querySelector("input");
+  ii.disabled = !nuova; if (!nuova) ind.append(el("span", "conto", "Non si cambia dopo la pubblicazione"));
+  g.append(ls, ind, campo("Anno (es. 1983 o 1990-2003)", a.anno, x => { a.anno = /^\d{4}$/.test(x.trim()) ? +x.trim() : x.trim(); }), campo("Epoca (es. Anni Ottanta)", a.epoca, x => a.epoca = x));
+  const i = el("img"); i.src = a.copertina || "/img/stadio.jpg"; i.alt = ""; i.style.cssText = `width:100%;max-height:170px;object-fit:cover;border-radius:8px;object-position:center ${a.posizione ?? 50}%`;
+  const foto = el("div", "riga"), via = el("button", "az sec", "Rimetti sfondo generale");
+  via.onclick = () => { delete a.copertina; delete a.posizione; i.src = "/img/stadio.jpg"; segna(); };
+  foto.append(tastoFile("Cambia foto", async f => { a.copertina = await carica(f); i.src = a.copertina; segna(); }), via);
+  const pos = campo("Posizione foto (0 alto, 100 basso)", a.posizione ?? 50, x => { a.posizione = Math.min(100, Math.max(0, +x || 0)); i.style.objectPosition = `center ${a.posizione}%`; }, "number");
+  const gg = schedaGoogle("roma-plus.it/storia/" + a.id), agg = () => (gg.firstChild.textContent = "roma-plus.it/storia/" + a.id, gg).aggiorna(a.seoTitolo || `${a.titolo || "Titolo"} | Roma+`, a.seoDescrizione || a.riassunto || "");
+  const tit = campo("Titolo", a.titolo, x => { a.titolo = x; if (nuova && (/^bozza-/.test(a.id) || a.auto)) { a.auto = 1; a.id = id(x) || a.id; ii.value = a.id; } agg(); });
+  const parole = el("span", "conto"), mostraParole = () => { const q = conta(a.testo); parole.textContent = `${q} parole, consigliate tra 500 e 800`; parole.classList.toggle("no", !!q && (q < 500 || q > 800)); };
+  const testo = campo("Testo. Riga vuota tra i paragrafi, ## davanti ai sottotitoli", a.testo, x => { a.testo = x; mostraParole(); }, "area"); testo.querySelector("textarea").style.minHeight = "340px"; testo.append(parole); mostraParole();
+  const fonti = campo("Fonti, una per riga (Nome | indirizzo https://...)", (a.fonti || []).map(([x, u]) => `${x} | ${u}`).join("\n"), x => a.fonti = righe(x).map(r => { const k = r.lastIndexOf("|"); return k < 0 ? [r, ""] : [r.slice(0, k).trim(), r.slice(k + 1).trim()]; }).filter(([, u]) => /^https:\/\//.test(u)), "area");
+  const seoT = campoSeo("Titolo per Google (facoltativo)", a.seoTitolo, x => { a.seoTitolo = x.trim(); agg(); }, 30, 60), seoD = campoSeo("Descrizione per Google (facoltativa)", a.seoDescrizione, x => { a.seoDescrizione = x.trim(); agg(); }, 120, 155, "area");
+  const ant = el("div", "anteprima"); ant.hidden = true;
+  const vedi = el("button", "az sec", "Anteprima"), del = el("button", "az pericolo", "Elimina"), b = el("div", "riga");
+  vedi.onclick = () => { ant.hidden = !ant.hidden; ant.textContent = ""; ant.append(el("span", "nota", String(a.anno || "")), el("h2", "", a.titolo), el("p", "nota", a.occhiello || "")); for (const par of String(a.testo || "").split(/\n\s*\n/)) { const t = par.trim(); if (t) ant.append(t.startsWith("## ") ? el("h3", "", t.slice(3)) : el("p", "", t)); } };
+  del.onclick = () => { if (window.confirm("Eliminare il racconto? Sparisce dal sito quando premi Salva sul sito.")) { C.storia.splice(n, 1); aperto = null; segna(); apri("storia"); } };
+  b.append(vedi, del);
+  c.append(g, i, foto, pos, tit, campo("Sottotitolo (es. Pluto, 1990-2003)", a.occhiello, x => a.occhiello = x), campo("Riassunto (massimo 2 frasi, compare nell'elenco)", a.riassunto, x => { a.riassunto = x; agg(); }, "area"), testo, fonti, el("h3", "", "Google"), seoT, seoD, gg, b, ant);
+  agg(); return c;
+}
 function editor(a, n) {
   const c = el("div", ""); c.style.cssText = "display:grid;gap:12px;border-top:1px solid var(--linea);padding-top:12px";
   const g = el("div", "griglia"), tipo = el("select"), lt = el("label", "", "Tipo"), st = el("select"), ls = el("label", "", "Stato");
@@ -462,6 +493,13 @@ function controllaContenuti() {
     if (visti.has(a.id)) return `Due contenuti hanno lo stesso indirizzo: ${a.id}`;
     visti.add(a.id);
     if (a.stato !== "bozza" && (!a.titolo?.trim() || !a.testo?.trim())) return "Un contenuto pubblicato non ha titolo o testo";
+  }
+  const storie = new Set();
+  for (const a of C.storia || []) {
+    if (!/^[\w-]+$/.test(a.id || "")) return "Un racconto non ha l'indirizzo";
+    if (storie.has(a.id)) return `Due racconti hanno lo stesso indirizzo: ${a.id}`;
+    storie.add(a.id);
+    if (a.stato !== "bozza" && (!a.titolo?.trim() || !a.testo?.trim() || !String(a.anno ?? "").trim())) return `Il racconto "${a.titolo || a.id}" è pubblicato ma manca titolo, anno o testo`;
   }
 }
 let fontPost = null;

@@ -1,10 +1,9 @@
 # Racconti da scrivere, in ordine
 
-La routine prende il primo tema il cui id non è già in contenuti.storia né in una bozza non pubblicata. Andrea può cambiare l'ordine.
+La routine prende il primo tema il cui id non è già in contenuti.storia né in una bozza non pubblicata. Andrea può cambiare l'ordine. Tolto il 9 novembre su richiesta di Andrea: la retrocessione del 1951.
 
 fulvio-bernardini: Fulvio Bernardini
 amedeo-amadei: Amedeo Amadei, il Fornaretto
-retrocessione-1951: La retrocessione del 1951 e il ritorno
 giuliano-taccola: Giuliano Taccola
 nils-liedholm: Nils Liedholm
 roberto-pruzzo: Roberto Pruzzo
