@@ -1,0 +1,7 @@
+{
+  "titolo": ["La pagella", "dei tifosi"],
+  "testo": "Roma-Sassuolo 3-0. Mora e Hermoso 8, Soulé, Molina, Malen, Koné e Cristante 7.",
+  "foto": "img/curva.jpg",
+  "alto": 60,
+  "giocatori": ["img/giocatori/soule-scontorno.png", "img/giocatori/mora-scontorno.png", "img/giocatori/molina-scontorno.png"]
+}
