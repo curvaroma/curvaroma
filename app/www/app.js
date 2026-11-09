@@ -197,12 +197,33 @@ async function biglietti() {
   const tipo = sel(["Cedo", "Cerco"]), partita = sel(C.partite_biglietti), settore = sel(SETTORI), n = el("input"), prezzo = el("input"), contatto = el("input"), es = el("p", "esito"), sv = el("button", "btn", "Pubblica l'annuncio");
   n.type = "number"; n.value = 1; n.min = 1; n.max = 4; n.placeholder = "Quanti"; prezzo.type = "number"; prezzo.placeholder = "Prezzo in euro"; contatto.placeholder = "@tuoinstagram"; contatto.autocapitalize = "none";
   sv.onclick = async () => { try { await invia("/api/annunci", { tipo: tipo.value, partita: partita.value, settore: settore.value, n: +n.value, prezzo: +prezzo.value, contatto: contatto.value.trim() }); P = null; apri("biglietti"); } catch (e) { es.textContent = e.message; } };
-  f.append(el("h2", "", "Metti un annuncio"), tipo, partita, settore, n, prezzo, contatto, sv, es, el("span", "nota", "Nessun pagamento in app. Il cambio intestatario si fa solo sui canali ufficiali."));
+  f.append(el("h2", "", "Metti un annuncio"), tipo, partita, settore, n, prezzo, contatto, sv, es, el("span", "nota", "Nessun pagamento in app. Il cambio intestatario si fa solo sui canali ufficiali."), condizioni());
   const b = el("div", "card"); b.append(el("h2", "", "Bacheca"));
   if (!st.annunci.length) b.append(el("span", "nota", "Ancora nessun annuncio."));
-  for (const a of st.annunci) { const r = el("div", "riga"), t = el("div"); t.append(el("div", "", `${a.tipo}: ${a.partita}`), el("span", "nota", `${a.quanti} in ${a.settore}, ${a.prezzo} €, ${a.contatto}`)); r.append(t); b.append(r); }
+  for (const a of st.annunci) { const r = el("div", "riga"), t = el("div"); t.append(el("div", "", `${a.tipo}: ${a.partita}`), el("span", "nota", `${a.quanti} in ${a.settore}, ${a.prezzo} €, ${a.contatto}`)); if (!a.mio) t.append(tastoSegnala("annuncio", a.id)); r.append(t); b.append(r); }
   s.append(el("h1", "", "Biglietti"), f, b);
   unAnnuncio(s);
+}
+
+/* Segnalazioni: ogni annuncio di altri si può segnalare, e si possono nascondere tutti i contenuti di chi lo ha pubblicato. */
+function condizioni() {
+  const p = el("span", "nota"), l = el("a", "", "condizioni d'uso"); l.href = "#"; l.onclick = e => { e.preventDefault(); apriLink(API + "/note-legali"); };
+  p.append("Pubblicando accetti le ", l, ": niente contenuti offensivi o falsi. Gli annunci segnalati si controllano entro 24 ore."); return p;
+}
+function tastoSegnala(tipo, oggetto) {
+  const box = el("div", "segnala"), t = el("button", "", "Segnala");
+  t.onclick = () => {
+    box.textContent = "";
+    const a = el("button", "", "Segnala"), n = el("button", "", "Segnala e nascondi i suoi annunci"), x = el("button", "", "Annulla"), es = el("span", "nota");
+    const manda = async blocca => {
+      a.disabled = n.disabled = true;
+      try { await invia("/api/segnala", { tipo, oggetto, blocca }); box.textContent = ""; box.append(el("span", "nota", blocca ? "Grazie. Non vedrai più i suoi annunci e lo controlliamo entro 24 ore." : "Grazie, lo controlliamo entro 24 ore.")); if (blocca) setTimeout(() => apri("biglietti"), 1200); }
+      catch (e) { es.textContent = e.message; a.disabled = n.disabled = false; }
+    };
+    a.onclick = () => manda(false); n.onclick = () => manda(true); x.onclick = () => { box.textContent = ""; box.append(t); };
+    box.append(a, n, x, es);
+  };
+  box.append(t); return box;
 }
 
 /* Navigazione */

@@ -41,6 +41,43 @@ function leggiCookie(req) {
 }
 const scriviCookie = id => ({ "set-cookie": `${COOKIE}=${id}; Path=/; Max-Age=${ANNO}; HttpOnly; Secure; SameSite=Lax` });
 
+/* Segnalazioni (Apple 1.2, contenuti degli utenti): chi vede un annuncio o un nome in classifica fuori posto lo segnala
+   e può nascondere tutto ciò che pubblica quell'utente. Andrea le controlla nel pannello entro 24 ore.
+   Stanno in due righe di impostazioni: segnalazioni (lista) e bloccati ({ chi segnala: [autori nascosti] }). */
+const NASCOSTO_DOPO = 3;
+async function rigaJson(env, chiave, vuoto) {
+  const v = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave=?").bind(chiave).first("valore").catch(() => null);
+  try { return v ? JSON.parse(v) : vuoto; } catch { return vuoto; }
+}
+const salvaRiga = (env, chiave, valore) => env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES (?,?) ON CONFLICT DO UPDATE SET valore=excluded.valore, aggiornato=CURRENT_TIMESTAMP").bind(chiave, JSON.stringify(valore));
+async function filtroSegnalazioni(env, id) {
+  const [lista, bloccati] = await Promise.all([rigaJson(env, "segnalazioni", []), rigaJson(env, "bloccati", {})]);
+  const conta = {};
+  for (const x of lista) if (x.stato === "aperta") conta[x.tipo + "|" + x.oggetto] = (conta[x.tipo + "|" + x.oggetto] || 0) + 1;
+  const miei = new Set(bloccati[id] || []);
+  return (tipo, oggetto, autore) => !(autore && miei.has(autore)) && (conta[tipo + "|" + oggetto] || 0) < NASCOSTO_DOPO;
+}
+async function segnala(env, id, c, fine) {
+  const tipo = c.tipo, oggetto = String(c.oggetto || "").slice(0, 60), motivo = String(c.motivo || "").replace(/\s+/g, " ").trim().slice(0, 200);
+  if (!["annuncio", "nome"].includes(tipo) || !oggetto) return errore("Segnalazione non valida");
+  const r = tipo === "annuncio"
+    ? await env.DB.prepare("SELECT tifoso_id autore, tipo || ' ' || partita || ', ' || settore || ', ' || quanti || ' posti, ' || prezzo || ' euro, ' || contatto testo FROM annunci WHERE id=?").bind(oggetto).first()
+    : await env.DB.prepare("SELECT tifoso_id autore, nickname testo FROM tifosi WHERE nickname=?").bind(oggetto).first();
+  if (!r) return errore("Contenuto non trovato", 404);
+  if (r.autore === id) return errore("Non puoi segnalare un tuo contenuto");
+  const lista = await rigaJson(env, "segnalazioni", []), oggi = giorno();
+  if (lista.filter(x => x.da === id && x.creato.slice(0, 10) === oggi).length >= 20) return errore("Troppe segnalazioni per oggi", 429);
+  if (!lista.some(x => x.tipo === tipo && x.oggetto === oggetto && x.da === id && x.stato === "aperta"))
+    lista.unshift({ id: crypto.randomUUID(), tipo, oggetto, testo: r.testo, autore: r.autore, da: id, motivo, stato: "aperta", creato: new Date().toISOString() });
+  const scritture = [salvaRiga(env, "segnalazioni", lista.slice(0, 500))];
+  if (c.blocca) {
+    const bloccati = await rigaJson(env, "bloccati", {});
+    bloccati[id] = [...new Set([r.autore, ...(bloccati[id] || [])])].slice(0, 200);
+    scritture.push(salvaRiga(env, "bloccati", bloccati));
+  }
+  await env.DB.batch(scritture);
+  return fine({ ok: true });
+}
 async function stato(env, id, partita, prossima) {
   const [voti, pron, form, annunci] = await env.DB.batch([
     env.DB.prepare("SELECT giocatore, AVG(voto) m FROM voti WHERE partita=? GROUP BY giocatore ORDER BY m DESC").bind(partita),
@@ -49,7 +86,7 @@ async function stato(env, id, partita, prossima) {
     env.DB.prepare("SELECT id, tifoso_id, tipo, partita, settore, quanti, prezzo, contatto, creato FROM annunci ORDER BY creato DESC LIMIT 200")
   ]);
   const schede = await env.DB.prepare("SELECT COUNT(DISTINCT tifoso_id) n FROM voti WHERE partita=?").bind(partita).first("n");
-  const conti = {};
+  const conti = {}, visibile = await filtroSegnalazioni(env, id);
   for (const r of form.results) for (const g of JSON.parse(r.giocatori)) conti[g] = (conti[g] || 0) + 1;
   const miei = { pagella: null, pronostico: null, formazione: null };
   if (id) {
@@ -68,7 +105,7 @@ async function stato(env, id, partita, prossima) {
     pronostico: pron.results[0] || null,
     formazioni: { n: form.results.length, conti },
     miei,
-    annunci: annunci.results.map(({ tifoso_id, ...a }) => ({ ...a, mio: tifoso_id === id }))
+    annunci: annunci.results.filter(a => a.tifoso_id === id || visibile("annuncio", a.id, a.tifoso_id)).map(({ tifoso_id, ...a }) => ({ ...a, mio: tifoso_id === id }))
   };
 }
 
@@ -248,7 +285,8 @@ async function classifica(env, id) {
     env.DB.prepare("SELECT nickname FROM tifosi WHERE tifoso_id=?").bind(id || "")
   ]);
   let pos = 0, prima = null;
-  const righe = l.results.map((r, i) => {
+  const visibile = await filtroSegnalazioni(env, id);
+  const righe = l.results.filter(r => r.tifoso_id === id || visibile("nome", r.nome, r.tifoso_id)).map((r, i) => {
     const chiave = `${r.punti}|${r.esatti}`;
     if (chiave !== prima) { pos = i + 1; prima = chiave; }
     return { ...r, pos };
@@ -638,6 +676,18 @@ async function admin(ctx, p) {
       .bind(idProdotto, String(c.nome).slice(0, 80), c.link, foto, c.tipo || "maglia", c.attivo ? 1 : 0, Number(c.ordine) || 0, asin).run();
     return json({ ok: true, id: idProdotto });
   }
+  if (p[0] === "segnalazioni") {
+    const lista = await rigaJson(env, "segnalazioni", []);
+    if (req.method === "GET") return json({ segnalazioni: lista.map(({ da, autore, ...x }) => x) });
+    const s = lista.find(x => x.id === p[1]), c = await req.json().catch(() => ({}));
+    if (!s || !["elimina", "ignora"].includes(c.azione)) return errore("Segnalazione non valida");
+    const scritture = [];
+    if (c.azione === "elimina") scritture.push(s.tipo === "annuncio" ? env.DB.prepare("DELETE FROM annunci WHERE id=?").bind(s.oggetto) : env.DB.prepare("DELETE FROM tifosi WHERE nickname=?").bind(s.oggetto));
+    for (const x of lista) if (x.tipo === s.tipo && x.oggetto === s.oggetto && x.stato === "aperta") { x.stato = c.azione === "elimina" ? "eliminata" : "ignorata"; x.chiusa = new Date().toISOString(); }
+    scritture.push(salvaRiga(env, "segnalazioni", lista));
+    await env.DB.batch(scritture);
+    return json({ ok: true });
+  }
   if (p[0] === "annunci") {
     if (req.method === "GET") return json({ annunci: (await env.DB.prepare("SELECT id, tipo, partita, settore, quanti, prezzo, contatto, creato FROM annunci ORDER BY creato DESC LIMIT 300").all()).results });
     if (req.method === "DELETE") { await env.DB.prepare("DELETE FROM annunci WHERE id=?").bind(p[1] || "").run(); return json({ ok: true }); }
@@ -810,6 +860,7 @@ async function servi(ctx, app) {
       return fine({ ok: true });
     }
     if (percorso[0] === "nome") return scegliNome(ctx, id, c, fine);
+    if (percorso[0] === "segnala") return segnala(env, id, c, fine);
     if (percorso[0] === "formazione") {
       if (!idPartita(c.partita) || !Array.isArray(c.giocatori) || c.giocatori.length !== 11 || !c.giocatori.every(nome)) return errore("Formazione non valida");
       await env.DB.prepare("INSERT OR REPLACE INTO formazioni (tifoso_id, partita, giocatori) VALUES (?,?,?)").bind(id, c.partita, JSON.stringify(c.giocatori)).run();

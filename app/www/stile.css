@@ -90,3 +90,7 @@ input,select{width:100%;height:44px;border:1px solid var(--linea);border-radius:
   #avvio{animation:avvio-sfuma .3s ease .6s forwards}
 }
 @keyframes avvio-sfuma{to{opacity:0}}
+
+.segnala{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;margin-top:4px}
+.segnala button{background:none;border:0;color:var(--muto,#c9a9ae);font:inherit;font-size:.8rem;text-decoration:underline;min-height:32px;padding:0}
+.nota a{color:var(--giallo)}

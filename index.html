@@ -380,6 +380,9 @@ fieldset.campo-form{border:0;margin:0;padding:0}
 .annuncio{display:grid;gap:4px;background:var(--superficie);border:1px solid var(--linea);border-radius:14px;padding:14px}
 .annuncio strong{font-size:1.05rem}
 .annuncio button{justify-self:start;background:none;border:0;color:var(--accento);font-weight:600;min-height:40px;padding:0;cursor:pointer}
+.segnala{display:inline-flex;flex-wrap:wrap;gap:4px 14px;align-items:center;margin-left:8px}
+.segnala button{background:none;border:0;color:var(--muto);font:inherit;font-size:.8rem;text-decoration:underline;min-height:32px;padding:0;cursor:pointer}
+.annuncio .segnala{margin-left:0}
 .link-ufficiali{display:grid;gap:10px}
 
 /* Ultime cinque e classifica */
@@ -686,7 +689,7 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
         </div>
         <div class="campo-form"><label for="a-contatto">Il tuo Instagram</label><input id="a-contatto" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="31" placeholder="@nomeutente"></div>
         <label class="spunta"><input id="a-regole" type="checkbox"><span>Non supero il prezzo nominale e faccio il cambio intestatario sul sito ufficiale.</span></label>
-        <p class="nota">Il tuo Instagram sarà visibile a tutti.</p>
+        <p class="nota">Il tuo Instagram sarà visibile a tutti. Pubblicando accetti le <a href="/note-legali">condizioni d'uso</a>: niente contenuti offensivi o falsi, gli annunci segnalati si controllano entro 24 ore.</p>
         <button class="bottone pieno" type="submit">Pubblica l'annuncio</button>
         <p class="esito" id="esito-annuncio" role="status"></p>
       </form>
@@ -736,6 +739,8 @@ html:active-view-transition-type(indietro)::view-transition-new(root){animation-
       <p>Analisi, racconti e testi sono scritti per Roma+ e non possono essere copiati senza permesso. Dati, risultati e classifiche vengono da fonti pubbliche e sono controllati con cura, ma possono contenere errori: segnalaceli e li correggiamo. Le notizie in home sono titoli con link agli articoli delle testate, che restano dei rispettivi editori. Il risultato in diretta usa i dati di SportScore.</p>
       <h2>Partecipazione dei tifosi</h2>
       <p>Pagelle, pronostici, formazione dei tifosi e classifica sono un gioco tra tifosi, senza premi in denaro. Il nome che scegli per la classifica è visibile a tutti: non usare il tuo nome completo e niente nomi offensivi. Possiamo togliere nomi, voti o annunci che violano queste regole.</p>
+      <h2>Segnalazioni e contenuti vietati</h2>
+      <p>Su Roma+ non c'è posto per contenuti offensivi, falsi, discriminatori o illegali: chi pubblica annunci o sceglie un nome lo accetta. Ogni annuncio e ogni nome in classifica ha il tasto Segnala, sul sito e nell'app; puoi anche nascondere tutti i contenuti di chi li ha pubblicati. Controlliamo le segnalazioni entro 24 ore e togliamo ciò che viola queste regole. Puoi segnalare anche scrivendo a <a href="mailto:info@roma-plus.it">info@roma-plus.it</a>.</p>
       <h2>Bacheca dei biglietti</h2>
       <p>La bacheca è uno spazio di annunci tra privati. Su Roma+ non passano né pagamenti né biglietti, e Roma+ non partecipa agli accordi tra chi pubblica e chi risponde. I biglietti si comprano e si cambiano di intestatario solo sui canali ufficiali della Roma: chi pubblica un annuncio è responsabile di rispettare le condizioni d'uso dei biglietti e il regolamento dello stadio. Nell'annuncio non scrivere dati personali oltre al tuo profilo Instagram.</p>
       <h2>Responsabilità</h2>
@@ -1075,7 +1080,7 @@ function bacheca() {
       const b = el("button", "", "Elimina il tuo annuncio"); b.type = "button";
       b.onclick = () => salvaAnnunci(mieiAnnunci.filter(x => x.id !== a.id));
       c.append(b);
-    }
+    } else if (api) c.append(tastoSegnala("annuncio", a.id, () => caricaApi()));
     box.append(c);
   }
 }
@@ -1301,7 +1306,28 @@ function formaNome(box, esplicita) {
   if (esplicita === haPronostico()) return;
   const f = el("form", "nome-form lista"), l = el("label", "campo-form", "Il tuo nome in classifica"), i = el("input"), b = el("button", "bottone pieno", "Entra in classifica"), e = el("p", "esito");
   i.name = "nome"; i.maxLength = 20; i.minLength = 3; i.required = true; i.autocomplete = "nickname"; e.setAttribute("role", "status");
-  l.append(i); f.append(l, b, e); box.append(f);
+  l.append(i); f.append(l, el("p", "nota", "Il nome è visibile a tutti: niente nomi offensivi. Entrando accetti le condizioni d'uso."), b, e); box.append(f);
+}
+/* Segnala un annuncio o un nome in classifica, e se vuoi nascondi tutto ciò che pubblica quell'utente. */
+function tastoSegnala(tipo, oggetto, dopo) {
+  const box = el("span", "segnala"), t = el("button", "", "Segnala"); t.type = "button";
+  t.onclick = () => {
+    box.textContent = "";
+    const a = el("button", "", "Segnala"), n = el("button", "", "Segnala e nascondi i suoi contenuti"), x = el("button", "", "Annulla"), es = el("span", "nota");
+    for (const q of [a, n, x]) q.type = "button";
+    const invia = async blocca => {
+      a.disabled = n.disabled = true;
+      try {
+        const r = await fetch("/api/segnala", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tipo, oggetto, blocca }) });
+        const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.errore || "Non inviata, riprova");
+        box.textContent = ""; box.append(el("span", "nota", blocca ? "Grazie. Non vedrai più i suoi contenuti e lo controlliamo entro 24 ore." : "Grazie, lo controlliamo entro 24 ore."));
+        if (blocca && dopo) setTimeout(dopo, 1200);
+      } catch (e) { es.textContent = e.message; a.disabled = n.disabled = false; }
+    };
+    a.onclick = () => invia(false); n.onclick = () => invia(true); x.onclick = () => { box.textContent = ""; box.append(t); };
+    box.append(a, n, x, es);
+  };
+  box.append(t); return box;
 }
 function disegnaClassifica() {
   if (!tifosi) return;
@@ -1309,7 +1335,7 @@ function disegnaClassifica() {
   const box = $("#classifica-tifosi"); box.textContent = "";
   if (tifosi.righe.length) {
     const t = el("table", "classifica"), b = el("tbody");
-    for (const x of tifosi.righe) { const r = el("tr", x.nome === tifosi.io.nome ? "noi" : ""); r.append(el("td", "", x.pos), el("td", "", x.nome), el("td", "", `${x.punti} pt`)); b.append(r); }
+    for (const x of tifosi.righe) { const r = el("tr", x.nome === tifosi.io.nome ? "noi" : ""), nome = el("td", "", x.nome); if (x.nome !== tifosi.io.nome) nome.append(tastoSegnala("nome", x.nome, () => caricaClassifica())); r.append(el("td", "", x.pos), nome, el("td", "", `${x.punti} pt`)); b.append(r); }
     t.append(b); box.append(t);
   } else box.append(el("p", "vuoto-box", "La classifica parte con la prima partita chiusa. Fai il tuo pronostico."));
   const mio = tifosi.io.riga;
