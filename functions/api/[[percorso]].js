@@ -164,7 +164,7 @@ async function pubblico(env) {
   ]);
   const contenuti = c.results[0] ? JSON.parse(c.results[0].valore) : null;
   if (contenuti) contenuti.analisi = visibili(contenuti.analisi);
-  if (contenuti) contenuti.storia = (contenuti.storia || []).map(({ id, anno, titolo, riassunto, copertina, posizione }) => ({ id, anno, titolo, riassunto, copertina, posizione }));
+  if (contenuti) contenuti.storia = (contenuti.storia || []).filter(a => a.stato !== "bozza").map(({ id, anno, titolo, riassunto, copertina, posizione }) => ({ id, anno, titolo, riassunto, copertina, posizione }));
   const seo = s.results[0] ? JSON.parse(s.results[0].valore) : {};
   return json({
     contenuti,
@@ -359,7 +359,8 @@ function novita(prima, dopo) {
   if (q?.id && q.id !== prima?.prossima?.id) out.push({ titolo: `Vigilia: ${q.casa}-${q.ospiti}`, testo: `${q.quando}. Scegli la formazione e indovina il risultato.`, sezione: "vigilia" });
   const visti = new Set(visibili(prima?.analisi).map(a => a.id));
   for (const a of visibili(dopo?.analisi)) if (!visti.has(a.id)) out.push({ titolo: "Nuova analisi", testo: a.titolo, sezione: "analisi", id: a.id });
-  const giaStoria = new Set((prima?.storia || []).map(a => a.id)), nuove = (dopo?.storia || []).filter(a => !giaStoria.has(a.id));
+  const fuori = a => a.stato !== "bozza";
+  const giaStoria = new Set((prima?.storia || []).filter(fuori).map(a => a.id)), nuove = (dopo?.storia || []).filter(fuori).filter(a => !giaStoria.has(a.id));
   if (nuove.length === 1) out.push({ titolo: "Nuovo racconto nella Storia", testo: nuove[0].titolo, sezione: "storia", id: nuove[0].id, url: `${BASE_SITO}/storia/${nuove[0].id}` });
   else if (nuove.length > 1) out.push({ titolo: "Nuovi racconti nella Storia", testo: `${nuove.length} nuovi racconti sulla storia della Roma.`, sezione: "storia", url: `${BASE_SITO}/storia` });
   return out.slice(0, 4);
