@@ -151,7 +151,7 @@ async function analisi() {
   const { contenuti: C } = await pubblico();
   s.append(el("h1", "", "Analisi"));
   for (const a of C.analisi) {
-    const c = el("article", "card art"), i = el("img"), d = el("div"); i.src = assoluta(a.copertina || "/img/lavagna.jpg"); i.alt = ""; i.loading = "lazy";
+    const c = el("article", "card art"), i = el("img"), d = el("div"); i.src = assoluta(a.copertina || P?.immagini?.analisi || "/img/lavagna.jpg"); i.alt = ""; i.loading = "lazy";
     d.append(el("span", "meta", a.occhiello || ""), el("h2", "", a.titolo), el("span", "nota", a.riassunto || ""));
     c.append(i, d); c.onclick = () => leggi(a); s.append(c);
     if (s.querySelectorAll(".art").length % 3 === 0) unAnnuncio(s);

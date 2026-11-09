@@ -886,11 +886,12 @@ function tabellini() {
   tutti("[data-modulo]").forEach(t => t.textContent = `Modulo ${q.modulo || "3-4-2-1"}. Tocca i giocatori per metterli in campo.`);
 }
 const TIPI = { partita: "Analisi partita", stagione: "Analisi di stagione", focus: "Focus giocatore", extra: "Approfondimento" };
+let COPERTINA_ANALISI = "";
 function articolo(a, modo) {
   const pieno = modo === "pieno", casa = modo === "casa";
   const art = el("article", "articolo");
   if (pieno) art.id = "a-" + a.id;
-  const cor = el("span", "cornice"), img = el("img", "copertina"); img.src = a.copertina || "/img/lavagna.jpg"; img.alt = ""; img.loading = "lazy";
+  const cor = el("span", "cornice"), img = el("img", "copertina"); img.src = a.copertina || COPERTINA_ANALISI || "/img/lavagna.jpg"; img.alt = ""; img.loading = "lazy";
   cor.append(img); art.append(cor);
   art.append(el("span", "tag", TIPI[a.tipo] || (casa ? "Ultima analisi" : "Analisi")));
   art.append(el(pieno ? "h1" : casa ? "h3" : "h2", "", a.titolo));
@@ -1561,6 +1562,7 @@ function applica(p) {
   }
   for (const [v, u] of Object.entries(PERCORSI)) if (p.seo?.pagine?.[u]?.titolo) TITOLI[v] = p.seo.pagine[u].titolo;
   const im = p.immagini || {};
+  if (im.analisi) COPERTINA_ANALISI = im.analisi;
   if (im.testata) for (const f of [$("#foto-testata"), $("#eroe-foto")]) { f.srcset = ""; f.src = im.testata; }
   if (im.testataForza) document.documentElement.style.setProperty("--foto-forza", Number(im.testataForza) / 100);
   if (im.pagelle) document.documentElement.style.setProperty("--img-pagelle", `url("${encodeURI(im.pagelle)}")`);
