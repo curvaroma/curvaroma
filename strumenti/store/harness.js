@@ -30,7 +30,7 @@ async function scatta(pg, sez, file, prep) {
     if (u.hostname === "app.local") { const f = W + (u.pathname === "/" ? "index.html" : u.pathname.slice(1)); try { return r.fulfill({ body: fs.readFileSync(f), contentType: f.endsWith(".html") ? "text/html" : f.endsWith(".css") ? "text/css" : f.endsWith(".js") ? "application/javascript" : undefined }); } catch { return r.fulfill({ status: 404, body: "" }); } }
     if (u.hostname === "roma-plus.it") {
       if (u.pathname === "/api/pubblico") return r.fulfill({ json: { contenuti: C, pagelle: P, prodotti: [], immagini: {}, seo: {} } });
-      if (u.pathname === "/api/stato") return r.fulfill({ json: { schede: 0, medie, pronostico: null, formazioni: { n: 0, conti: {} }, miei: { pagella: null, pronostico: null, formazione: null }, annunci: [], voto: { aperte: true, chiusura: "2026-11-09T23:00:00.000Z" } } });
+      if (u.pathname === "/api/stato") return r.fulfill({ json: { schede: 0, medie, pronostico: null, formazioni: { n: 0, conti: {} }, miei: { pagella: null, pronostico: { casa: 0, ospiti: 2 }, formazione: null }, annunci: [], voto: { aperte: true, chiusura: "2026-11-09T23:00:00.000Z" } } });
       if (u.pathname.startsWith("/api/")) return r.fulfill({ json: {} });
       try { return r.fulfill({ body: fs.readFileSync(R + u.pathname.slice(1)) }); } catch { return r.fulfill({ status: 404, body: "" }); }
     }
