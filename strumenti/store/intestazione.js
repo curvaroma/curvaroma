@@ -22,7 +22,7 @@ h1 b{color:#FFF6F0;font-weight:900}
 <div class="fascia" style="left:${-W * .12}px;top:${H * .08}px;transform:rotate(-24deg)"></div>
 <div class="fascia" style="right:${-W * .12}px;bottom:${H * .1}px;transform:rotate(-24deg)"></div>
 <div class="raggio" style="left:${W * .2}px;transform:rotate(28deg);opacity:.35"></div><div class="raggio" style="right:${W * .2}px;transform:rotate(-28deg);opacity:.35"></div>
-<h1>Il voto è <b>dei tifosi</b></h1>
+<h1>La Roma è <b>dei tifosi</b></h1>
 ${tel("4-analisi", -pw * 0.82, -9, ph * 0.08, 1, 0.9)}${tel("3-vigilia", pw * 0.82, 9, ph * 0.08, 1, 0.9)}${tel("1-pagelle", 0, 0, 0, 2, 1)}`;
 };
 (async () => {
