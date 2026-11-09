@@ -33,9 +33,14 @@ jobs:
       - name: Keystore di firma
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.CURVAROMA_ANDROID_KEYSTORE_BASE64 }}
+          P: ${{ secrets.CURVAROMA_ANDROID_KEYSTORE_PASSWORD }}
         run: |
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
             python3 "$GITHUB_WORKSPACE/.github/scripts/segreto.py" ANDROID_KEYSTORE_BASE64 android/app/curvaroma-release.keystore
+          elif [ -f android/app/chiave-upload.jks.enc ] && [ -n "$P" ]; then
+            # chiave creata dal workflow "Crea chiave Android", salvata cifrata nel repository
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -in android/app/chiave-upload.jks.enc -out android/app/curvaroma-release.keystore -pass env:P
+            echo "Chiave del repository decifrata"
           else
             echo "::warning::Keystore assente: il bundle non sarà firmato e non si può caricare su Google Play."
           fi
@@ -43,8 +48,8 @@ jobs:
         working-directory: app/android
         env:
           CURVAROMA_KEYSTORE_PASSWORD: ${{ secrets.CURVAROMA_ANDROID_KEYSTORE_PASSWORD }}
-          CURVAROMA_KEY_ALIAS: ${{ secrets.CURVAROMA_ANDROID_KEY_ALIAS }}
-          CURVAROMA_KEY_PASSWORD: ${{ secrets.CURVAROMA_ANDROID_KEY_PASSWORD }}
+          CURVAROMA_KEY_ALIAS: ${{ secrets.CURVAROMA_ANDROID_KEY_ALIAS || 'romaplus' }}
+          CURVAROMA_KEY_PASSWORD: ${{ secrets.CURVAROMA_ANDROID_KEY_PASSWORD || secrets.CURVAROMA_ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_VERSION_CODE: ${{ github.run_number }}
         run: ./gradlew bundleRelease
       # Google Play accetta solo bundle firmati: qui si vede subito se lo è.

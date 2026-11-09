@@ -1,0 +1,31 @@
+# Crea una volta sola la chiave di caricamento per Google Play, senza installare niente sul computer.
+# Serve solo il secret CURVAROMA_ANDROID_KEYSTORE_PASSWORD (una password lunga scelta da Andrea).
+# La chiave viene salvata nel repository CIFRATA con quella password (AES-256): senza la password non serve a nulla.
+name: Crea chiave Android
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  chiave:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Crea e cifra la chiave
+        env:
+          P: ${{ secrets.CURVAROMA_ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          F=app/android/app/chiave-upload.jks.enc
+          if [ -z "$P" ]; then echo "::error::Manca il secret CURVAROMA_ANDROID_KEYSTORE_PASSWORD"; exit 1; fi
+          if [ ${#P} -lt 16 ]; then echo "::error::La password deve avere almeno 16 caratteri"; exit 1; fi
+          if [ -f "$F" ]; then echo "::error::La chiave esiste già: non la sovrascrivo"; exit 1; fi
+          keytool -genkeypair -storetype PKCS12 -keystore "$RUNNER_TEMP/k.jks" -alias romaplus -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Roma Plus, L=Roma, C=IT" -storepass "$P" -keypass "$P"
+          openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -in "$RUNNER_TEMP/k.jks" -out "$F" -pass env:P
+          rm "$RUNNER_TEMP/k.jks"
+          keytool -list -keystore <(openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -in "$F" -pass env:P) -storepass "$P" -storetype PKCS12 2>/dev/null | grep -i romaplus || true
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$F" && git commit -m "Chiave di caricamento Android, cifrata [skip ci]" && git push
+          echo "Chiave creata e salvata cifrata in $F"
