@@ -279,7 +279,7 @@ const PAGINE = {
     const { scelte, immagini } = await api("aspetto");
     const c = el("div", "card"); c.append(el("h2", "", "Immagini del sito"), el("p", "nota", "Usa foto tue o con licenza."));
     const g = el("div", "griglia");
-    for (const [k, t, base] of [["testata", "Foto della home e della testata", "/img/tifosi.jpg"], ["pagelle", "Sfondo Pagelle", "/img/curva.jpg"], ["vigilia", "Sfondo Vigilia", "/img/stadio.jpg"], ["storia", "Sfondo Storia, se il racconto non ha una foto", "/img/stadio.jpg"], ["radio", "Sfondo Radio", "/img/stadio.jpg"]]) {
+    for (const [k, t, base] of [["testata", "Foto della home e della testata", "/img/tifosi.jpg"], ["pagelle", "Sfondo Pagelle", "/img/curva.jpg"], ["vigilia", "Sfondo Vigilia", "/img/stadio.jpg"], ["analisi", "Copertina delle Analisi, se l'articolo non ne ha una", "/img/lavagna.jpg"], ["storia", "Sfondo Storia, se il racconto non ha una foto", "/img/stadio.jpg"], ["radio", "Sfondo Radio", "/img/stadio.jpg"]]) {
       const b = el("div", ""), i = el("img"); b.style.cssText = "display:grid;gap:8px"; i.src = scelte[k] || base; i.alt = ""; i.style.cssText = "width:100%;height:120px;object-fit:cover;border-radius:8px";
       b.append(el("b", "", t), i, tastoFile("Cambia immagine", async f => { const u = await carica(f); scelte[k] = u; await post("aspetto", scelte); i.src = u; }));
       if (scelte[k]) { const x = el("button", "az sec", "Rimetti originale"); x.onclick = async () => { delete scelte[k]; await post("aspetto", scelte); apri("immagini"); }; b.append(x); }
@@ -322,7 +322,7 @@ const PAGINE = {
   },
   contenuti(v) {
     const add = el("button", "az", "Nuovo contenuto");
-    add.onclick = () => { const a = { id: "bozza-" + Date.now().toString(36), stato: "bozza", tipo: "partita", data: oggi(), titolo: "", occhiello: "", riassunto: "", testo: "", copertina: "/img/lavagna.jpg", confronto: [], seoTitolo: "", seoDescrizione: "" }; C.analisi.unshift(a); aperto = a; segna(); apri("contenuti"); };
+    add.onclick = () => { const a = { id: "bozza-" + Date.now().toString(36), stato: "bozza", tipo: "partita", data: oggi(), titolo: "", occhiello: "", riassunto: "", testo: "", confronto: [], seoTitolo: "", seoDescrizione: "" }; C.analisi.unshift(a); aperto = a; segna(); apri("contenuti"); };
     const c = el("div", "card"); c.append(el("h2", "", "Contenuti del sito"), el("p", "nota", "Le bozze restano nascoste. Un contenuto pubblicato con data futura esce da solo quel giorno. Il primo pubblicato della lista appare in home."), add);
     v.append(c);
     C.analisi.forEach((a, n) => {
@@ -460,6 +460,14 @@ function editorStoria(a, n) {
   c.append(g, i, foto, pos, tit, campo("Sottotitolo (es. Pluto, 1990-2003)", a.occhiello, x => a.occhiello = x), campo("Riassunto (massimo 2 frasi, compare nell'elenco)", a.riassunto, x => { a.riassunto = x; agg(); }, "area"), testo, fonti, el("h3", "", "Google"), seoT, seoD, gg, b, ant);
   agg(); return c;
 }
+let COPERTINA_ANALISI = "";
+fetch("/api/admin/aspetto").then(r => r.ok ? r.json() : {}).then(d => { COPERTINA_ANALISI = d.scelte?.analisi || ""; }).catch(() => {});
+function copertinaAnalisi(a, i) {
+  const r = el("div", "riga"), via = el("button", "az sec", "Usa la copertina generale");
+  via.onclick = () => { delete a.copertina; i.src = COPERTINA_ANALISI || "/img/lavagna.jpg"; segna(); };
+  r.append(tastoFile(a.copertina ? "Cambia copertina" : "Aggiungi copertina", async f => { a.copertina = await carica(f); i.src = a.copertina; segna(); }), via, el("span", "nota", "Senza copertina vale quella generale, che cambi nella scheda Immagini."));
+  return r;
+}
 function editor(a, n) {
   const c = el("div", ""); c.style.cssText = "display:grid;gap:12px;border-top:1px solid var(--linea);padding-top:12px";
   const g = el("div", "griglia"), tipo = el("select"), lt = el("label", "", "Tipo"), st = el("select"), ls = el("label", "", "Stato");
@@ -470,7 +478,7 @@ function editor(a, n) {
   const nuova = a.stato === "bozza", ind = campo("Indirizzo della pagina", a.id, x => { a.id = id(x); a.auto = 0; agg(); }), ii = ind.querySelector("input");
   ii.disabled = !nuova; if (!nuova) ind.append(el("span", "conto", "Non si cambia dopo la pubblicazione"));
   g.append(lt, ls, campo("Data (AAAA-MM-GG)", a.data || "", x => a.data = x.trim(), "date"), ind);
-  const i = el("img"); i.src = a.copertina || "/img/lavagna.jpg"; i.alt = ""; i.style.cssText = "width:100%;max-height:170px;object-fit:cover;border-radius:8px";
+  const i = el("img"); i.src = a.copertina || COPERTINA_ANALISI || "/img/lavagna.jpg"; i.alt = ""; i.style.cssText = "width:100%;max-height:170px;object-fit:cover;border-radius:8px";
   const gg = schedaGoogle("roma-plus.it/analisi/" + a.id), agg = () => (gg.firstChild.textContent = "roma-plus.it/analisi/" + a.id, gg).aggiorna(a.seoTitolo || `${a.titolo || "Titolo"} | Roma+`, a.seoDescrizione || a.riassunto || "");
   const tit = campo("Titolo", a.titolo, x => { a.titolo = x; if (nuova && /^bozza-/.test(a.id) || nuova && a.auto) { a.auto = 1; a.id = id(x) || a.id; ii.value = a.id; } agg(); });
   const parole = el("span", "conto"), mostraParole = () => { const q = conta(a.testo); parole.textContent = `${q} parole, consigliate almeno 400`; parole.classList.toggle("no", q < 400); };
@@ -483,7 +491,7 @@ function editor(a, n) {
   su.disabled = !n; su.onclick = () => { C.analisi.splice(n - 1, 0, C.analisi.splice(n, 1)[0]); segna(); apri("contenuti"); };
   del.onclick = () => { if (window.confirm("Eliminare il contenuto?")) { C.analisi.splice(n, 1); aperto = null; segna(); apri("contenuti"); } };
   b.append(vedi, su, del);
-  c.append(g, i, tastoFile("Cambia copertina", async f => { a.copertina = await carica(f); i.src = a.copertina; segna(); }), tit, campo("Sottotitolo", a.occhiello, x => a.occhiello = x), campo("Riassunto per la home", a.riassunto, x => { a.riassunto = x; agg(); }, "area"), testo, stat, el("h3", "", "Come appare su Google"), seoT, seoD, gg, b, ant);
+  c.append(g, i, copertinaAnalisi(a, i), tit, campo("Sottotitolo", a.occhiello, x => a.occhiello = x), campo("Riassunto per la home", a.riassunto, x => { a.riassunto = x; agg(); }, "area"), testo, stat, el("h3", "", "Come appare su Google"), seoT, seoD, gg, b, ant);
   agg(); return c;
 }
 function controllaContenuti() {
