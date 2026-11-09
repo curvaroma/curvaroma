@@ -16,6 +16,20 @@ const PER_TESTATA = 5;
 const json = (dati, stato = 200, extra = {}) => new Response(JSON.stringify(dati), { status: stato, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...extra } });
 const errore = (messaggio, stato = 400) => json({ errore: messaggio }, stato);
 const idPartita = s => typeof s === "string" && /^[a-z0-9-]{3,40}$/.test(s);
+// Finestra di voto delle pagelle (decisa da Andrea il 9 novembre): 48 ore dal fischio finale.
+// Le pagelle automatiche salvano partita.chiusura. Senza quel campo vale la data in fondo all'id:
+// si vota fino alla mezzanotte (ora di Roma, CET) di due giorni dopo la gara. Senza data, il voto resta aperto.
+const ORE_VOTO = 48;
+function chiusuraPagelle(p) {
+  if (p?.chiusura) return Date.parse(p.chiusura);
+  const d = String(p?.id || "").match(/(\d{4}-\d{2}-\d{2})$/);
+  return d ? Date.parse(d[1] + "T00:00:00Z") + 3 * 864e5 - 3600e3 : Infinity;
+}
+async function pagelleAperte(env, partita) {
+  const riga = await env.DB.prepare("SELECT json_extract(valore,'$.partita') p FROM impostazioni WHERE chiave='contenuti'").first("p");
+  const p = riga ? JSON.parse(riga) : null;
+  return { aperte: !!p && p.id === partita && Date.now() < chiusuraPagelle(p), chiusura: p?.id === partita && chiusuraPagelle(p) < Infinity ? new Date(chiusuraPagelle(p)).toISOString() : null };
+}
 const nome = s => typeof s === "string" && s.length >= 2 && s.length <= 30 && /^[\p{L} .'-]+$/u.test(s);
 
 // L'app non usa cookie: invia il proprio id nell'intestazione x-tifoso.
@@ -672,7 +686,7 @@ async function apriPagelle(ctx, contenuti, q, m, nomeDi) {
   }
   const casa = nomeDi(m.home), ospiti = nomeDi(m.away), golCasa = Number(m.home_score) || 0, golOspiti = Number(m.away_score) || 0;
   const partita = {
-    id, competizione: q.competizione, casa, ospiti, golCasa, golOspiti, titolari,
+    id, competizione: q.competizione, casa, ospiti, golCasa, golOspiti, titolari, chiusura: new Date(Date.now() + ORE_VOTO * 3600e3).toISOString(),
     data: new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", day: "numeric", month: "long" }).format(new Date(q.inizio)),
     gol: (m.incidents || []).filter(x => x.is_goal).map(x => [Number(x.time) || 0, x.side === "home" ? "casa" : "ospiti"])
   };
@@ -757,7 +771,7 @@ async function servi(ctx, app) {
     if (req.method === "GET" && percorso[0] === "stato") {
       const p = url.searchParams.get("partita"), q = url.searchParams.get("prossima");
       if (!idPartita(p) || !idPartita(q)) return errore("Partita non valida");
-      return json(await stato(env, id, p, q));
+      return json({ ...(await stato(env, id, p, q)), voto: await pagelleAperte(env, p) });
     }
     if (req.method === "GET" && percorso[0] === "classifica") return json(await classifica(env, id));
     if (req.method !== "POST" && req.method !== "DELETE") return errore("Metodo non consentito", 405);
@@ -777,6 +791,7 @@ async function servi(ctx, app) {
       const voci = Object.entries(c.voti || {});
       if (!idPartita(c.partita) || !voci.length || voci.length > 16) return errore("Voti non validi");
       if (!voci.every(([g, v]) => nome(g) && Number.isInteger(v * 2) && v >= 1 && v <= 10)) return errore("Voti non validi");
+      if (!(await pagelleAperte(env, c.partita)).aperte) return fine({ errore: "Il voto per questa partita è chiuso" }, 409);
       await env.DB.batch([
         env.DB.prepare("DELETE FROM voti WHERE tifoso_id=? AND partita=?").bind(id, c.partita),
         ...voci.map(([g, v]) => env.DB.prepare("INSERT INTO voti (tifoso_id, partita, giocatore, voto) VALUES (?,?,?,?)").bind(id, c.partita, g, v))
