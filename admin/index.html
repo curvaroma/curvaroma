@@ -85,7 +85,7 @@ const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
 const api = async (u, o = {}) => { const r = await fetch("/api/admin/" + u, o); const d = await r.json().catch(() => ({})); if (r.status === 401 && u !== "login") { entra(false); throw new Error("Accesso richiesto"); } if (!r.ok) throw new Error(d.errore || d.error?.message || "Errore"); return d; };
 const post = (u, d, m = "POST") => api(u, { method: m, headers: { "content-type": "application/json" }, body: JSON.stringify(d) });
-const SCHEDE = [["bozze","Bozze"],["traffico","Traffico"],["contenuti","Contenuti"],["storia","Storia"],["post","Post Instagram"],["seo","SEO"],["partita","Partita e pagelle"],["vigilia","Vigilia"],["tifosi","Classifica tifosi"],["classifica","Classifica Serie A"],["annunci","Annunci Amazon"],["immagini","Immagini"],["biglietti","Biglietti"],["radio","Radio"],["sicurezza","Sicurezza"]];
+const SCHEDE = [["bozze","Bozze"],["segnalazioni","Segnalazioni"],["traffico","Traffico"],["contenuti","Contenuti"],["storia","Storia"],["post","Post Instagram"],["seo","SEO"],["partita","Partita e pagelle"],["vigilia","Vigilia"],["tifosi","Classifica tifosi"],["classifica","Classifica Serie A"],["annunci","Annunci Amazon"],["immagini","Immagini"],["biglietti","Biglietti"],["radio","Radio"],["sicurezza","Sicurezza"]];
 const TIPI = { partita: "Analisi partita", stagione: "Analisi di stagione", focus: "Focus giocatore", extra: "Approfondimento" };
 const conta = t => (String(t || "").match(/\S+/g) || []).length;
 const oggi = () => new Date().toISOString().slice(0, 10);
@@ -123,6 +123,24 @@ function tastoFile(testo, suFile) {
 
 const STATI_BOZZA = { bozza: ["Da controllare", ""], "da-rivedere": ["Resta in bozza", "no"], pubblicata: ["Pubblicata", "ok"] };
 const PAGINE = {
+  async segnalazioni(v) {
+    const { segnalazioni } = await api("segnalazioni"), aperte = segnalazioni.filter(x => x.stato === "aperta");
+    const c = el("div", "card"); c.append(el("h2", "", "Segnalazioni"), el("p", "nota", "Annunci e nomi in classifica segnalati dai tifosi. Promesso nelle schede degli store: si controllano entro 24 ore. Con 3 segnalazioni aperte il contenuto si nasconde da solo finché non decidi."));
+    if (!aperte.length) c.append(el("p", "", "Nessuna segnalazione da controllare."));
+    const viste = new Set();
+    for (const x of aperte) {
+      const k = x.tipo + "|" + x.oggetto; if (viste.has(k)) continue; viste.add(k);
+      const quante = aperte.filter(y => y.tipo + "|" + y.oggetto === k).length, r = el("div", "voce"), inf = el("div"), dx = el("div", "riga"), es = el("span", "esito");
+      inf.append(el("b", "", (x.tipo === "annuncio" ? "Annuncio: " : "Nome in classifica: ") + (x.testo || x.oggetto)), el("span", "nota", `${quante} ${quante === 1 ? "segnalazione" : "segnalazioni"}, la prima il ${new Date(x.creato).toLocaleString("it-IT")}${x.motivo ? ", motivo: " + x.motivo : ""}`));
+      const del = el("button", "az pericolo", x.tipo === "annuncio" ? "Elimina l'annuncio" : "Togli il nome"), ok = el("button", "az sec", "Va bene, ignora");
+      const fai = async azione => { try { await post(`segnalazioni/${encodeURIComponent(x.id)}`, { azione }); apri("segnalazioni"); } catch (e) { es.textContent = e.message; } };
+      del.onclick = () => { if (window.confirm("Eliminare questo contenuto?")) fai("elimina"); }; ok.onclick = () => fai("ignora");
+      dx.append(del, ok, es); r.append(inf, dx); r.style.cssText = "border-top:1px solid var(--linea);padding-top:12px"; c.append(r);
+    }
+    const chiuse = segnalazioni.filter(x => x.stato !== "aperta").slice(0, 20);
+    if (chiuse.length) { c.append(el("h3", "", "Già controllate")); for (const x of chiuse) c.append(el("p", "nota", `${x.stato === "eliminata" ? "Eliminato" : "Ignorato"}: ${x.testo || x.oggetto}`)); }
+    v.append(c);
+  },
   async bozze(v) {
     const { bozze } = await api("bozze");
     if (!bozze.length) { const c = el("div", "card"); c.append(el("h2", "", "Bozze"), el("p", "nota", "Nessuna bozza da controllare.")); v.append(c); return; }
