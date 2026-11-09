@@ -23,7 +23,7 @@ jobs:
           GSJ: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
         run: |
           if [ -n "$GSJ" ]; then
-            echo "$GSJ" | base64 -d > android/app/google-services.json
+            python3 "$GITHUB_WORKSPACE/.github/scripts/segreto.py" GSJ android/app/google-services.json
             echo "Notifiche attive"
           else
             echo "::warning::GOOGLE_SERVICES_JSON_BASE64 assente: build senza notifiche."

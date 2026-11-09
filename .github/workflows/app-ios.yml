@@ -30,7 +30,7 @@ jobs:
         run: |
           ATTIVE=no
           if [ "$HA_FIRMA" = "true" ] && [ -n "$PLIST" ]; then
-            echo "$PROFILO" | base64 -d > $RUNNER_TEMP/prof.mobileprovision
+            python3 "$GITHUB_WORKSPACE/.github/scripts/segreto.py" PROFILO $RUNNER_TEMP/prof.mobileprovision
             security cms -D -i $RUNNER_TEMP/prof.mobileprovision > $RUNNER_TEMP/prof.plist
             if /usr/libexec/PlistBuddy -c 'Print :Entitlements:aps-environment' $RUNNER_TEMP/prof.plist >/dev/null 2>&1; then
               ATTIVE=si
@@ -41,7 +41,7 @@ jobs:
             echo "::warning::GOOGLE_SERVICE_INFO_PLIST_BASE64 o firma assenti: build senza notifiche."
           fi
           if [ "$ATTIVE" = si ]; then
-            echo "$PLIST" | base64 -d > ios/App/App/GoogleService-Info.plist
+            python3 "$GITHUB_WORKSPACE/.github/scripts/segreto.py" PLIST ios/App/App/GoogleService-Info.plist
             echo "PUSH_IOS=si" >> $GITHUB_ENV
             echo "Notifiche attive"
           else
@@ -89,7 +89,7 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$PW" "$KC"
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           F=~/Library/MobileDevice/Provisioning\ Profiles/curvaroma.mobileprovision
-          echo "$PROFILO" | base64 -d > "$F"
+          python3 "$GITHUB_WORKSPACE/.github/scripts/segreto.py" PROFILO "$F"
           security cms -D -i "$F" > $RUNNER_TEMP/p.plist
           echo "PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' $RUNNER_TEMP/p.plist)" >> $GITHUB_ENV
       - name: Firma nel progetto Xcode
