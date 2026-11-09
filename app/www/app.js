@@ -119,6 +119,10 @@ async function pagelle() {
   t.append(tb, el("span", "nota", `${p.competizione}, ${p.data}`));
   s.append(el("h1", "", "Pagelle dei tifosi"), t);
   const voti = { ...(st.miei.pagella || {}) }, box = el("div", "card");
+  if (st.voto && !st.voto.aperte) {
+    box.append(el("h2", "", "Il voto è chiuso"), el("p", "nota", "Si vota per 48 ore dal fischio finale. Qui sotto il voto dei tifosi."));
+    s.append(box);
+  } else {
   box.append(el("h2", "", "Dai i tuoi voti"));
   for (const [nome, ruolo] of p.titolari) {
     const g = el("div", "gioc"), r = el("div", "voti"), tit = el("div"); tit.append(el("b", "", nome), el("span", "nota", ` ${ruolo}`));
@@ -135,6 +139,7 @@ async function pagelle() {
     try { await invia("/api/voti", { partita: p.id, voti }); es.textContent = "Voti salvati. Forza Roma!"; } catch (e) { es.textContent = e.message; }
   };
   box.append(sv, es); s.append(box);
+  }
   unAnnuncio(s);
   if (st.medie.length) { const m = el("div", "card"); m.append(el("h2", "", "Il voto dei tifosi")); for (const x of st.medie) { const r = el("div", "riga"); r.append(el("span", "", x.n), el("b", "", x.m.toFixed(1).replace(".", ",").replace(",0", ""))); m.append(r); } s.append(m); }
   if (arch?.length > 1) { const m = el("div", "card"); m.append(el("h2", "", "Tutte le pagelle")); for (const x of arch) { const r = el("div", "riga"); r.append(el("span", "", `${x.casa}-${x.ospiti} ${x.golCasa}-${x.golOspiti}`), el("span", "nota", x.data)); r.onclick = () => apriLink(`${API}/pagelle/${x.slug}`); m.append(r); } s.append(m); }

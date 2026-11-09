@@ -1083,12 +1083,12 @@ async function salva(campo, chiave, valore) {
 const conferma = ok => ok ? "Salvato." : "Salvato su questo telefono. Nella versione online conterà per tutti.";
 
 /* Medie */
-let api = false, riepilogo = null;
+let api = false, riepilogo = null, votoChiuso = false;
 async function caricaApi() {
   const r = await fetch(`/api/stato?partita=${PARTITA}&prossima=${PROSSIMA}`);
   if (!r.ok) throw new Error("api");
   const d = await r.json();
-  api = true; soloQui = false; riepilogo = d;
+  api = true; soloQui = false; riepilogo = d; votoChiuso = d.voto ? !d.voto.aperte : false;
   const mio = {};
   if (d.miei.pagella) mio.pagella = { [PARTITA]: d.miei.pagella };
   if (d.miei.pronostico) mio.pronostico = { [PROSSIMA]: d.miei.pronostico };
@@ -1097,6 +1097,7 @@ async function caricaApi() {
   annunciTutti = d.annunci.map(a => ({ ...a, n: a.quanti, quando: a.creato }));
   mieiAnnunci = annunciTutti.filter(a => a.mio).map(({ mio, ...a }) => a);
   if (!modifiche) { disegnaPronostico(); disegnaCampo(); disegnaRosa(); }
+  if (votoChiuso) mazzi();
   risultati(); esitoPronostico(); xiTifosi(); bacheca();
   if (inviatoVoti && !rivedi) mazzi();
 }
@@ -1123,6 +1124,18 @@ function tacche() {
 function mazzi(dir) { tutti("[data-mazzo]").forEach(b => mazzo(b, dir)); }
 function mazzo(box, dir) {
   box.textContent = "";
+  if (votoChiuso) {
+    const c = el("div", "scheda chiusa"), lista = el("div", "podio");
+    c.append(el("h3", "", "Il voto è chiuso"), el("small", "", "Si vota per 48 ore dal fischio finale. Ecco i migliori per i tifosi."));
+    medie().slice(0, 3).forEach(x => lista.append(barra(x)));
+    c.append(lista);
+    if (Object.keys(stato.pagella).length) {
+      const st = el("button", "bottone pieno", "Condividi in Storia"); st.type = "button"; st.onclick = () => condividiPagella(st);
+      c.append(st, el("p", "nota esito-storia", "Aggiungi il link roma-plus.it alla Storia."));
+    }
+    if (box.dataset.mazzo === "casa") { const a = el("a", "bottone pieno", "Vedi tutte le pagelle"); a.href = "/pagelle"; c.append(a); }
+    box.append(c); return;
+  }
   if (inviatoVoti && !rivedi) {
     const c = el("div", "scheda chiusa"), lista = el("div", "podio");
     const home = box.dataset.mazzo === "casa";
@@ -1190,11 +1203,11 @@ function passa(dir) {
 }
 function risultati() {
   const casa = $("#migliori-casa"); casa.textContent = "";
-  if (inviatoVoti && quanteSchede()) { casa.append(el("p", "", "I migliori per i tifosi")); medie().slice(0, 3).forEach(x => casa.append(barra(x))); }
+  if ((inviatoVoti || votoChiuso) && quanteSchede()) { casa.append(el("p", "", "I migliori per i tifosi")); medie().slice(0, 3).forEach(x => casa.append(barra(x))); }
   else casa.append(el("p", "", quanteSchede() ? "Dai i tuoi voti e scopri i migliori secondo i tifosi." : "Dai i tuoi voti."));
   const box = $("#risultati"); box.textContent = "";
   if (!quanteSchede()) { box.append(el("p", "vuoto-box", "Vota e scopri la classifica dei tifosi.")); return; }
-  if (!inviatoVoti) { box.append(el("p", "vuoto-box", "Invia i tuoi voti per vedere la media dei tifosi.")); return; }
+  if (!inviatoVoti && !votoChiuso) { box.append(el("p", "vuoto-box", "Invia i tuoi voti per vedere la media dei tifosi.")); return; }
   medie().forEach(x => box.append(barra(x)));
 }
 
