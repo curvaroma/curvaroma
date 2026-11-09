@@ -37,9 +37,12 @@ export const PAGINE = {
   "/giocatori": ["Giocatori della Roma: la rosa e i voti dei tifosi | Roma+", "Tutti i giocatori della Roma 2026/27: numeri di maglia, ruoli e media voto dei tifosi romanisti, partita dopo partita."],
   "/radio": ["Radio Curva: la storia della Roma in onda | Roma+", "Radio Curva trasmette i racconti della storia della Roma: scudetti, notti europee, capitani e Curva Sud. Una radio di tifosi, sempre in onda."],
   "/storia": ["Storia della Roma: partite, Curva Sud e ricordi | Roma+", "La storia della Roma raccontata dai tifosi: Campo Testaccio, la Curva Sud, gli scudetti, le notti europee e i capitani che non dimentichiamo."],
+  "/note-legali": ["Note legali e condizioni d'uso | Roma+", "Note legali di Roma+, sito di tifosi non ufficiale: marchi, affiliazione Amazon, regole per pagelle, classifica e bacheca dei biglietti."],
+  "/privacy": ["Privacy policy | Roma+", "Come Roma+ tratta i dati di chi usa il sito e l'app: dati di navigazione, pagelle, pronostici, annunci e notifiche."],
+  "/cookie": ["Cookie policy | Roma+", "Roma+ usa solo cookie tecnici e memoria locale del browser, senza profilazione né pubblicità di terze parti."],
   "/tifosi-roma": ["Tifosi della Roma: la casa dei romanisti | Roma+", "Roma+ è il sito indipendente della tifoseria della Roma: notizie, pagelle, analisi e partecipazione per tutti i romanisti. Forza Roma!"]
 };
-const VISTE = { "/": "casa", "/pagelle": "pagella", "/vigilia": "vigilia", "/analisi": "analisi", "/biglietti": "biglietti", "/giocatori": "giocatori", "/storia": "storia", "/radio": "radio", "/tifosi-roma": "tifosi" };
+const VISTE = { "/": "casa", "/pagelle": "pagella", "/vigilia": "vigilia", "/analisi": "analisi", "/biglietti": "biglietti", "/giocatori": "giocatori", "/storia": "storia", "/radio": "radio", "/tifosi-roma": "tifosi", "/note-legali": "legali", "/privacy": "privacy", "/cookie": "cookie" };
 const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const oggi = () => new Date(Date.now() + 36e5).toISOString().slice(0, 10);
