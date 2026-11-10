@@ -560,11 +560,37 @@ async function admin(ctx, p) {
       await env.DB.prepare("UPDATE impostazioni SET valore=?, aggiornato=CURRENT_TIMESTAMP WHERE chiave='bozze'").bind(JSON.stringify(bozze)).run();
       return json({ ok: true });
     }
+    if (p[2] === "modifica") {
+      // Andrea corregge i testi della bozza prima di pubblicarla: solo i campi di testo, mai indirizzi, immagini o dati del sito.
+      const d = await req.json().catch(() => ({})), testo = (x, max) => typeof x === "string" ? x.slice(0, max) : undefined;
+      if (b.didascalia != null && testo(d.didascalia, 2200) != null) b.didascalia = testo(d.didascalia, 2200);
+      if (b.sito?.articolo && d.articolo && typeof d.articolo === "object") {
+        for (const k of ["titolo", "occhiello", "riassunto", "testo", "seoTitolo", "seoDescrizione"]) { const v = testo(d.articolo[k], k === "testo" ? 60000 : 600); if (v != null) b.sito.articolo[k] = v; }
+      }
+      if ((b.sito?.storia || b.sito?.storiaUrl) && Array.isArray(d.storia)) {
+        let originali = b.sito.storia;
+        if (!originali) {
+          if (!b.sito.storiaUrl.startsWith("https://raw.githubusercontent.com/curvaroma/curvaroma/")) return errore("Indirizzo non valido");
+          const r = await fetch(b.sito.storiaUrl);
+          if (!r.ok) return errore("Racconti non trovati");
+          originali = await r.json();
+        }
+        for (const a of originali) {
+          const n = d.storia.find(x => x && x.id === a.id);
+          if (!n) continue;
+          for (const k of ["titolo", "occhiello", "riassunto", "testo", "seoTitolo", "seoDescrizione"]) { const v = testo(n[k], k === "testo" ? 60000 : 600); if (v != null) a[k] = v; }
+        }
+        b.sito.storia = originali;
+      }
+      b.modificata = new Date().toISOString();
+      await env.DB.prepare("UPDATE impostazioni SET valore=?, aggiornato=CURRENT_TIMESTAMP WHERE chiave='bozze'").bind(JSON.stringify(bozze)).run();
+      return json({ ok: true, bozza: b });
+    }
     if (p[2] !== "pubblica") return errore("Percorso non trovato", 404);
     const scritture = [];
     // Le notifiche partono solo dopo che la pubblicazione è andata a buon fine.
     let notifica = null;
-    if (b.sito?.modifiche || b.sito?.articolo || b.sito?.storiaUrl) {
+    if (b.sito?.modifiche || b.sito?.articolo || b.sito?.storia || b.sito?.storiaUrl) {
       const v = await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='contenuti'").first("valore");
       const c = v ? JSON.parse(v) : null;
       if (!c) return errore("Contenuti non trovati");
@@ -576,11 +602,15 @@ async function admin(ctx, p) {
         if (c.analisi.some(a => a.id === b.sito.articolo.id)) return errore("Esiste già un contenuto con questo indirizzo", 409);
         c.analisi.unshift({ ...b.sito.articolo, stato: "pubblicato" });
       }
-      if (b.sito.storiaUrl) {
-        if (!b.sito.storiaUrl.startsWith("https://raw.githubusercontent.com/curvaroma/curvaroma/")) return errore("Indirizzo non valido");
-        const r = await fetch(b.sito.storiaUrl);
-        if (!r.ok) return errore("Articoli non trovati");
-        const nuovi = await r.json();
+      if (b.sito.storia || b.sito.storiaUrl) {
+        // Se Andrea ha corretto il racconto nel pannello vale la sua versione, salvata nella bozza.
+        let nuovi = b.sito.storia;
+        if (!nuovi) {
+          if (!b.sito.storiaUrl.startsWith("https://raw.githubusercontent.com/curvaroma/curvaroma/")) return errore("Indirizzo non valido");
+          const r = await fetch(b.sito.storiaUrl);
+          if (!r.ok) return errore("Articoli non trovati");
+          nuovi = await r.json();
+        }
         c.storia ||= [];
         for (const a of nuovi) {
           if (!/^[\w-]+$/.test(a.id)) continue;
