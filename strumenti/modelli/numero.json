@@ -1,0 +1,3 @@
+{ "stile": "numero", "tag": "Dato di stagione", "numero": "31", "etichetta": ["gol in", "11 giornate"],
+  "dati": [["8", "vittorie"], ["3", "pareggi"], ["0", "sconfitte"]],
+  "giocatore": "img/giocatori/malen-scontorno.png", "cta": "Il gol più bello? Scrivilo nei commenti" }
