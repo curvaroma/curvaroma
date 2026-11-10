@@ -285,6 +285,7 @@ body:has(#live:not([hidden])) .eroe-in{padding-top:calc(96px + var(--alt-live,0p
 .nome-form input{font:inherit;color:var(--testo);background:var(--superficie);border:1px solid var(--muto);border-radius:10px;min-height:48px;padding:8px 12px;width:100%}
 .classifica tr.noi td{font-weight:700;color:var(--accento)}
 [data-annuncio]:empty{display:none}
+.adv-testo{margin-block:18px}
 /* Home: la curva a tutto schermo e il tabellone dello stadio */
 body[data-vista="casa"] .testata{position:absolute;inset:0 0 auto;z-index:3;background:none}
 body[data-vista="casa"] .foto-testata{display:none}
@@ -913,10 +914,13 @@ function articolo(a, modo) {
     if (casa) { const v = el("a", "legami", "Vedi tutte le analisi"); v.href = "/analisi"; art.append(v); }
     return art;
   }
-  for (const par of String(a.testo || "").split(/\n\s*\n/)) {
-    const t = par.trim();
-    if (t) art.append(t.startsWith("## ") ? el("h2", "", t.slice(3)) : el("p", "", t));
-  }
+  const pezzi = String(a.testo || "").split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
+  // Un annuncio a metà articolo, mai subito prima di un sottotitolo.
+  let meta = Math.floor(pezzi.length / 2); while (meta < pezzi.length - 1 && (pezzi[meta].startsWith("## ") || pezzi[meta - 1]?.startsWith("## "))) meta++;
+  pezzi.forEach((t, i) => {
+    if (i === meta && pezzi.length > 3) { const s = el("div", "adv-testo"); s.dataset.annuncio = ""; art.append(s); }
+    art.append(t.startsWith("## ") ? el("h2", "", t.slice(3)) : el("p", "", t));
+  });
   if (a.confronto?.length) {
     const box = el("div", "confronto");
     for (const [n, x, y] of a.confronto) {
@@ -1483,7 +1487,7 @@ function disegnaAnalisi() {
   const scelta = id && lista.find(a => a.id === id);
   box.textContent = "";
   if (scelta) { box.append(articolo(scelta, "pieno")); document.title = scelta.seoTitolo || `${scelta.titolo} | Roma+`; }
-  else { lista.forEach(a => box.append(articolo(a, "lista"))); if (vistaOra === "analisi") document.title = TITOLI.analisi; }
+  else { lista.forEach((a, i) => { box.append(articolo(a, "lista")); if (i % 2 === 1 && i < lista.length - 1) { const s = el("div", "adv-testo"); s.dataset.annuncio = ""; box.append(s); } }); if (vistaOra === "analisi") document.title = TITOLI.analisi; }
 }
 function mostra(v) {
   vistaOra = v;
@@ -1507,7 +1511,7 @@ function vai() {
   const v = scegli();
   document.body.toggleAttribute("data-partita", schedaPartita());
   if (!schedaPartita() && v === "pagella") document.title = TITOLI.pagella;
-  if (v === vistaOra) { disegnaAnalisi(); window.scrollTo(0, 0); return; }
+  if (v === vistaOra) { disegnaAnalisi(); disegnaAnnunci(); window.scrollTo(0, 0); return; }
   const titolo = () => $("#v-" + v + " [tabindex='-1']")?.focus({ preventScroll: true });
   if (!document.startViewTransition || calmo() || vistaOra == null) { mostra(v); if (vistaOra) titolo(); return; }
   const tipo = VISTE.indexOf(v) > VISTE.indexOf(vistaOra) ? "avanti" : "indietro";
