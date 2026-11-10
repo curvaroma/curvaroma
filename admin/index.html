@@ -64,6 +64,17 @@ button.pericolo{background:none;color:#C0392B;border:1px solid #C0392B}
 .a-capo{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
 .post-griglia canvas{width:100%;height:auto;border-radius:8px;display:block}
 @media (max-width:720px){.post-griglia{grid-template-columns:minmax(0,1fr)}}
+.racc{display:grid;gap:12px;min-width:0}
+.racc-elenco{display:grid;gap:12px;min-width:0}
+.racc-barra input{flex:1 1 220px;width:auto}
+.chip{border:1px solid var(--linea);background:var(--carta);color:var(--testo);border-radius:999px;padding:6px 12px;font:600 13px system-ui;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--rosso);border-color:var(--rosso);color:#fff}
+details.chiusa{border-top:1px solid var(--linea);padding-top:10px}
+details.chiusa>summary{cursor:pointer;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;list-style:none}
+details.chiusa>summary::-webkit-details-marker{display:none}
+details.chiusa>summary b::before{content:"▸ ";color:var(--muto)}
+details.chiusa[open]>summary b::before{content:"▾ "}
+details.chiusa>.dentro{display:grid;gap:12px;padding-top:12px;min-width:0}
 </style>
 </head>
 <body>
@@ -122,6 +133,51 @@ function tastoFile(testo, suFile) {
 }
 
 const STATI_BOZZA = { bozza: ["Da controllare", ""], "da-rivedere": ["Resta in bozza", "no"], pubblicata: ["Pubblicata", "ok"] };
+// Raccoglitore: mostra pochi elementi alla volta, con ricerca, filtri e "Mostra altri". Ricorda ricerca e pagina finché il pannello resta aperto.
+const RAC = {};
+function raccoglitore(chiave, lista, disegna, { per = 10, testo = () => "", filtri = null, cerca = "Cerca", classe = "racc-elenco", vuoto = "Niente da mostrare." } = {}) {
+  const s = RAC[chiave] ||= { q: "", f: 0, n: per };
+  const box = el("div", "racc"), barra = el("div", "riga racc-barra"), q = el("input"), elenco = el("div", classe), piede = el("div", "riga"), conto = el("span", "nota"), altri = el("button", "az sec"), tutti = el("button", "az sec", "Mostra tutti");
+  q.type = "search"; q.placeholder = cerca; q.value = s.q; q.setAttribute("aria-label", cerca);
+  const chips = (filtri || []).map(([t], i) => { const b = el("button", "chip", t); b.type = "button"; b.onclick = () => { s.f = i; s.n = per; aggiorna(); }; return b; });
+  barra.append(q, ...chips); barra.hidden = lista.length <= per && !filtri;
+  function aggiorna() {
+    chips.forEach((b, i) => b.setAttribute("aria-pressed", i === s.f));
+    const t = s.q.trim().toLowerCase(), f = filtri?.[s.f]?.[1] || (() => true), ok = lista.filter(x => f(x) && (!t || testo(x).toLowerCase().includes(t)));
+    elenco.textContent = "";
+    for (const x of ok.slice(0, s.n)) elenco.append(disegna(x));
+    if (!ok.length) elenco.append(el("p", "nota", vuoto));
+    conto.textContent = ok.length ? `${Math.min(s.n, ok.length)} di ${ok.length}` : "";
+    const resto = ok.length - s.n; altri.hidden = tutti.hidden = resto <= 0; altri.textContent = `Mostra altri ${Math.min(per, Math.max(resto, 0))}`;
+    piede.hidden = !ok.length || (ok.length <= per && !t);
+  }
+  q.oninput = () => { s.q = q.value; s.n = per; aggiorna(); };
+  altri.onclick = () => { s.n += per; aggiorna(); }; tutti.onclick = () => { s.n = Infinity; aggiorna(); };
+  piede.append(conto, altri, tutti); box.append(barra, elenco, piede); aggiorna();
+  return box;
+}
+const TESTI = ["titolo", "occhiello", "riassunto", "testo", "seoTitolo", "seoDescrizione"];
+// Correzione dei testi di una bozza: didascalia, articolo e racconti di Storia. La grafica resta quella della bozza.
+function editorBozza(b) {
+  const c = el("div"), es = el("span", "esito"), m = { didascalia: b.didascalia, articolo: null, storia: null };
+  c.style.cssText = "display:grid;gap:12px;border-top:1px solid var(--linea);padding-top:12px";
+  const campiTesto = (a, et, minParole, maxParole) => {
+    const parole = el("span", "conto"), mostra = () => { const q = conta(a.testo); parole.textContent = `${q} parole` + (maxParole ? `, consigliate tra ${minParole} e ${maxParole}` : `, consigliate almeno ${minParole}`); parole.classList.toggle("no", q < minParole || (maxParole && q > maxParole)); };
+    const tx = campo("Testo. Riga vuota tra i paragrafi, ## davanti ai sottotitoli", a.testo, x => { a.testo = x; mostra(); }, "area"); tx.querySelector("textarea").style.minHeight = "340px"; tx.append(parole); mostra();
+    return [el("h3", "", et), campo("Titolo", a.titolo, x => a.titolo = x), campo("Sottotitolo", a.occhiello, x => a.occhiello = x), campo("Riassunto", a.riassunto, x => a.riassunto = x, "area"), tx, campoSeo("Titolo per Google", a.seoTitolo, x => a.seoTitolo = x.trim(), 30, 60), campoSeo("Descrizione per Google", a.seoDescrizione, x => a.seoDescrizione = x.trim(), 120, 155, "area")];
+  };
+  if (b.didascalia != null) c.append(campoSeo("Didascalia Instagram", b.didascalia, x => m.didascalia = x, 1, 2200, "area"), el("p", "nota", "La grafica non cambia da qui: per il testo sull'immagine chiedi a Claude o rifalla nella scheda Post Instagram."));
+  if (b.sito?.articolo) { m.articolo = Object.fromEntries(TESTI.map(k => [k, b.sito.articolo[k] || ""])); c.append(...campiTesto(m.articolo, "Articolo", 400)); }
+  const box = el("div"); box.style.cssText = "display:grid;gap:12px;min-width:0"; c.append(box);
+  if (b.sito?.storia || b.sito?.storiaUrl) {
+    box.append(el("p", "nota", "Carico il racconto…"));
+    Promise.resolve(b.sito.storia || fetch(b.sito.storiaUrl).then(r => r.json())).then(l => { box.textContent = ""; m.storia = l.map(a => ({ id: a.id, ...Object.fromEntries(TESTI.map(k => [k, a[k] || ""])) })); m.storia.forEach(a => box.append(...campiTesto(a, "Racconto di Storia", 500, 800))); }).catch(() => { box.textContent = ""; box.append(el("p", "esito", "Racconto non caricato")); });
+  }
+  const sv = el("button", "az", "Salva le modifiche"), r = el("div", "riga");
+  sv.onclick = async () => { sv.disabled = true; try { await post(`bozze/${encodeURIComponent(b.id)}/modifica`, m); APERTA = null; apri("bozze"); } catch (e) { es.textContent = e.message; sv.disabled = false; } };
+  r.append(sv, es); c.append(r); return c;
+}
+let APERTA = null;
 const PAGINE = {
   async segnalazioni(v) {
     const { segnalazioni } = await api("segnalazioni"), aperte = segnalazioni.filter(x => x.stato === "aperta");
@@ -137,22 +193,21 @@ const PAGINE = {
       del.onclick = () => { if (window.confirm("Eliminare questo contenuto?")) fai("elimina"); }; ok.onclick = () => fai("ignora");
       dx.append(del, ok, es); r.append(inf, dx); r.style.cssText = "border-top:1px solid var(--linea);padding-top:12px"; c.append(r);
     }
-    const chiuse = segnalazioni.filter(x => x.stato !== "aperta").slice(0, 20);
-    if (chiuse.length) { c.append(el("h3", "", "Già controllate")); for (const x of chiuse) c.append(el("p", "nota", `${x.stato === "eliminata" ? "Eliminato" : "Ignorato"}: ${x.testo || x.oggetto}`)); }
+    const chiuse = segnalazioni.filter(x => x.stato !== "aperta");
+    if (chiuse.length) { c.append(el("h3", "", "Già controllate"), raccoglitore("segnalazioni", chiuse, x => el("p", "nota", `${x.stato === "eliminata" ? "Eliminato" : "Ignorato"}: ${x.testo || x.oggetto}`), { per: 10, testo: x => `${x.testo} ${x.oggetto}`, cerca: "Cerca nelle segnalazioni" })); }
     v.append(c);
   },
   async bozze(v) {
     const { bozze } = await api("bozze");
-    if (!bozze.length) { const c = el("div", "card"); c.append(el("h2", "", "Bozze"), el("p", "nota", "Nessuna bozza da controllare.")); v.append(c); return; }
-    for (const b of [...bozze].reverse()) {
-      const c = el("div", "card"), t = el("div", "voce"), [nomeStato, cl] = STATI_BOZZA[b.stato] || STATI_BOZZA.bozza, griglia = el("div", "post-griglia"), f = el("div"), es = el("span", "esito");
+    const scheda = (b, chiusa) => {
+      const c = el(chiusa ? "div" : "div", chiusa ? "" : "card"), t = el("div", "voce"), [nomeStato, cl] = STATI_BOZZA[b.stato] || STATI_BOZZA.bozza, griglia = el("div", "post-griglia"), f = el("div"), es = el("span", "esito");
       f.style.cssText = "display:grid;gap:12px;min-width:0";
       const sez = (tit, testo) => { if (testo) f.append(el("h3", "", tit), el("p", "a-capo", testo)); };
-      t.append(el("h2", "", b.titolo || b.id), el("span", "segno " + cl, nomeStato)); c.append(t);
+      if (!chiusa) { t.append(el("h2", "", b.titolo || b.id), el("span", "segno " + cl, nomeStato)); c.append(t); }
       sez("Didascalia Instagram", b.didascalia);
       sez("Sul sito", b.sito?.descrizione);
       if (b.sito?.articolo) { const a = b.sito.articolo; sez("Articolo: " + a.titolo, a.testo.replace(/^## /gm, "")); f.append(el("p", "nota", `${conta(a.testo)} parole`)); }
-      if (b.sito?.storiaUrl) { const box = el("div"); box.style.cssText = "display:grid;gap:8px;min-width:0"; f.append(box); fetch(b.sito.storiaUrl).then(r => r.json()).then(l => { for (const a of l) { const d = el("details"), t = el("summary", "", `${a.anno}: ${a.titolo} (${conta(a.testo)} parole)`); d.append(t, el("p", "a-capo", a.testo.replace(/^## /gm, ""))); box.append(d); } }).catch(() => box.append(el("p", "esito", "Articoli non caricati"))); }
+      if (b.sito?.storia || b.sito?.storiaUrl) { const box = el("div"); box.style.cssText = "display:grid;gap:8px;min-width:0"; f.append(box); Promise.resolve(b.sito.storia || fetch(b.sito.storiaUrl).then(r => r.json())).then(l => { for (const a of l) { const d = el("details"), t = el("summary", "", `${a.anno}: ${a.titolo} (${conta(a.testo)} parole)`); d.append(t, el("p", "a-capo", a.testo.replace(/^## /gm, ""))); box.append(d); } }).catch(() => box.append(el("p", "esito", "Articoli non caricati"))); }
       if (b.note?.length) { const u = el("ul"); u.style.cssText = "margin:0;padding-left:20px;display:grid;gap:4px"; for (const n of b.note) u.append(el("li", "", n)); f.append(el("h3", "", "Note di Claude"), u); }
       if (b.fonti?.length) { const u = el("div", "riga"); for (const [n, url] of b.fonti) if (/^https:\/\//.test(url)) { const a = el("a", "", n); a.href = url; a.target = "_blank"; a.rel = "noopener"; u.append(a); } f.append(el("h3", "", "Fonti"), u); }
       griglia.append(f);
@@ -164,12 +219,23 @@ const PAGINE = {
         try { await post(`bozze/${encodeURIComponent(b.id)}/${percorso}`, {}); C = (await api("contenuti")).contenuti; apri("bozze"); } catch (e) { es.textContent = e.message; }
       }; return x; };
       if (b.stato !== "pubblicata") az.append(azione(b.sito?.descrizione ? "Pubblica sul sito" : "Segna come pubblicata", "az", "pubblica"));
+      if (b.stato !== "pubblicata" && (b.didascalia != null || b.sito?.articolo || b.sito?.storia || b.sito?.storiaUrl)) { const md = el("button", "az sec", APERTA === b.id ? "Chiudi modifica" : "Modifica testi"); md.onclick = () => { APERTA = APERTA === b.id ? null : b.id; apri("bozze"); }; az.append(md); }
       if (b.stato === "bozza") az.append(azione("Resta in bozza", "az sec", "attesa"));
       if (b.immagine) { const sc = el("button", "az sec", "Scarica JPG"); sc.onclick = async () => { try { const u = URL.createObjectURL(await (await fetch(b.immagine)).blob()), a = el("a"); a.href = u; a.download = `romaplus-${b.id}.jpg`; a.click(); URL.revokeObjectURL(u); } catch { es.textContent = "Scaricamento non riuscito"; } }; az.append(sc); }
       if (b.didascalia) { const co = el("button", "az sec", "Copia didascalia"); co.onclick = async () => { try { await navigator.clipboard.writeText(b.didascalia); es.textContent = "Didascalia copiata"; } catch { es.textContent = "Copia non riuscita"; } }; az.append(co); }
       az.append(es); c.append(az);
-      if (b.stato === "da-rivedere") c.append(el("p", "nota", "Torna da Claude nella sessione del giorno per sistemarla."));
-      v.append(c);
+      if (APERTA === b.id && b.stato !== "pubblicata") c.append(editorBozza(b));
+      if (b.modificata) c.append(el("p", "nota", "Testi corretti da te il " + new Date(b.modificata).toLocaleString("it-IT")));
+      if (b.stato === "da-rivedere") c.append(el("p", "nota", "Correggi i testi con Modifica testi, oppure torna da Claude nella sessione del giorno."));
+      return c;
+    };
+    const aperte = [...bozze].reverse().filter(b => b.stato !== "pubblicata"), fatte = [...bozze].reverse().filter(b => b.stato === "pubblicata");
+    const h = el("div", "card"); h.append(el("h2", "", aperte.length ? `Da controllare: ${aperte.length}` : "Bozze"), el("p", "nota", aperte.length ? "Con Modifica testi correggi didascalia, articolo e racconto prima di pubblicare." : "Nessuna bozza da controllare.")); v.append(h);
+    for (const b of aperte) v.append(scheda(b));
+    if (fatte.length) {
+      const k = el("div", "card"); k.append(el("h2", "", "Già pubblicate"));
+      k.append(raccoglitore("bozze", fatte, b => { const d = el("details", "chiusa"), s = el("summary"), inf = el("div"); inf.append(el("b", "", b.titolo || b.id), el("span", "nota", " " + (b.pubblicata ? new Date(b.pubblicata).toLocaleDateString("it-IT") : b.id))); s.append(inf, el("span", "segno ok", b.id.startsWith("storia") ? "Storia" : "Post e sito")); const dentro = el("div", "dentro"); d.append(s, dentro); d.ontoggle = () => { if (d.open && !dentro.children.length) dentro.append(scheda(b, true)); }; return d; }, { per: 5, testo: b => `${b.titolo} ${b.id} ${b.didascalia || ""}`, cerca: "Cerca nelle bozze", filtri: [["Tutte", () => true], ["Post e sito", b => !b.id.startsWith("storia")], ["Storia", b => b.id.startsWith("storia")]] }));
+      v.append(k);
     }
   },
   async traffico(v) {
@@ -224,18 +290,18 @@ const PAGINE = {
   storia(v) {
     C.storia ||= [];
     const add = el("button", "az", "Nuovo racconto");
-    add.onclick = () => { const a = { id: "bozza-" + Date.now().toString(36), stato: "bozza", anno: "", epoca: "", titolo: "", occhiello: "", riassunto: "", testo: "", seoTitolo: "", seoDescrizione: "", fonti: [] }; C.storia.unshift(a); aperto = a; segna(); apri("storia"); };
+    add.onclick = () => { const a = { id: "bozza-" + Date.now().toString(36), stato: "bozza", anno: "", epoca: "", titolo: "", occhiello: "", riassunto: "", testo: "", seoTitolo: "", seoDescrizione: "", fonti: [] }; C.storia.unshift(a); aperto = a; delete RAC.storia; segna(); apri("storia"); };
     const c = el("div", "card"); c.append(el("h2", "", "Racconti della Storia"), el("p", "nota", "Qui cambi titolo, testo, foto e tutto il resto dei racconti. Sul sito escono in ordine di anno. Le bozze restano nascoste. Dopo le modifiche premi Salva sul sito in basso."), add);
     v.append(c);
-    C.storia.forEach((a, n) => {
+    v.append(raccoglitore("storia", C.storia, a => { const n = C.storia.indexOf(a);
       const r = el("div", "card"), t = el("div", "voce"), inf = el("div"), bozza = a.stato === "bozza";
       inf.append(el("b", "", `${a.anno ? a.anno + ": " : ""}${a.titolo || "Senza titolo"}`), el("span", "nota", `${a.epoca || "Senza epoca"}, ${conta(a.testo)} parole${a.copertina ? ", con foto" : ""}`));
       const seg = el("span", "segno" + (bozza ? "" : " ok"), bozza ? "Bozza" : "Pubblicato"), ap = el("button", "az sec", aperto === a ? "Chiudi" : "Modifica"), dx = el("div", "riga");
       ap.onclick = () => { aperto = aperto === a ? null : a; apri("storia"); };
       dx.append(seg, ap); t.append(inf, dx); r.append(t);
       if (aperto === a) r.append(editorStoria(a, n));
-      v.append(r);
-    });
+      return r;
+    }, { per: 10, testo: a => `${a.anno} ${a.titolo} ${a.epoca} ${a.riassunto}`, cerca: "Cerca un racconto", filtri: [["Tutti", () => true], ["Pubblicati", a => a.stato !== "bozza"], ["Bozze", a => a.stato === "bozza"]] }));
   },
   async sicurezza(v) {
     const s = await api("sicurezza"), c = el("div", "card"), es = el("p", "esito"), campoCodice = () => { const l = el("label", "", "Codice a 6 cifre dell'app"), i = el("input"); i.inputMode = "numeric"; i.maxLength = 6; i.autocomplete = "one-time-code"; l.append(i); return [l, i]; };
@@ -289,9 +355,8 @@ const PAGINE = {
       });
       b.append(att, sv, up, del, es); f.append(g, b); r.append(vis, f); return r;
     };
-    for (const p of prodotti) c.append(riga(p));
-    const add = el("button", "az sec", "Aggiungi prodotto"); add.onclick = () => add.before(riga({ id: "", nome: "", link: "", foto: "", tipo: "maglia", attivo: 1, ordine: prodotti.length + 1 }));
-    c.append(add); v.append(c);
+    const nuovi = el("div", "racc-elenco"), add = el("button", "az sec", "Aggiungi prodotto"); add.onclick = () => nuovi.prepend(riga({ id: "", nome: "", link: "", foto: "", tipo: "maglia", attivo: 1, ordine: prodotti.length + 1 }));
+    c.append(add, nuovi, raccoglitore("annunci", prodotti, p => { const d = el("details", "chiusa"), sm = el("summary"), inf = el("div", "riga"), dentro = el("div", "dentro"), mini = p.foto ? el("img") : el("span", "segno no", "Senza foto"); if (p.foto) { mini.src = p.foto; mini.alt = ""; mini.loading = "lazy"; mini.style.cssText = "width:44px;height:44px;object-fit:contain;background:#fff;border-radius:6px;border:1px solid var(--linea)"; } inf.append(mini, el("b", "", p.nome || "Senza nome")); sm.append(inf, el("span", "segno" + (p.attivo && p.foto ? " ok" : ""), p.attivo ? (p.foto ? "Sul sito" : "Attivo, senza foto") : "Spento")); d.append(sm, dentro); d.ontoggle = () => { if (d.open && !dentro.children.length) dentro.append(riga(p)); }; return d; }, { per: 10, testo: p => `${p.nome} ${p.link}`, cerca: "Cerca un prodotto", filtri: [["Tutti", () => true], ["Attivi con foto", p => p.attivo && p.foto], ["Senza foto", p => !p.foto], ["Spenti", p => !p.attivo]] })); v.append(c);
   },
   async immagini(v) {
     const { scelte, immagini } = await api("aspetto");
@@ -312,10 +377,9 @@ const PAGINE = {
     }
     c.append(g); v.append(c);
     const d = el("div", "card"); d.append(el("h2", "", "Galleria"));
-    const gal = el("div", "gal");
-    for (const x of immagini) { const f = el("figure"), i = el("img"); i.src = "/api/img/" + x.id; i.alt = ""; const del = el("button", "az pericolo", "Elimina"); del.onclick = async () => { if (window.confirm("Eliminare l'immagine?")) { await api("immagini/" + x.id, { method: "DELETE" }); f.remove(); } }; f.append(i, el("span", "", x.nome), del); gal.append(f); }
     if (!immagini.length) d.append(el("p", "nota", "Nessuna immagine caricata."));
-    d.append(gal); v.append(d);
+    else d.append(raccoglitore("galleria", immagini, x => { const f = el("figure"), i = el("img"); i.src = "/api/img/" + x.id; i.alt = ""; i.loading = "lazy"; const del = el("button", "az pericolo", "Elimina"); del.onclick = async () => { if (window.confirm("Eliminare l'immagine?")) { await api("immagini/" + x.id, { method: "DELETE" }); f.remove(); } }; f.append(i, el("span", "", x.nome), del); return f; }, { per: 24, testo: x => x.nome || "", cerca: "Cerca per nome", classe: "gal" }));
+    v.append(d);
   },
   partita(v) {
     const p = C.partita, c = el("div", "card"); c.append(el("h2", "", "Ultima partita e pagelle"));
@@ -340,18 +404,18 @@ const PAGINE = {
   },
   contenuti(v) {
     const add = el("button", "az", "Nuovo contenuto");
-    add.onclick = () => { const a = { id: "bozza-" + Date.now().toString(36), stato: "bozza", tipo: "partita", data: oggi(), titolo: "", occhiello: "", riassunto: "", testo: "", confronto: [], seoTitolo: "", seoDescrizione: "" }; C.analisi.unshift(a); aperto = a; segna(); apri("contenuti"); };
+    add.onclick = () => { const a = { id: "bozza-" + Date.now().toString(36), stato: "bozza", tipo: "partita", data: oggi(), titolo: "", occhiello: "", riassunto: "", testo: "", confronto: [], seoTitolo: "", seoDescrizione: "" }; C.analisi.unshift(a); aperto = a; delete RAC.contenuti; segna(); apri("contenuti"); };
     const c = el("div", "card"); c.append(el("h2", "", "Contenuti del sito"), el("p", "nota", "Le bozze restano nascoste. Un contenuto pubblicato con data futura esce da solo quel giorno. Il primo pubblicato della lista appare in home."), add);
     v.append(c);
-    C.analisi.forEach((a, n) => {
+    v.append(raccoglitore("contenuti", C.analisi, a => { const n = C.analisi.indexOf(a);
       const r = el("div", "card"), t = el("div", "voce"), inf = el("div"), stato = a.stato === "bozza" ? "Bozza" : a.data > oggi() ? "Programmato" : "Pubblicato";
       inf.append(el("b", "", a.titolo || "Senza titolo"), el("span", "nota", `${TIPI[a.tipo] || "Analisi"}, ${a.data || "senza data"}, ${conta(a.testo)} parole`));
       const seg = el("span", "segno" + (stato === "Pubblicato" ? " ok" : ""), stato), ap = el("button", "az sec", aperto === a ? "Chiudi" : "Modifica"), dx = el("div", "riga");
       ap.onclick = () => { aperto = aperto === a ? null : a; apri("contenuti"); };
       dx.append(seg, ap); t.append(inf, dx); r.append(t);
       if (aperto === a) r.append(editor(a, n));
-      v.append(r);
-    });
+      return r;
+    }, { per: 10, testo: a => `${a.titolo} ${a.occhiello} ${a.riassunto} ${TIPI[a.tipo] || ""}`, cerca: "Cerca un contenuto", filtri: [["Tutti", () => true], ["Pubblicati", a => a.stato !== "bozza" && !(a.data > oggi())], ["Bozze", a => a.stato === "bozza"], ["Programmati", a => a.stato !== "bozza" && a.data > oggi()]] }));
   },
   async post(v) {
     const { immagini } = await api("aspetto");
@@ -422,18 +486,18 @@ const PAGINE = {
     const { partite, nomi } = await api("tifosi");
     const c = el("div", "card"); c.append(el("h2", "", "Risultati per la classifica"), el("p", "nota", "Quando una partita finisce, scrivi il risultato: i punti si assegnano da soli."));
     if (!partite.length) c.append(el("p", "nota", "Ancora nessun pronostico."));
-    for (const p of partite) {
+    if (partite.length) c.append(raccoglitore("partite-tifosi", partite, p => {
       const qui = p.partita === C.prossima.id, r = el("div", ""), e = el("span", "esito"); r.style.cssText = "display:grid;gap:8px;border-top:1px solid var(--linea);padding-top:12px";
       const nome = p.nome || (qui ? `${C.prossima.casa}-${C.prossima.ospiti}` : p.partita), g = el("div", "griglia");
       const a = el("label", "", "Gol casa"), ia = el("input"), b = el("label", "", "Gol ospiti"), ib = el("input");
       for (const [i, val, lab] of [[ia, p.casa, a], [ib, p.ospiti, b]]) { i.type = "number"; i.min = 0; i.max = 30; i.value = val ?? ""; lab.append(i); g.append(lab); }
       const sv = el("button", "az", p.nome ? "Correggi risultato" : "Chiudi la partita"), riga = el("div", "riga");
       sv.onclick = async () => { if (ia.value === "" || ib.value === "") { e.textContent = "Scrivi il risultato"; return; } try { await post("risultato", { partita: p.partita, nome, casa: +ia.value, ospiti: +ib.value }); e.textContent = "Punti assegnati"; sv.textContent = "Correggi risultato"; } catch (x) { e.textContent = x.message; } };
-      riga.append(sv, e); r.append(el("b", "", nome), el("span", "nota", `${p.pronostici} ${p.pronostici === 1 ? "pronostico" : "pronostici"}`), g, riga); c.append(r);
-    }
+      riga.append(sv, e); r.append(el("b", "", nome), el("span", "nota", `${p.pronostici} ${p.pronostici === 1 ? "pronostico" : "pronostici"}`), g, riga); return r;
+    }, { per: 5, testo: p => `${p.nome || ""} ${p.partita}`, cerca: "Cerca una partita", filtri: [["Tutte", () => true], ["Da chiudere", p => !p.nome]] }));
     v.append(c);
     const n = el("div", "card"); n.append(el("h2", "", `Nomi dei tifosi: ${nomi.length}`), el("p", "nota", "Rimuovi i nomi offensivi: il tifoso potrà sceglierne un altro."));
-    for (const x of nomi) { const r = el("div", "voce"), b = el("button", "az pericolo", "Rimuovi"); b.onclick = async () => { if (window.confirm(`Rimuovere ${x}?`)) { await api("tifosi/" + encodeURIComponent(x), { method: "DELETE" }); r.remove(); } }; r.append(el("span", "", x), b); n.append(r); }
+    n.append(raccoglitore("tifosi", nomi, x => { const r = el("div", "voce"), b = el("button", "az pericolo", "Rimuovi"); b.onclick = async () => { if (window.confirm(`Rimuovere ${x}?`)) { await api("tifosi/" + encodeURIComponent(x), { method: "DELETE" }); r.remove(); } }; r.append(el("span", "", x), b); return r; }, { per: 20, testo: x => x, cerca: "Cerca un nome" }));
     v.append(n);
   },
   classifica(v) {
@@ -446,7 +510,7 @@ const PAGINE = {
     const c = el("div", "card"); c.append(el("h2", "", "Partite per gli annunci"));
     c.append(campo("Una per riga, come Roma-Monza, 29 novembre", C.partite_biglietti.join("\n"), x => C.partite_biglietti = righe(x), "area")); v.append(c);
     const { annunci } = await api("annunci"), d = el("div", "card"); d.append(el("h2", "", `Annunci pubblicati: ${annunci.length}`));
-    for (const a of annunci) { const r = el("div", "riga"); r.style.cssText = "justify-content:space-between;border-top:1px solid var(--linea);padding-top:10px"; const t = el("div"); t.append(el("b", "", `${a.tipo}: ${a.partita}`), el("div", "nota", `${a.quanti} in ${a.settore}, ${a.prezzo} €, ${a.contatto}`)); const b = el("button", "az pericolo", "Rimuovi"); b.onclick = async () => { await api("annunci/" + a.id, { method: "DELETE" }); r.remove(); }; r.append(t, b); d.append(r); }
+    if (annunci.length) d.append(raccoglitore("biglietti", annunci, a => { const r = el("div", "riga"); r.style.cssText = "justify-content:space-between;border-top:1px solid var(--linea);padding-top:10px"; const t = el("div"); t.append(el("b", "", `${a.tipo}: ${a.partita}`), el("div", "nota", `${a.quanti} in ${a.settore}, ${a.prezzo} €, ${a.contatto}`)); const b = el("button", "az pericolo", "Rimuovi"); b.onclick = async () => { await api("annunci/" + a.id, { method: "DELETE" }); r.remove(); }; r.append(t, b); return r; }, { per: 10, testo: a => `${a.tipo} ${a.partita} ${a.settore} ${a.contatto}`, cerca: "Cerca negli annunci" }));
     if (!annunci.length) d.append(el("p", "nota", "Nessun annuncio."));
     v.append(d);
   }
