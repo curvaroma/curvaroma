@@ -3,15 +3,34 @@ import { PAGINE, slugPartita, elencoPagelle, GIOCATORI } from "../_middleware.js
 const COOKIE = "cr_tifoso";
 const ANNO = 60 * 60 * 24 * 365;
 const SETTORI = ["Curva Sud", "Curva Nord", "Distinti Sud", "Distinti Nord", "Tribuna Tevere", "Tribuna Monte Mario"];
+// Fonti delle notizie (decise da Andrea il 10 novembre): solo queste otto, e dei giornali generalisti solo gli articoli sulla Roma.
+// Ogni fonte ha uno o più indirizzi: si usa il primo che risponde con almeno una notizia valida.
+// L'ultimo indirizzo di Il Romanista, Il Tempo, Sky Sport e Il Messaggero è Google News filtrato sul sito, di riserva.
+const gnews = q => `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=it&gl=IT&ceid=IT:it`;
 const FEED = [
-  ["RomaNews", "https://www.romanews.eu/feed/"],
-  ["Forzaroma.info", "https://www.forzaroma.info/feed/"],
-  ["Corriere dello Sport", "https://www.corrieredellosport.it/rss/calcio"],
-  ["Gazzetta dello Sport", "https://www.gazzetta.it/dynamic-feed/rss/section/Calcio.xml"],
-  ["Voce Giallorossa", "https://www.vocegiallorossa.it/rss"],
-  ["AsRomaLive", "https://www.asromalive.it/feed/"],
-  ["TuttoMercatoWeb", "https://www.tuttomercatoweb.com/rss/?squadra=roma"]
+  ["RomaNews", ["https://www.romanews.eu/feed/"]],
+  ["Forzaroma.info", ["https://www.forzaroma.info/feed/"]],
+  ["Corriere dello Sport", ["https://www.corrieredellosport.it/rss/calcio"]],
+  ["Voce Giallorossa", ["https://www.vocegiallorossa.it/rss"]],
+  ["Il Romanista", ["https://www.ilromanista.eu/feed", "https://www.ilromanista.eu/rss", "https://www.ilromanista.eu/rss.xml", gnews("site:ilromanista.eu when:3d")]],
+  ["Il Tempo", ["https://www.iltempo.it/rss/sport.xml", "https://www.iltempo.it/sport/rss", gnews("site:iltempo.it/sport Roma when:3d")]],
+  ["Sky Sport", ["https://sport.sky.it/rss/calcio.xml", "https://sport.sky.it/rss/sport_calcio.xml", gnews("site:sport.sky.it Roma calcio when:3d")]],
+  ["Il Messaggero", ["https://www.ilmessaggero.it/rss/sport.xml", "https://www.ilmessaggero.it/rss/sport_calcio.xml", gnews("site:ilmessaggero.it/sport Roma when:3d")]]
 ];
+// Giornali che non parlano solo della Roma: resta solo quello che parla della squadra (non della città).
+const GENERALISTI = ["Corriere dello Sport", "Il Tempo", "Sky Sport", "Il Messaggero"];
+const SULLA_ROMA = /\b(as roma|roma-|-roma|gialloross[io]|gasperini|gasp|trigoria|friedkin|d'amico|massara|ranieri|dybala|malen|soul[eé]|svilar|mancini|cristante|pellegrini|ndicka|hermoso|kon[eé]|wesley|mora|pisilli|curva sud|olimpico)\b/i;
+async function scaricaFonte(t, indirizzi) {
+  for (const u of indirizzi) {
+    try {
+      const r = await fetch(u, { headers: { "user-agent": "RomaPlus/1.0 (+https://roma-plus.it)", accept: "application/rss+xml, application/xml, text/xml" } });
+      if (!r.ok) continue;
+      const l = leggiFeed(t, await r.text());
+      if (l.length) return l.map(n => ({ ...n, via: u.startsWith("https://news.google.com/") ? "google" : "feed" }));
+    } catch {}
+  }
+  return [];
+}
 const PER_TESTATA = 5;
 const json = (dati, stato = 200, extra = {}) => new Response(JSON.stringify(dati), { status: stato, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...extra } });
 const errore = (messaggio, stato = 400) => json({ errore: messaggio }, stato);
@@ -126,19 +145,17 @@ function leggiFeed(testata, xml) {
     return { t: testata, titolo: pulisci(tag(x, "title")), url, foto: foto(x), data: Date.parse(pulisci(tag(x, "pubDate"))) || 0 };
   }).filter(n => n.titolo && n.url.startsWith("https://"))
     .filter(n => testata !== "Corriere dello Sport" || n.url.includes("/roma/"))
-    .filter(n => testata !== "TuttoMercatoWeb" || /\broma\b|giallorossi|gasperini/i.test(n.titolo))
-    // Gazzetta: il feed è di tutto il calcio, restano solo gli articoli sulla Roma, senza scommesse e siti partner.
-    .filter(n => testata !== "Gazzetta dello Sport" || (n.url.startsWith("https://www.gazzetta.it/") && !n.url.includes("/scommesse/") && (/\/Serie-A\/Roma\//i.test(n.url) || /\broma\b|giallorossi|gasperini/i.test(n.titolo))))
+    // Il Tempo, Sky Sport e Il Messaggero: solo articoli sulla Roma calcio, mai cronaca della città.
+    .filter(n => !GENERALISTI.includes(testata) || testata === "Corriere dello Sport" || (SULLA_ROMA.test(n.titolo) && !/\blazio\b/i.test(n.titolo.replace(/roma-lazio|lazio-roma/ig, "")) || /\/(as-?roma|calcio\/squadre\/roma|sport\/roma)\//i.test(n.url)))
+    // Google News aggiunge " - Nome testata" in fondo al titolo: si toglie.
+    .map(n => n.url.startsWith("https://news.google.com/") ? { ...n, titolo: n.titolo.replace(/\s+-\s+[^-]+$/, "") } : n)
     .filter(n => !n.titolo.startsWith("ALTRE NOTIZIE"));
 }
 async function notizie(ctx) {
   const chiave = new Request(new URL("/api/notizie", ctx.request.url));
   const inCache = await caches.default.match(chiave);
   if (inCache) return inCache;
-  const risposte = await Promise.allSettled(FEED.map(async ([t, u]) => {
-    const r = await fetch(u, { headers: { "user-agent": "RomaPlus/1.0 (+https://roma-plus.it)" } });
-    return r.ok ? leggiFeed(t, await r.text()) : [];
-  }));
+  const risposte = await Promise.allSettled(FEED.map(([t, u]) => scaricaFonte(t, u)));
   const tutte = risposte.flatMap(r => r.status === "fulfilled" ? r.value : []).sort((a, b) => b.data - a.data);
   const viste = new Set(), gruppi = new Map();
   for (const n of tutte) {
@@ -149,7 +166,7 @@ async function notizie(ctx) {
   }
   const lista = [];
   for (let i = 0; i < PER_TESTATA; i++) for (const g of gruppi.values()) if (g[i]) lista.push(g[i]);
-  const fonti = Object.fromEntries(FEED.map(([t], i) => [t, risposte[i].status === "fulfilled" ? risposte[i].value.length : "errore"]));
+  const fonti = Object.fromEntries(FEED.map(([t], i) => [t, risposte[i].status === "fulfilled" ? (risposte[i].value.length ? `${risposte[i].value.length} (${risposte[i].value[0].via})` : 0) : "errore"]));
   const risposta = new Response(JSON.stringify({ notizie: lista, fonti }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=300" } });
   if (lista.length) ctx.waitUntil(caches.default.put(chiave, risposta.clone()));
   if (ctx.env.DB) ctx.waitUntil(salvaArchivio(ctx.env, tutte).catch(() => {}));
@@ -167,10 +184,7 @@ async function aggiornaArchivio(env, intervallo = 3e5) {
   const ora = Date.now(), ultimo = Number(await env.DB.prepare("SELECT valore FROM impostazioni WHERE chiave='notizie_agg'").first("valore")) || 0;
   if (ora - ultimo < intervallo) return;
   await env.DB.prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('notizie_agg',?) ON CONFLICT DO UPDATE SET valore=excluded.valore").bind(String(ora)).run();
-  const esiti = await Promise.allSettled(FEED.filter(([t]) => FONTI_APP.includes(t)).map(async ([t, u]) => {
-    const r = await fetch(u, { headers: { "user-agent": "RomaPlus/1.0 (+https://roma-plus.it)" } });
-    return r.ok ? leggiFeed(t, await r.text()) : [];
-  }));
+  const esiti = await Promise.allSettled(FEED.filter(([t]) => FONTI_APP.includes(t)).map(([t, u]) => scaricaFonte(t, u)));
   await salvaArchivio(env, esiti.flatMap(e => e.status === "fulfilled" ? e.value : []));
 }
 async function archivioNotizie(ctx, url) {
