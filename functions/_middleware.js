@@ -1,5 +1,28 @@
 // Titoli, descrizioni e contenuti leggibili da Google per ogni pagina.
 const BASE = "https://roma-plus.it";
+// Stadio della squadra di casa, per i dati strutturati SportsEvent della Vigilia (Google vuole "location").
+// Si può forzare dal pannello con prossima.stadio e prossima.citta (partite in campo neutro, stadi nuovi).
+const STADI = {
+  Roma: ["Stadio Olimpico", "Roma", "IT"], Lazio: ["Stadio Olimpico", "Roma", "IT"], Inter: ["Stadio Giuseppe Meazza (San Siro)", "Milano", "IT"], Milan: ["Stadio Giuseppe Meazza (San Siro)", "Milano", "IT"],
+  Juventus: ["Allianz Stadium", "Torino", "IT"], Torino: ["Stadio Olimpico Grande Torino", "Torino", "IT"], Napoli: ["Stadio Diego Armando Maradona", "Napoli", "IT"], Atalanta: ["Stadio di Bergamo", "Bergamo", "IT"],
+  Bologna: ["Stadio Renato Dall'Ara", "Bologna", "IT"], Fiorentina: ["Stadio Artemio Franchi", "Firenze", "IT"], Genoa: ["Stadio Luigi Ferraris", "Genova", "IT"], Sampdoria: ["Stadio Luigi Ferraris", "Genova", "IT"],
+  Cagliari: ["Unipol Domus", "Cagliari", "IT"], Lecce: ["Stadio Via del Mare", "Lecce", "IT"], Parma: ["Stadio Ennio Tardini", "Parma", "IT"], Sassuolo: ["Mapei Stadium", "Reggio Emilia", "IT"],
+  Monza: ["Stadio Brianteo", "Monza", "IT"], Venezia: ["Stadio Pier Luigi Penzo", "Venezia", "IT"], Udinese: ["Stadio Friuli", "Udine", "IT"], Como: ["Stadio Giuseppe Sinigaglia", "Como", "IT"],
+  Frosinone: ["Stadio Benito Stirpe", "Frosinone", "IT"], Empoli: ["Stadio Carlo Castellani", "Empoli", "IT"], Verona: ["Stadio Marcantonio Bentegodi", "Verona", "IT"], Pisa: ["Arena Garibaldi", "Pisa", "IT"], Cremonese: ["Stadio Giovanni Zini", "Cremona", "IT"],
+  PSG: ["Parc des Princes", "Parigi", "FR"], "Paris Saint-Germain": ["Parc des Princes", "Parigi", "FR"], Sporting: ["Estádio José Alvalade", "Lisbona", "PT"], "Sporting CP": ["Estádio José Alvalade", "Lisbona", "PT"],
+  "Man. United": ["Old Trafford", "Manchester", "GB"], "Manchester United": ["Old Trafford", "Manchester", "GB"]
+};
+const ORGANIZZATORI = { "Serie A": ["Lega Serie A", "https://www.legaseriea.it"], "Coppa Italia": ["Lega Serie A", "https://www.legaseriea.it"], "Champions League": ["UEFA", "https://www.uefa.com"], "Europa League": ["UEFA", "https://www.uefa.com"], "Conference League": ["UEFA", "https://www.uefa.com"] };
+function eventoSportivo(p) {
+  const nome = `${p.casa}-${p.ospiti}`, [stadio, citta, paese] = p.stadio ? [p.stadio, p.citta || "", "IT"] : STADI[p.casa] || [`Stadio del ${p.casa}`, p.citta || p.casa, "IT"];
+  const fine = new Date(new Date(p.inizio).getTime() + 2 * 3600e3).toISOString(), org = ORGANIZZATORI[p.competizione];
+  const squadra = n => ({ "@type": "SportsTeam", name: n });
+  return { "@context": "https://schema.org", "@type": "SportsEvent", name: nome, description: p.nota || `${nome}, ${p.competizione || "partita"}: la Vigilia dei tifosi della Roma con formazione e pronostico.`,
+    startDate: p.inizio, endDate: fine, eventStatus: "https://schema.org/EventScheduled", eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode", sport: "Calcio",
+    location: { "@type": "Place", name: stadio, address: { "@type": "PostalAddress", addressLocality: citta, addressCountry: paese } },
+    image: [BASE + "/img/anteprima.jpg"], homeTeam: squadra(p.casa), awayTeam: squadra(p.ospiti), competitor: [squadra(p.casa), squadra(p.ospiti)], performer: [squadra(p.casa), squadra(p.ospiti)],
+    ...(org ? { organizer: { "@type": "Organization", name: org[0], url: org[1] } } : {}), url: BASE + "/vigilia" };
+}
 // Rosa 2026/27. Numeri, ruoli e nazionalità verificati su due fonti (DAZN, ESPN, Starting11).
 // "voti" è il nome con cui il giocatore compare nelle pagelle.
 export const GIOCATORI = [
@@ -153,7 +176,7 @@ export async function onRequest(ctx) {
     titolo = articolo.seoTitolo || `${articolo.titolo} | Roma+`; descrizione = articolo.seoDescrizione || articolo.riassunto || descrizione;
     dati.push({ "@context": "https://schema.org", "@type": "Article", headline: articolo.titolo, description: articolo.riassunto, image: new URL(articolo.copertina || "/img/anteprima.jpg", BASE).href, inLanguage: "it", mainEntityOfPage: BASE + percorso, author: { "@type": "Organization", name: "Roma+", url: BASE + "/" }, ...(articolo.data ? { datePublished: articolo.data, dateModified: articolo.data } : {}), publisher: { "@type": "Organization", name: "Roma+", logo: { "@type": "ImageObject", url: BASE + "/img/icona-512.png" } } });
   }
-  if (percorso === "/vigilia" && c.prossima?.inizio) dati.push({ "@context": "https://schema.org", "@type": "SportsEvent", name: `${c.prossima.casa}-${c.prossima.ospiti}`, startDate: c.prossima.inizio, sport: "Calcio", homeTeam: { "@type": "SportsTeam", name: c.prossima.casa }, awayTeam: { "@type": "SportsTeam", name: c.prossima.ospiti } });
+  if (percorso === "/vigilia" && c.prossima?.inizio) dati.push(eventoSportivo(c.prossima));
   const partita = scheda && c.pagelle.find(p => p.slug === scheda[1]);
   if (scheda && !partita) return new Response("Pagina non trovata", { status: 404 });
   let htmlScheda = "";
