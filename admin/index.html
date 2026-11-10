@@ -539,8 +539,15 @@ function editorStoria(a, n) {
   vedi.onclick = () => { ant.hidden = !ant.hidden; ant.textContent = ""; ant.append(el("span", "nota", String(a.anno || "")), el("h2", "", a.titolo), el("p", "nota", a.occhiello || "")); for (const par of String(a.testo || "").split(/\n\s*\n/)) { const t = par.trim(); if (t) ant.append(t.startsWith("## ") ? el("h3", "", t.slice(3)) : el("p", "", t)); } };
   del.onclick = () => { if (window.confirm("Eliminare il racconto? Sparisce dal sito quando premi Salva sul sito.")) { C.storia.splice(n, 1); aperto = null; segna(); apri("storia"); } };
   b.append(vedi, del);
+  if (a.stato === "bozza") b.prepend(pubblicaOra(a, st, true));
   c.append(g, i, foto, pos, tit, campo("Sottotitolo (es. Pluto, 1990-2003)", a.occhiello, x => a.occhiello = x), campo("Riassunto (massimo 2 frasi, compare nell'elenco)", a.riassunto, x => { a.riassunto = x; agg(); }, "area"), testo, fonti, el("h3", "", "Google"), seoT, seoD, gg, b, ant);
   agg(); return c;
+}
+// Una bozza aperta nel pannello esce con un clic: stato Pubblicato e salvataggio insieme.
+function pubblicaOra(a, st, storia) {
+  const x = el("button", "az", "Pubblica sul sito");
+  x.onclick = () => { if (!window.confirm("Pubblicare adesso? Parte anche la notifica dell'app.")) return; if (storia) delete a.stato; else a.stato = "pubblicato"; st.value = "pubblicato"; segna(); $("#pubblica").click(); };
+  return x;
 }
 let COPERTINA_ANALISI = "";
 fetch("/api/admin/aspetto").then(r => r.ok ? r.json() : {}).then(d => { COPERTINA_ANALISI = d.scelte?.analisi || ""; }).catch(() => {});
@@ -573,6 +580,7 @@ function editor(a, n) {
   su.disabled = !n; su.onclick = () => { C.analisi.splice(n - 1, 0, C.analisi.splice(n, 1)[0]); segna(); apri("contenuti"); };
   del.onclick = () => { if (window.confirm("Eliminare il contenuto?")) { C.analisi.splice(n, 1); aperto = null; segna(); apri("contenuti"); } };
   b.append(vedi, su, del);
+  if (a.stato === "bozza") b.prepend(pubblicaOra(a, st));
   c.append(g, i, copertinaAnalisi(a, i), tit, campo("Sottotitolo", a.occhiello, x => a.occhiello = x), campo("Riassunto per la home", a.riassunto, x => { a.riassunto = x; agg(); }, "area"), testo, stat, el("h3", "", "Come appare su Google"), seoT, seoD, gg, b, ant);
   agg(); return c;
 }
@@ -637,7 +645,7 @@ $("#form-login").addEventListener("submit", async e => {
     $("#pw").value = ""; $("#codice").value = ""; $("#l-codice").hidden = true; entra(true);
   } catch (x) { $("#e-login").textContent = x.message; $("#codice").value = ""; }
 });
-$("#pubblica").onclick = async () => { const blocco = controllaContenuti(); if (blocco) { $("#e-salva").textContent = blocco; return; } try { await post("contenuti", C); sporco = false; $("#e-salva").textContent = "Salvato"; setTimeout(() => { if (!sporco) $("#barra-salva").hidden = true; }, 1500); } catch (e) { $("#e-salva").textContent = e.message; } };
+$("#pubblica").onclick = async () => { const blocco = controllaContenuti(); if (blocco) { $("#e-salva").textContent = blocco; return; } try { await post("contenuti", C); sporco = false; $("#e-salva").textContent = aperto?.stato === "bozza" ? "Salvato, ma è ancora in bozza: per farlo uscire premi Pubblica sul sito nella scheda" : "Salvato"; setTimeout(() => { if (!sporco) $("#barra-salva").hidden = true; if (ora === "contenuti" || ora === "storia") apri(ora); }, aperto?.stato === "bozza" ? 5000 : 1500); } catch (e) { $("#e-salva").textContent = e.message; } };
 $("#esci").onclick = async () => { await api("esci", { method: "POST" }); entra(false); };
 addEventListener("beforeunload", e => { if (sporco) e.preventDefault(); });
 api("contenuti").then(() => entra(true)).catch(() => entra(false));
