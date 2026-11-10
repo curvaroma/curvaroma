@@ -91,6 +91,7 @@ h1.striscione{font-size:2.9rem}
 .foto{position:relative;height:150px;display:flex;align-items:flex-end;padding:12px 14px;background:linear-gradient(180deg,transparent 45%,rgba(43,10,21,.85)),url("/img/curva.jpg") center/cover;color:var(--giallo);font:800 1.4rem/1 var(--display)}
 .notizia:nth-child(3n+2) .foto{background-image:linear-gradient(180deg,transparent 45%,rgba(43,10,21,.85)),url("/img/stadio.jpg")}
 .notizia:nth-child(3n) .foto{background-image:linear-gradient(180deg,transparent 45%,rgba(43,10,21,.85)),url("/img/colosseo.jpg")}
+.notizia .foto.senza-foto{background:url("/img/brand/r-plus-monogramma.svg") center 42%/auto 46% no-repeat,radial-gradient(circle at 50% 42%,#8E1F2F,#2B0A15 75%)}
 .notizia>div:last-child{padding:12px 14px 14px;display:grid;gap:6px}
 .notizia strong{font-weight:600;line-height:1.3}
 .notizia small{color:var(--muto)}
@@ -1030,8 +1031,9 @@ function disegnaNotizie(tutte) {
   for (const copia of [false, true]) for (const { t, titolo, url, foto, data } of lista) {
     const a = el("a", "notizia"); a.href = url; a.target = "_blank"; a.rel = "noopener";
     if (copia) { a.tabIndex = -1; a.setAttribute("aria-hidden", "true"); }
-    const f = el("div", "foto"); f.append(el("span", "", t));
-    if (foto) { const i = el("img"); i.src = foto; i.alt = ""; i.loading = "lazy"; i.referrerPolicy = "no-referrer"; i.onerror = () => i.remove(); f.prepend(i); }
+    // Senza foto, o se la foto non si carica, al posto della preview va il logo R+.
+    const f = el("div", foto ? "foto" : "foto senza-foto"); f.append(el("span", "", t));
+    if (foto) { const i = el("img"); i.src = foto; i.alt = ""; i.loading = "lazy"; i.referrerPolicy = "no-referrer"; i.onerror = () => { i.remove(); f.classList.add("senza-foto"); }; f.prepend(i); }
     a.append(f);
     const quando = data ? new Date(data).toLocaleDateString("it-IT", { day: "numeric", month: "long" }) : "oggi";
     const c = el("div"); c.append(el("strong", "", titolo), el("small", "", `${t}, ${quando}`)); a.append(c);

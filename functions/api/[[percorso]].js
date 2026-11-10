@@ -13,7 +13,7 @@ const FEED = [
   ["Corriere dello Sport", ["https://www.corrieredellosport.it/rss/calcio"]],
   ["Voce Giallorossa", ["https://www.vocegiallorossa.it/rss"]],
   ["Il Romanista", ["https://www.ilromanista.eu/feed", "https://www.ilromanista.eu/rss", "https://www.ilromanista.eu/rss.xml", gnews("site:ilromanista.eu when:3d")]],
-  ["Il Tempo", ["https://www.iltempo.it/rss/sport.xml", "https://www.iltempo.it/sport/rss", gnews("site:iltempo.it/sport Roma when:3d")]],
+  ["Il Tempo", ["https://www.iltempo.it/rss/sport.xml", "https://www.iltempo.it/sport/rss", "https://www.iltempo.it/rss/sport/roma.xml", gnews('site:iltempo.it (giallorossi OR Gasperini OR "AS Roma" OR Trigoria) when:4d')]],
   ["Sky Sport", ["https://sport.sky.it/rss/calcio.xml", "https://sport.sky.it/rss/sport_calcio.xml", gnews("site:sport.sky.it Roma calcio when:3d")]],
   ["Il Messaggero", ["https://www.ilmessaggero.it/rss/sport.xml", "https://www.ilmessaggero.it/rss/sport_calcio.xml", gnews("site:ilmessaggero.it/sport Roma when:3d")]]
 ];
@@ -175,8 +175,10 @@ async function notizie(ctx) {
 
 // Archivio per l'app: le notizie restano nel database, così scorrendo si torna indietro nel tempo.
 // L'app usa le stesse fonti del sito. L'archivio si riempie anche quando il sito scarica i feed, così resta sempre aggiornato.
-// Nell'app solo tre fonti, per una lista più ordinata (deciso da Andrea l'8 novembre). Il sito le usa tutte.
-const FONTI_APP = ["Corriere dello Sport", "Voce Giallorossa", "RomaNews"];
+// Fonti dell'app (decise da Andrea il 10 novembre): Corriere dello Sport, Sky Sport (solo Roma, filtro SULLA_ROMA), Il Romanista, Voce Giallorossa. Il sito le usa tutte.
+const FONTI_APP = ["Corriere dello Sport", "Sky Sport", "Il Romanista", "Voce Giallorossa"];
+// Notizie senza foto (Il Romanista da Google News, feed senza immagini): al posto della foto il logo R+, nell'app anche per le versioni già installate.
+const FOTO_RISERVA = "https://roma-plus.it/img/brand/icona-app.png";
 const SOLO_APP = `testata IN (${FONTI_APP.map(() => "?").join(",")})`;
 const salvaArchivio = (env, tutte) => { const l = tutte.filter(n => n.data); return l.length ? env.DB.batch(l.map(n => env.DB.prepare("INSERT OR IGNORE INTO notizie (url, testata, titolo, foto, pubblicata) VALUES (?,?,?,?,?)").bind(n.url, n.t, n.titolo, n.foto, new Date(n.data).toISOString()))) : null; };
 // Di norma ogni 5 minuti; quando nell'app si tira giù la lista basta un minuto dall'ultimo aggiornamento.
@@ -194,7 +196,7 @@ async function archivioNotizie(ctx, url) {
   const forza = !prima && url.searchParams.get("aggiorna") === "1";
   if (vuoto || forza) await aggiornaArchivio(env, vuoto ? 3e5 : 6e4).catch(() => {}); else ctx.waitUntil(aggiornaArchivio(env));
   const q = prima ? env.DB.prepare(`SELECT testata, titolo, url, foto, pubblicata FROM notizie WHERE ${SOLO_APP} AND pubblicata < ? ORDER BY pubblicata DESC LIMIT ?`).bind(...FONTI_APP, prima, n) : env.DB.prepare(`SELECT testata, titolo, url, foto, pubblicata FROM notizie WHERE ${SOLO_APP} ORDER BY pubblicata DESC LIMIT ?`).bind(...FONTI_APP, n);
-  return json({ notizie: (await q.all()).results });
+  return json({ notizie: (await q.all()).results.map(n => n.foto ? n : { ...n, foto: FOTO_RISERVA }) });
 }
 
 const giorno = () => new Date(Date.now() + 36e5).toISOString().slice(0, 10);
