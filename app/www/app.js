@@ -52,7 +52,7 @@ async function notizie() {
   const scrivi = l => {
     for (const x of l) {
       const a = el("a", "notizia"); a.href = "#";
-      const f = el("img"); f.alt = ""; f.loading = "lazy"; if (x.foto) f.src = x.foto;
+      const f = el("img"); f.alt = ""; f.loading = "lazy"; f.src = x.foto || "https://roma-plus.it/img/brand/icona-app.png"; f.onerror = () => { f.onerror = null; f.src = "https://roma-plus.it/img/brand/icona-app.png"; };
       const c = el("div"); c.append(el("span", "meta", `${ora(x.pubblicata)} · ${x.testata}`), el("b", "", x.titolo));
       a.append(f, c); a.onclick = e => { e.preventDefault(); apriLink(x.url); };
       lista.append(a);
