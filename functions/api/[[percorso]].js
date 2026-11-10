@@ -631,7 +631,8 @@ async function admin(ctx, p) {
         for (const a of nuovi) {
           if (!/^[\w-]+$/.test(a.id)) continue;
           const i = c.storia.findIndex(x => x.id === a.id);
-          if (i >= 0) c.storia[i] = a; else c.storia.push(a);
+          // Si uniscono i campi: una riscrittura che manda solo i testi non perde foto, posizione, fonti e stato.
+          if (i >= 0) c.storia[i] = { ...c.storia[i], ...a }; else c.storia.push(a);
         }
       }
       if (!c.partita?.id || !c.prossima?.id || !Array.isArray(c.classifica)) return errore("Contenuti non validi");
