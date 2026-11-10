@@ -98,11 +98,15 @@ function schedaPagella(p, voti, corrente) {
 }
 const annoStoria = a => parseInt(a.anno, 10) || 0;
 const voceStoria = a => `<a class="voce-storia" href="/storia/${esc(a.id)}"><span class="anno-storia">${esc(a.anno)}</span><span><b>${esc(a.titolo)}</b><span class="nota">${esc(a.riassunto)}</span></span></a>`;
-const elencoStoria = l => `<div class="testa-storia"><h1>La nostra storia</h1><p>Ci sono cose che un romanista non legge: se le fa raccontare. Qui mettiamo quelle che ci hanno cambiato la vita, una alla volta, dall'inizio.</p></div><div class="linea-storia">${l.map(voceStoria).join("")}</div>`;
+const elencoStoria = l => `<div class="testa-storia"><h1>La nostra storia</h1><p>Ci sono cose che un romanista non legge: se le fa raccontare. Qui mettiamo quelle che ci hanno cambiato la vita, una alla volta, dall'inizio.</p></div><div class="linea-storia">${l.map((a, i) => voceStoria(a) + (i % 6 === 5 && i < l.length - 1 ? `<div class="adv-testo" data-annuncio></div>` : "")).join("")}</div>`;
 const stileFoto = a => /^\/(api\/img|img)\/[\w./-]+$/.test(a.copertina || "") ? ` style="--foto:url('${a.copertina}');--posto:${Math.min(100, Math.max(0, Number(a.posizione ?? 50)))}%"` : "";
 function racconto(a, l) {
   const seguente = l[l.findIndex(x => x.id === a.id) + 1] || l[0];
-  const corpo = String(a.testo || "").split(/\n\s*\n/).map(t => t.trim().startsWith("## ") ? `<h2>${esc(t.trim().slice(3))}</h2>` : `<p>${esc(t)}</p>`).join("");
+  const pezzi = String(a.testo || "").split(/\n\s*\n/).map(t => t.trim().startsWith("## ") ? `<h2>${esc(t.trim().slice(3))}</h2>` : `<p>${esc(t)}</p>`);
+  // Un annuncio a metà racconto (deciso da Andrea il 10 novembre), prima di un paragrafo e mai subito prima di un sottotitolo.
+  let meta = Math.floor(pezzi.length / 2); while (meta < pezzi.length - 1 && (pezzi[meta].startsWith("<h2>") || pezzi[meta - 1]?.startsWith("<h2>"))) meta++;
+  if (pezzi.length > 3) pezzi.splice(meta, 0, `<div class="adv-testo" data-annuncio></div>`);
+  const corpo = pezzi.join("");
   const fonti = (a.fonti || []).filter(([, u]) => /^https:\/\//.test(u)).map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener nofollow">${esc(n)}</a>`).join(" · ");
   return `<article class="racconto"><header class="testa-storia"${stileFoto(a)}><span class="anno-grande">${esc(a.anno)}</span><h1>${esc(a.titolo)}</h1><p class="nota">${esc(a.occhiello)}</p></header><div class="testo-storia">${corpo}</div>`
     + (seguente.id !== a.id ? `<a class="prossimo-racconto" href="/storia/${esc(seguente.id)}"><span class="nota">Il prossimo racconto</span><b>${esc(seguente.titolo)}</b></a>` : "")

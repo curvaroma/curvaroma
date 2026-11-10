@@ -1,3 +1,13 @@
+// Schermo fisso (deciso da Andrea il 10 novembre): niente zoom e niente scorrimento orizzontale, si scorre solo la lista.
+document.addEventListener("gesturestart", e => e.preventDefault());
+document.addEventListener("dblclick", e => e.preventDefault());
+// Se il telefono non comunica lo spazio della tacca (env = 0), su iPhone lo si lascia lo stesso, così il logo non finisce sotto la Dynamic Island.
+(() => {
+  const p = document.createElement("div"); p.style.cssText = "position:fixed;top:0;height:env(safe-area-inset-top);visibility:hidden"; document.documentElement.append(p);
+  const h = p.getBoundingClientRect().height; p.remove();
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || window.Capacitor?.getPlatform?.() === "ios";
+  if (!h && ios) document.documentElement.style.setProperty("--tacca", screen.height >= 852 ? "59px" : screen.height >= 812 ? "47px" : "20px");
+})();
 // App Roma+: stesse API del sito, stessi dati.
 const API = "https://roma-plus.it";
 const $ = s => document.querySelector(s);
@@ -40,7 +50,12 @@ function annuncio(p) {
   return a;
 }
 // Un annuncio a caso, diverso a ogni apertura, nelle sezioni che non sono le notizie.
-function unAnnuncio(s) { const l = prodottiMisti(); if (l.length) s.append(annuncio(l[0])); }
+// Più annunci nella stessa schermata: ognuno un prodotto diverso (n = posizione).
+let annunciSchermo = [];
+function unAnnuncio(s, n = 0) {
+  if (!n || !annunciSchermo.length) annunciSchermo = prodottiMisti();
+  const p = annunciSchermo.shift(); if (p) s.append(annuncio(p));
+}
 const SOGLIA = 70;
 async function notizie() {
   const tira = el("div", "tira"), scritta = el("span", "", "Tira per aggiornare"), lista = el("div"), piede = el("div", "carica", "Carico le notizie…");
@@ -148,22 +163,28 @@ async function pagelle() {
 /* Analisi */
 async function analisi() {
   const s = el("div", "sez"); vista.append(s);
+  await pubblico(); annunciSchermo = prodottiMisti();
   const { contenuti: C } = await pubblico();
   s.append(el("h1", "", "Analisi"));
   for (const a of C.analisi) {
     const c = el("article", "card art"), i = el("img"), d = el("div"); i.src = assoluta(a.copertina || P?.immagini?.analisi || "/img/lavagna.jpg"); i.alt = ""; i.loading = "lazy";
     d.append(el("span", "meta", a.occhiello || ""), el("h2", "", a.titolo), el("span", "nota", a.riassunto || ""));
     c.append(i, d); c.onclick = () => leggi(a); s.append(c);
-    if (s.querySelectorAll(".art").length % 3 === 0) unAnnuncio(s);
+    // Annunci in mezzo alla lista (deciso da Andrea il 10 novembre): dopo la seconda analisi, poi ogni tre.
+    const k = s.querySelectorAll(".art").length;
+    if (k < C.analisi.length && (k === 2 || (k > 2 && (k - 2) % 3 === 0))) unAnnuncio(s, k);
   }
-  if (C.analisi.length % 3) unAnnuncio(s);
+  unAnnuncio(s, 99);
 }
 function leggi(a) {
   vista.textContent = ""; vista.scrollTop = 0;
+  annunciSchermo = prodottiMisti();
   const s = el("div", "sez"), b = el("button", "indietro", "‹ Analisi"), t = el("div", "testo");
   b.onclick = () => apri("analisi");
-  for (const par of String(a.testo || "").split(/\n\s*\n/)) { const x = par.trim(); if (x) t.append(x.startsWith("## ") ? el("h3", "", x.slice(3)) : el("p", "", x)); }
-  s.append(b, el("span", "meta", a.occhiello || ""), el("h1", "", a.titolo), t); unAnnuncio(s); vista.append(s);
+  const pezzi = String(a.testo || "").split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
+  let meta = Math.floor(pezzi.length / 2); while (meta < pezzi.length - 1 && (pezzi[meta].startsWith("## ") || pezzi[meta - 1]?.startsWith("## "))) meta++;
+  pezzi.forEach((x, i) => { if (i === meta && pezzi.length > 3) unAnnuncio(t, 1); t.append(x.startsWith("## ") ? el("h3", "", x.slice(3)) : el("p", "", x)); });
+  s.append(b, el("span", "meta", a.occhiello || ""), el("h1", "", a.titolo), t); unAnnuncio(s, 2); vista.append(s);
 }
 
 /* Vigilia */
