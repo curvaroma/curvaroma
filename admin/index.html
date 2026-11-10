@@ -62,7 +62,7 @@ button.pericolo{background:none;color:#C0392B;border:1px solid #C0392B}
 .post-griglia{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,320px);gap:16px;align-items:start}
 .bozza-img{width:100%;height:auto;border-radius:8px;display:block}
 .a-capo{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
-.post-griglia canvas{width:100%;height:auto;border-radius:8px;display:block}
+.post-griglia canvas{width:100%;height:auto;border-radius:8px;display:block;position:sticky;top:130px}
 @media (max-width:720px){.post-griglia{grid-template-columns:minmax(0,1fr)}}
 .racc{display:grid;gap:12px;min-width:0}
 .racc-elenco{display:grid;gap:12px;min-width:0}
@@ -91,6 +91,7 @@ details.chiusa>.dentro{display:grid;gap:12px;padding-top:12px;min-width:0}
 <div class="salva" id="barra-salva" hidden><span class="esito" id="e-salva">Modifiche da pubblicare</span><button class="az" id="pubblica">Salva sul sito</button></div>
 </div>
 <script src="/admin/qr.js"></script>
+<script src="/admin/modelli-post.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
@@ -418,23 +419,33 @@ const PAGINE = {
     }, { per: 10, testo: a => `${a.titolo} ${a.occhiello} ${a.riassunto} ${TIPI[a.tipo] || ""}`, cerca: "Cerca un contenuto", filtri: [["Tutti", () => true], ["Pubblicati", a => a.stato !== "bozza" && !(a.data > oggi())], ["Bozze", a => a.stato === "bozza"], ["Programmati", a => a.stato !== "bozza" && a.data > oggi()]] }));
   },
   async post(v) {
-    const { immagini } = await api("aspetto");
-    const d = { titolo: "", testo: "", foto: "/img/tifosi.jpg", alto: 60, didascalia: "" };
-    const c = el("div", "card"), griglia = el("div", "post-griglia"), f = el("div"), tela = el("canvas"), es = el("span", "esito");
-    f.style.cssText = "display:grid;gap:12px;min-width:0"; tela.width = 1080; tela.height = 1350;
-    const ridisegna = () => disegnaPost(tela, d).catch(e => { es.textContent = e.message; });
-    const su = k => x => { d[k] = x; ridisegna(); };
-    const foto = el("select"), lf = el("label", "", "Foto");
-    for (const [u, t] of [["/img/tifosi.jpg", "Curva piena"], ["/img/curva.jpg", "Curva"], ["/img/stadio.jpg", "Stadio"], ["/img/colosseo.jpg", "Colosseo"], ["/img/lavagna.jpg", "Lavagna tattica"], ...immagini.map(x => ["/api/img/" + x.id, x.nome])]) { const o = el("option", "", t); o.value = u; foto.append(o); }
-    foto.onchange = () => { d.foto = foto.value; ridisegna(); }; lf.append(foto);
-    const up = tastoFile("Carica foto", async file => { const u = await carica(file); const o = el("option", "", file.name); o.value = u; foto.append(o); foto.value = u; d.foto = u; ridisegna(); });
-    f.append(campo("Titolo, una riga per ogni a capo", "", su("titolo"), "area"), campo("Frase sotto il titolo", "", su("testo")), lf, up, campo("Posizione foto (0 alto, 100 basso)", 60, x => { d.alto = Math.min(100, Math.max(0, +x || 0)); ridisegna(); }, "number"), campoSeo("Didascalia", "", x => d.didascalia = x, 1, 2200, "area"));
+    const { immagini } = await api("aspetto"), M = window.MODELLI_POST;
+    const d = { stile: "numero", titolo: "", testo: "", foto: "/img/tifosi.jpg", alto: 60, didascalia: "", tag: "", cta: "" };
+    const FOTO = [["/img/tifosi.jpg", "Curva piena"], ["/img/curva.jpg", "Curva"], ["/img/stadio.jpg", "Stadio"], ["/img/colosseo.jpg", "Colosseo"], ["/img/lavagna.jpg", "Lavagna tattica"], ["/img/storia/scudetto-2001.jpg", "Scudetto 2001"], ...["malen", "mora", "soule"].map(x => [`/img/giocatori/${x}-esultanza.jpg`, `Esultanza ${x}`]), ...immagini.map(x => ["/api/img/" + x.id, x.nome])];
+    const c = el("div", "card"), griglia = el("div", "post-griglia"), f = el("div"), campi = el("div"), tela = el("canvas"), es = el("span", "esito");
+    f.style.cssText = campi.style.cssText = "display:grid;gap:12px;min-width:0"; tela.width = 1080; tela.height = 1350;
+    let coda = Promise.resolve();
+    const ridisegna = () => { coda = coda.then(() => M.disegna(tela, d)).then(() => { es.textContent = ""; }).catch(e => { es.textContent = e.message; }); };
+    const scelta = (et, val, opzioni, su) => { const l = el("label", "", et), s = el("select"); for (const [u, t] of opzioni) { const o = el("option", "", t); o.value = u; s.append(o); } s.value = val ?? ""; s.onchange = () => su(s.value); l.append(s); return l; };
+    const modello = scelta("Modello", d.stile, Object.entries(M.MODELLI).map(([k, x]) => [k, x.nome]), x => { d.stile = x; disegnaCampi(); ridisegna(); });
+    function disegnaCampi() {
+      campi.textContent = "";
+      for (const [k, et, tipo] of M.MODELLI[d.stile].campi) {
+        if (tipo === "foto") {
+          campi.append(scelta(et, d[k], FOTO, x => { d[k] = x; ridisegna(); }), tastoFile("Carica foto", async file => { const u = await carica(file); FOTO.push([u, file.name]); d[k] = u; disegnaCampi(); ridisegna(); }));
+        } else if (tipo === "giocatore") {
+          campi.append(scelta(et, d[k], [["", "Nessuno"], ...M.SCONTORNI.map(x => [x, x.replace(/-/g, " ").replace(/\b\w/g, y => y.toUpperCase())])], x => { d[k] = x; ridisegna(); }));
+        } else campi.append(campo(et, d[k], x => { d[k] = x; ridisegna(); }, tipo || "text"));
+      }
+    }
     const sc = el("button", "az", "Scarica JPG"), co = el("button", "az sec", "Copia didascalia"), az = el("div", "riga");
-    sc.onclick = () => { const a = el("a"); a.href = tela.toDataURL("image/jpeg", .92); a.download = `romaplus-${oggi()}.jpg`; a.click(); };
+    sc.onclick = async () => { await coda; const a = el("a"); a.href = tela.toDataURL("image/jpeg", .92); a.download = `romaplus-${oggi()}.jpg`; a.click(); };
     co.onclick = async () => { try { await navigator.clipboard.writeText(d.didascalia); es.textContent = "Didascalia copiata"; } catch { es.textContent = "Copia non riuscita"; } };
-    az.append(sc, co, es); f.append(az); griglia.append(f, tela);
+    az.append(sc, co, es);
+    f.append(modello, el("p", "nota", "Cambia modello ogni giorno: con la stessa grafica i post rendono meno. Niente stemma della Roma e niente numero di votanti."), campi, campoSeo("Didascalia", "", x => d.didascalia = x, 1, 2200, "area"), az);
+    griglia.append(f, tela);
     c.append(el("h2", "", "Crea un post Instagram"), el("p", "nota", "Formato 1080x1350. Scarica il JPG e pubblicalo dal telefono."), griglia); v.append(c);
-    ridisegna();
+    disegnaCampi(); ridisegna();
   },
   async seo(v) {
     const { seo, predefiniti } = await api("seo");
@@ -599,29 +610,6 @@ function controllaContenuti() {
     storie.add(a.id);
     if (a.stato !== "bozza" && (!a.titolo?.trim() || !a.testo?.trim() || !String(a.anno ?? "").trim())) return `Il racconto "${a.titolo || a.id}" è pubblicato ma manca titolo, anno o testo`;
   }
-}
-let fontPost = null;
-function caricaImg(u) { return new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error("Foto non caricata")); i.src = u; }); }
-async function disegnaPost(tela, d) {
-  fontPost ||= Promise.all([new FontFace("TitoliPost", "url(/fonts/titoli-900.woff2)").load(), new FontFace("TestoPost", "url(/fonts/testo-600.woff2)").load()]).then(l => l.forEach(f => document.fonts.add(f)));
-  await fontPost;
-  const [logo, foto] = await Promise.all([caricaImg("/img/logo-chiaro.png"), caricaImg(d.foto)]), g = tela.getContext("2d");
-  g.fillStyle = "#5F0E24"; g.fillRect(0, 0, 1080, 1350);
-  g.textBaseline = "alphabetic"; g.textAlign = "left"; g.font = '96px TitoliPost';
-  g.drawImage(logo, 540 - 230, 50, 460, 460 * logo.height / logo.width);
-  const k = Math.max(1080 / foto.width, 590 / foto.height), sw = 1080 / k, sh = 590 / k;
-  g.drawImage(foto, (foto.width - sw) / 2, (foto.height - sh) * d.alto / 100, sw, sh, 0, 158, 1080, 590);
-  g.fillStyle = "#8E1F2F"; g.fillRect(0, 748, 1080, 602);
-  const rig = (d.titolo.trim() || "Il tuo titolo").toUpperCase().split("\n").map(x => x.trim()).filter(Boolean).slice(0, 3);
-  let c = 138; do { g.font = `${c}px TitoliPost`; c -= 2; } while (c > 48 && Math.max(...rig.map(x => g.measureText(x).width)) > 960);
-  c += 2; let y = 800 + c * .8; g.fillStyle = "#F0BC42"; for (const x of rig) { g.fillText(x, 60, y); y += c * .98; }
-  g.font = "39px TestoPost"; g.fillStyle = "#FFF6F0"; y += 34 - c * .98;
-  let riga = ""; const parole = String(d.testo || "").split(/\s+/).filter(Boolean), righe2 = [];
-  for (const p of parole) { const t = riga ? riga + " " + p : p; if (g.measureText(t).width > 960 && riga) { righe2.push(riga); riga = p; } else riga = t; }
-  if (riga) righe2.push(riga);
-  for (const x of righe2.slice(0, 3)) { y += 44; g.fillText(x, 60, y); }
-  g.fillStyle = "#F0BC42"; g.font = "54px TitoliPost"; const ls = g.measureText("roma-plus.it").width; g.fillRect(60, 1226, ls + 48, 80);
-  g.fillStyle = "#2B0A15"; g.fillText("roma-plus.it", 84, 1285);
 }
 async function apri(s) {
   ora = s;
