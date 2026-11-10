@@ -134,6 +134,9 @@ h1.striscione{font-size:2.9rem}
 .azioni button{background:none;border:0;color:var(--muto);font-weight:600;min-height:44px;padding-inline:4px;cursor:pointer}
 .azioni button[disabled]{opacity:.4}
 .podio{display:grid;gap:10px}
+.condividi-riga{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.bottone.condividi{width:auto;min-height:42px;padding:8px 22px;font-size:.95rem}
+.esito-storia:empty{display:none}
 .barra{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:3px 10px;align-items:center}
 .barra span{font-weight:600}
 .barra b{text-align:right;font:800 1.35rem/1 var(--display);font-variant-numeric:tabular-nums}
@@ -1203,10 +1206,7 @@ function mazzo(box, dir) {
     c.append(el("h3", "", "Il voto è chiuso"), el("small", "", "Si vota per 48 ore dal fischio finale. Ecco i migliori per i tifosi."));
     medie().slice(0, 3).forEach(x => lista.append(barra(x)));
     c.append(lista);
-    if (Object.keys(stato.pagella).length) {
-      const st = el("button", "bottone pieno", "Condividi in Storia"); st.type = "button"; st.onclick = () => condividiPagella(st);
-      c.append(st, el("p", "nota esito-storia", "Aggiungi il link roma-plus.it alla Storia."));
-    }
+    c.append(tastoCondividi());
     if (box.dataset.mazzo === "casa") { const a = el("a", "bottone pieno", "Vedi tutte le pagelle"); a.href = "/pagelle"; c.append(a); }
     box.append(c); return;
   }
@@ -1217,10 +1217,7 @@ function mazzo(box, dir) {
     medie().slice(0, 3).forEach(x => lista.append(barra(x)));
     c.append(lista);
     if (avvisoVoti) c.append(el("p", "nota", avvisoVoti));
-    if (Object.keys(stato.pagella).length) {
-      const st = el("button", "bottone pieno", "Condividi in Storia"); st.type = "button"; st.onclick = () => condividiPagella(st);
-      const av = el("p", "nota esito-storia", "Aggiungi il link roma-plus.it alla Storia."); c.append(st, av);
-    }
+    c.append(tastoCondividi());
     if (home) { const a = el("a", "bottone pieno", "Vedi tutte le pagelle"); a.href = "/pagelle"; c.append(a); }
     const b = el("button", "bottone vuoto", "Cambia i tuoi voti"); b.type = "button"; b.style.color = "var(--testo)";
     b.onclick = () => { rivedi = true; indice = 0; modifiche = true; mazzi(1); };
@@ -1367,36 +1364,42 @@ async function immaginePagella() {
   const [foto, logo] = await Promise.all([carica("/img/tifosi-800.webp"), carica("/img/logo-chiaro.webp")]);
   const t = el("canvas"); t.width = 1080; t.height = 1920;
   const g = t.getContext("2d"), TIT = '"Big Shoulders Display",Impact,sans-serif', TES = '"Libre Franklin",Arial,sans-serif';
-  const voti = TITOLARI.filter(([n]) => stato.pagella[n] != null);
+  const mia = Object.keys(stato.pagella).length, voti = mia ? TITOLARI.filter(([n]) => stato.pagella[n] != null).map(([n]) => [n, stato.pagella[n]]) : medie().slice(0, 11).map(x => [x.n, Math.round(x.m * 10) / 10]);
   g.fillStyle = "#5F0E24"; g.fillRect(0, 0, 1080, 1920);
   const k = Math.max(1080 / foto.width, 520 / foto.height), sw = 1080 / k, sh = 520 / k;
   g.drawImage(foto, (foto.width - sw) / 2, (foto.height - sh) * .6, sw, sh, 0, 0, 1080, 520);
   g.fillStyle = "rgba(43,10,21,.78)"; g.fillRect(0, 0, 1080, 520);
   g.drawImage(logo, 540 - 260, 236, 520, 520 * logo.height / logo.width);
-  g.fillStyle = "#F0BC42"; g.textAlign = "center"; g.font = `900 124px ${TIT}`; g.fillText("LA MIA PAGELLA", 540, 462); g.textAlign = "left";
+  g.fillStyle = "#F0BC42"; g.textAlign = "center"; g.font = `900 124px ${TIT}`; g.fillText(mia ? "LA MIA PAGELLA" : "PAGELLA DEI TIFOSI", 540, 462); g.textAlign = "left";
   g.fillStyle = "#8E1F2F"; g.fillRect(0, 520, 1080, 980);
   const p = C.partita, gara = `${p.casa} ${p.golCasa}-${p.golOspiti} ${p.ospiti}`;
   g.fillStyle = "#FFF6F0"; g.textAlign = "center"; g.font = `900 66px ${TIT}`; g.fillText(gara.toUpperCase(), 540, 600); g.textAlign = "left";
   const passo = Math.min(76, 840 / Math.max(voti.length, 1));
-  voti.forEach(([n], i) => {
+  voti.forEach(([n, v], i) => {
     const y = 680 + i * passo;
     g.fillStyle = "#FFF6F0"; g.font = `600 ${Math.min(44, passo * .6)}px ${TES}`; g.fillText(n, 70, y);
-    g.fillStyle = "#F0BC42"; g.textAlign = "right"; g.font = `900 ${Math.min(62, passo * .84)}px ${TIT}`; g.fillText(virgola(stato.pagella[n]), 1010, y + 3); g.textAlign = "left";
+    g.fillStyle = "#F0BC42"; g.textAlign = "right"; g.font = `900 ${Math.min(62, passo * .84)}px ${TIT}`; g.fillText(virgola(v), 1010, y + 3); g.textAlign = "left";
   });
-  g.fillStyle = "#FFF6F0"; g.font = `600 40px ${TES}`; g.textAlign = "center"; g.fillText("E tu che voti dai?", 540, 1566);
+  g.fillStyle = "#FFF6F0"; g.font = `600 40px ${TES}`; g.textAlign = "center"; g.fillText(mia ? "E tu che voti dai?" : "Sei d'accordo?", 540, 1566);
   g.fillStyle = "#F0BC42"; g.font = `900 62px ${TIT}`; const ls = g.measureText("roma-plus.it").width; g.fillRect(540 - ls / 2 - 28, 1594, ls + 56, 88);
   g.fillStyle = "#2B0A15"; g.fillText("roma-plus.it", 540, 1658);
-  g.fillStyle = "#FFF6F0"; g.font = `600 24px ${TES}`; g.fillText("Sito di tifosi non ufficiale", 540, 1722);
   return new Promise((ok, no) => t.toBlob(b => b ? ok(b) : no(new Error("immagine")), "image/jpeg", .9));
 }
+// Condividi: sempre visibile. Chi ha votato condivide la sua pagella, gli altri quella dei tifosi. Va su qualsiasi social (Storie, post, WhatsApp).
+function tastoCondividi() {
+  const r = el("div", "condividi-riga"), b = el("button", "bottone pieno condividi", "Condividi"); b.type = "button"; b.onclick = () => condividiPagella(b);
+  r.append(b, el("p", "nota esito-storia")); return r;
+}
 async function condividiPagella(b) {
-  const testo = b.textContent; b.disabled = true; b.textContent = "Preparo la Storia…";
+  const testo = b.textContent; b.disabled = true; b.textContent = "Preparo l'immagine…";
   try {
     const blob = await immaginePagella(), file = new File([blob], "la-mia-pagella-romaplus.jpg", { type: "image/jpeg" });
     navigator.sendBeacon?.("/api/visita", new Blob([JSON.stringify({ sezione: "storia", mobile: innerWidth < 900 })], { type: "application/json" }));
-    if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file] });
+    const mia = Object.keys(stato.pagella).length, dati = { files: [file], title: mia ? "La mia pagella" : "La pagella dei tifosi", text: `${mia ? "La mia pagella" : "La pagella dei tifosi"} di ${C.partita.casa}-${C.partita.ospiti} su roma-plus.it`, url: location.origin + location.pathname };
+    if (navigator.canShare?.(dati)) await navigator.share(dati);
+    else if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file] });
     else { const a = el("a"); a.href = URL.createObjectURL(blob); a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3e4); }
-  } catch (x) { if (x?.name !== "AbortError") b.closest(".scheda")?.querySelector(".esito-storia")?.replaceChildren("Non riuscita. Riprova tra poco."); }
+  } catch (x) { if (x?.name !== "AbortError") b.parentElement?.querySelector(".esito-storia")?.replaceChildren("Non riuscita. Riprova tra poco."); }
   b.disabled = false; b.textContent = testo;
 }
 function esitoPronostico() {
