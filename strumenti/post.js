@@ -132,7 +132,7 @@ ${dati.anno ? `<div class="anno">${esc(dati.anno)}</div>` : ""}<div class="tit">
   prodotto: () => `${testa("#8E1F2F")}<style>
 .righe{position:absolute;inset:-200px;background:repeating-linear-gradient(-28deg,#8E1F2F 0 70px,#7A1828 70px 140px)}
 .onda{position:absolute;left:-80px;right:-80px;top:780px;height:700px;background:#F0BC42;transform:rotate(-7deg)}
-.card{position:absolute;left:150px;top:170px;width:780px;height:590px;background:#FFF6F0;border-radius:44px;transform:rotate(-4deg);box-shadow:0 30px 60px rgba(43,10,21,.55);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.card{position:absolute;left:150px;top:170px;width:780px;height:590px;background:#FFFFFF;border-radius:44px;transform:rotate(-4deg);box-shadow:0 30px 60px rgba(43,10,21,.55);display:flex;align-items:center;justify-content:center;overflow:hidden}
 .card img{max-width:90%;max-height:90%;object-fit:contain;transform:rotate(4deg)}
 .adesivo{position:absolute;right:70px;top:150px;width:230px;height:230px;border-radius:50%;background:#F0BC42;color:#2B0A15;display:flex;align-items:center;justify-content:center;text-align:center;font:900 46px/.92 T;text-transform:uppercase;transform:rotate(12deg);box-shadow:0 14px 30px rgba(0,0,0,.35);border:6px dashed #2B0A15}
 .nastro{position:absolute;left:70px;top:735px;background:#2B0A15;color:#F0BC42;font:900 40px/1 T;letter-spacing:2px;text-transform:uppercase;padding:14px 26px 12px;transform:rotate(-7deg)}
