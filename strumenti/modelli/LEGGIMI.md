@@ -13,6 +13,7 @@ Uso: NODE_PATH=$(npm root -g) node strumenti/post.js strumenti/modelli/<modello>
 | lista | pagella dei tifosi, classifica, top 5 | titolo, testo, righe [[nome, valore]] (max 8) |
 | risultato | fine partita | competizione, casa, ospiti, golCasa, golOspiti, testo (marcatori), foto, alto |
 | storia | racconto della sezione Storia | anno, titolo, testo, foto, alto |
+| prodotto | post Amazon (#ad), stile giovane | titolo, testo, foto (foto del prodotto), adesivo, nastro |
 
 Campi comuni: tag (etichetta in alto a destra), cta (frase in basso a destra che invita a commentare o andare sul sito).
 Gli esempi in questa cartella usano dati già pubblicati di Roma-Sassuolo 3-0. Niente stemma della Roma sulle grafiche, niente numero di votanti.

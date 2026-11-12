@@ -127,7 +127,26 @@ ${dati.competizione ? `<div class="comp">${esc(dati.competizione)}</div>` : ""}<
 .tit{position:absolute;left:64px;right:64px;top:800px}
 .sub{position:absolute;left:64px;right:64px;bottom:170px;font:600 34px/1.25 C;color:#F3D9DE}
 </style><img class="f" src="${immagine(dati.foto || "img/stadio.jpg")}" alt=""><div class="v"></div>${logo()}${tag()}
-${dati.anno ? `<div class="anno">${esc(dati.anno)}</div>` : ""}<div class="tit">${titoloGrande(96)}</div><div class="sub">${esc(dati.testo || "")}</div>${piede()}</html>`
+${dati.anno ? `<div class="anno">${esc(dati.anno)}</div>` : ""}<div class="tit">${titoloGrande(96)}</div><div class="sub">${esc(dati.testo || "")}</div>${piede()}</html>`,
+  // Prodotto Amazon, stile giovane: fondo a strisce diagonali, foto del prodotto su card inclinata, adesivi e titolo enorme.
+  prodotto: () => `${testa("#8E1F2F")}<style>
+.righe{position:absolute;inset:-200px;background:repeating-linear-gradient(-28deg,#8E1F2F 0 70px,#7A1828 70px 140px)}
+.onda{position:absolute;left:-80px;right:-80px;top:780px;height:700px;background:#F0BC42;transform:rotate(-7deg)}
+.card{position:absolute;left:150px;top:170px;width:780px;height:590px;background:#FFF6F0;border-radius:44px;transform:rotate(-4deg);box-shadow:0 30px 60px rgba(43,10,21,.55);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.card img{max-width:90%;max-height:90%;object-fit:contain;transform:rotate(4deg)}
+.adesivo{position:absolute;right:70px;top:150px;width:230px;height:230px;border-radius:50%;background:#F0BC42;color:#2B0A15;display:flex;align-items:center;justify-content:center;text-align:center;font:900 46px/.92 T;text-transform:uppercase;transform:rotate(12deg);box-shadow:0 14px 30px rgba(0,0,0,.35);border:6px dashed #2B0A15}
+.nastro{position:absolute;left:70px;top:735px;background:#2B0A15;color:#F0BC42;font:900 40px/1 T;letter-spacing:2px;text-transform:uppercase;padding:14px 26px 12px;transform:rotate(-7deg)}
+.tit{position:absolute;left:64px;right:64px;top:885px;color:#2B0A15;transform:rotate(-7deg);transform-origin:left top}
+.tit h1{margin:0;font:900 132px/.88 T;text-transform:uppercase}
+.tit p{margin:18px 0 0;font:700 36px/1.2 C7;max-width:880px}
+.sito{background:#2B0A15;color:#F0BC42}
+.cta{color:#2B0A15}
+.tag{background:#2B0A15;color:#F0BC42}
+</style><div class="righe"></div><div class="onda"></div>${logo()}${tag()}
+<div class="card"><img src="${immagine(dati.foto || "img/logo.png")}" alt=""></div>
+${dati.adesivo ? `<div class="adesivo">${[].concat(dati.adesivo).map(esc).join("<br>")}</div>` : ""}
+${dati.nastro ? `<div class="nastro">${esc(dati.nastro)}</div>` : ""}
+<div class="tit"><h1>${[].concat(dati.titolo || []).map(esc).join("<br>")}</h1><p>${esc(dati.testo)}</p></div>${piede()}</html>`
 };
 if (dati.stile && !MODELLI[dati.stile]) throw new Error("Stile sconosciuto: " + dati.stile + ". Stili: " + Object.keys(MODELLI).join(", "));
 
